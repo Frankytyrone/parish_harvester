@@ -7,9 +7,11 @@ import os
 from datetime import date, timedelta
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -23,9 +25,9 @@ REPORT_JSON = BULLETINS_DIR / "report.json"
 REPORT_TXT = BULLETINS_DIR / "report.txt"
 
 # ---------------------------------------------------------------------------
-# OpenAI
+# GitHub Models API
 # ---------------------------------------------------------------------------
-OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
 OPENAI_MODEL: str = "gpt-4o"
 
 # ---------------------------------------------------------------------------
