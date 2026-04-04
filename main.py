@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -30,6 +31,14 @@ from harvester.cleaner import clean
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _silence_playwright_shutdown(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    """Suppress TargetClosedError futures that surface during Playwright shutdown."""
+    exc = context.get("exception")
+    if exc is not None and type(exc).__name__ == "TargetClosedError":
+        return  # silently ignore
+    loop.default_exception_handler(context)
+
 
 def load_urls(diocese: str) -> list[str]:
     txt_file = PARISHES_DIR / f"{diocese}.txt"
@@ -101,7 +110,13 @@ def main() -> int:
     # ------------------------------------------------------------------
     print("\n── Stage 1: Fetch ──────────────────────────────────────────")
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    fetch_results = asyncio.run(fetch_all(urls, RAW_DIR, target))
+    loop = asyncio.new_event_loop()
+    loop.set_exception_handler(_silence_playwright_shutdown)
+    asyncio.set_event_loop(loop)
+    try:
+        fetch_results = loop.run_until_complete(fetch_all(urls, RAW_DIR, target))
+    finally:
+        loop.close()
 
     ok_count = sum(1 for r in fetch_results if r.status == "ok")
     err_count = sum(1 for r in fetch_results if r.status == "error")
