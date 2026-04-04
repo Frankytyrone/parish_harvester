@@ -34,9 +34,9 @@ MODEL_NAME: str = "gpt-4o"
 # ---------------------------------------------------------------------------
 # Timeouts & concurrency
 # ---------------------------------------------------------------------------
-PAGE_LOAD_TIMEOUT_MS: int = 30_000   # 30 s
-TOTAL_TIMEOUT_S: int = 60            # 60 s per parish
-CONCURRENCY: int = 5                 # parallel asyncio tasks
+PAGE_LOAD_TIMEOUT_MS: int = 45_000   # 45 s
+TOTAL_TIMEOUT_S: int = 120           # 120 s per parish
+CONCURRENCY: int = 8                 # parallel asyncio tasks
 
 # ---------------------------------------------------------------------------
 # Bulletin keyword heuristics
