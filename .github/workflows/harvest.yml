@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Bulletin Harvester
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: python main.py --diocese derry_diocese
 
       - name: Upload Bulletins artifact

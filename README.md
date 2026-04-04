@@ -8,9 +8,9 @@ from 50+ Derry Diocese parishes every weekend.
 - **Headless browser fetching** (Playwright/Chromium) — handles JS-rendered pages
 - **Intelligent PDF detection** — finds bulletin PDFs by keyword + date heuristics
 - **Screenshot fallback** — captures full-page PNG when no PDF is found
-- **AI verification** (OpenAI GPT-4o Vision) — reads each file and checks it's for the current week
+- **AI verification** (GitHub Models GPT-4o Vision) — reads each file and checks it's for the current week
 - **Self-cleaning** — moves fresh files to `Bulletins/current/`, discards stale ones
-- **GitHub Actions** — runs automatically every Saturday at 06:00 UTC
+- **GitHub Actions** — runs automatically every Saturday at 06:00 UTC, no API keys required
 
 ---
 
@@ -27,13 +27,15 @@ python -m playwright install --with-deps chromium
 sudo apt-get install -y poppler-utils
 ```
 
-### 2. Configure API key
+### 2. Configure token (local development only)
 
 ```bash
 cp .env.example .env
-# Edit .env and set your OpenAI API key:
-# OPENAI_API_KEY=sk-...
+# Edit .env and set your GitHub Personal Access Token:
+# GITHUB_TOKEN=your-github-pat-here
 ```
+
+> **GitHub Actions**: No setup needed — `GITHUB_TOKEN` is provided automatically.
 
 ### 3. Run
 
@@ -86,7 +88,7 @@ parish_harvester/
 │   ├── __init__.py
 │   ├── config.py             # Settings: target date, timeouts, paths
 │   ├── fetcher.py            # Stage 1 — Playwright fetch logic
-│   ├── verifier.py           # Stage 2 — OpenAI Vision date verification
+│   ├── verifier.py           # Stage 2 — GitHub Models GPT-4o Vision date verification
 │   ├── cleaner.py            # Stage 3 — File sorting + report generation
 │   └── utils.py              # Helpers: URL parsing, date formats
 ├── main.py                   # CLI entry point
@@ -99,11 +101,20 @@ parish_harvester/
 
 ## GitHub Actions Setup
 
-1. Go to **Settings → Secrets and variables → Actions**.
-2. Add a secret named `OPENAI_API_KEY` with your OpenAI API key.
-3. The workflow runs automatically every **Saturday at 06:00 UTC**, or you can trigger it manually from the **Actions** tab.
+No configuration needed! The workflow uses `GITHUB_TOKEN` which is automatically provided by GitHub Actions. Just:
+
+1. Push/merge to the repository.
+2. The workflow runs automatically every **Saturday at 06:00 UTC**, or trigger it manually from the **Actions** tab.
 
 Bulletins are uploaded as a workflow artifact (retained for 30 days).
+
+### Local development
+
+For local runs, create a [GitHub Personal Access Token](https://github.com/settings/tokens) (no additional scopes are required beyond basic account access) and set it in your `.env` file:
+
+```
+GITHUB_TOKEN=your-github-pat-here
+```
 
 ---
 
