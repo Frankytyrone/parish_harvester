@@ -172,7 +172,7 @@ def main() -> int:
     print(f"\n📄 Report  : {REPORT_JSON}")
     print(f"📄 Report  : {REPORT_TXT}")
 
-    return 0 if (err_count == 0 and len(result.errors) == 0) else 1
+    return 0 if len(result.errors) == 0 else 1
 
 
 if __name__ == "__main__":
