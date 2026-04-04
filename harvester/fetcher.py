@@ -16,8 +16,16 @@ from playwright.async_api import (
     async_playwright,
     TimeoutError as PlaywrightTimeout,
 )
+try:
+    from playwright._impl._errors import TargetClosedError as _TargetClosedError
+except Exception:
+    _TargetClosedError = Exception  # type: ignore[assignment,misc]
 
 from .config import BULLETIN_KEYWORDS, CONCURRENCY, PAGE_LOAD_TIMEOUT_MS, TOTAL_TIMEOUT_S
+
+# Seconds to wait after all tasks finish before closing the browser, to allow
+# any lingering Playwright background futures to settle gracefully.
+_PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
 from .utils import (
     date_variants,
     extract_date_from_string,
@@ -100,14 +108,20 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
         await download.save_as(dest)
     except Exception:
         # Fallback: direct HTTP download via fetch API
-        page = await context.new_page()
-        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
-        if response.ok:
-            dest.write_bytes(await response.body())
-        else:
-            raise RuntimeError(f"HTTP {response.status} for {url}")
+        try:
+            page = await context.new_page()
+            response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+            if response.ok:
+                dest.write_bytes(await response.body())
+            else:
+                raise RuntimeError(f"HTTP {response.status} for {url}")
+        except _TargetClosedError:
+            raise
     finally:
-        await context.close()
+        try:
+            await context.close()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +237,6 @@ async def fetch_all(
 ) -> list[FetchResult]:
     """Fetch all parishes concurrently, bounded by CONCURRENCY."""
     sem = asyncio.Semaphore(CONCURRENCY)
-    results: list[FetchResult] = []
 
     async def _bounded(url: str, browser: Browser) -> FetchResult:
         async with sem:
@@ -232,7 +245,28 @@ async def fetch_all(
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)
         tasks = [_bounded(url, browser) for url in urls]
-        results = await asyncio.gather(*tasks)
-        await browser.close()
+        results = list(await asyncio.gather(*tasks, return_exceptions=True))
 
-    return list(results)
+        # Give pending Playwright futures a moment to settle
+        await asyncio.sleep(_PLAYWRIGHT_SHUTDOWN_DELAY_S)
+
+        try:
+            await browser.close()
+        except Exception:
+            pass
+
+    # Convert any exceptions from gather into error FetchResults
+    final_results: list[FetchResult] = []
+    for i, r in enumerate(results):
+        if isinstance(r, Exception):
+            parish = parish_name_from_url(urls[i]) if i < len(urls) else "unknown"
+            final_results.append(FetchResult(
+                url=urls[i] if i < len(urls) else "",
+                parish=parish,
+                status="error",
+                error=str(r),
+            ))
+        else:
+            final_results.append(r)
+
+    return final_results
