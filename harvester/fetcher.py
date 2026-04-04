@@ -1,5 +1,5 @@
 """
-fetcher.py — Stage 1: Download PDFs or screenshots using Playwright.
+fetcher.py — Stage 1: Download PDFs using Playwright.
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ class FetchResult:
     parish: str
     status: str          # "ok" | "error"
     file_path: Optional[Path] = None
-    file_type: str = ""  # "pdf" | "png"
+    file_type: str = ""  # "pdf"
     error: str = ""
     candidate_urls: list[str] = field(default_factory=list)
 
@@ -59,15 +59,27 @@ def _score_link(href: str, text: str, target: date) -> int:
     """
     Score a candidate PDF link.  Higher is better.
     Returns -1 if the link should be completely ignored.
+
+    A link is considered a candidate if:
+    - The URL contains '.pdf', OR
+    - The link text contains a bulletin keyword (e.g. "bulletin", "newsletter")
+      which suggests the link may be a redirect to a PDF.
     """
     combined = (href + " " + text).lower()
     score = 0
 
-    # Must at least be a PDF
-    if ".pdf" not in href.lower():
+    has_pdf_in_url = ".pdf" in href.lower()
+    has_bulletin_text = any(kw in text.lower() for kw in BULLETIN_KEYWORDS)
+
+    # Must be a likely PDF/bulletin link
+    if not has_pdf_in_url and not has_bulletin_text:
         return -1
 
-    # Keyword match
+    # PDF in URL is a strong signal
+    if has_pdf_in_url:
+        score += 20
+
+    # Keyword match in href or text
     for kw in BULLETIN_KEYWORDS:
         if kw in combined:
             score += 10
@@ -190,14 +202,17 @@ async def _fetch_inner(
             "els => els.map(el => [el.href, el.innerText.trim()])",
         )
 
-        # Build absolute hrefs, filter to PDF candidates
+        # Build absolute hrefs, collect PDF candidates and bulletin-keyword links
         page_url = page.url
         links: list[tuple[str, str]] = []
         for href, text in anchors:
             if not href:
                 continue
             abs_href = urljoin(page_url, href)
-            if ".pdf" in abs_href.lower():
+            # Include if URL suggests a PDF or text suggests a bulletin
+            if ".pdf" in abs_href.lower() or any(
+                kw in text.lower() for kw in BULLETIN_KEYWORDS
+            ):
                 links.append((abs_href, text))
 
         best_pdf = _pick_best_pdf(links, target)
@@ -211,12 +226,10 @@ async def _fetch_inner(
                 candidate_urls=[h for h, _ in links],
             )
         else:
-            # --- No PDF found → full-page screenshot ---
-            dest = output_dir / safe_filename(parish, ".png")
-            await page.screenshot(path=str(dest), full_page=True)
+            # --- No PDF found → report error ---
             result = FetchResult(
-                url=url, parish=parish, status="ok",
-                file_path=dest, file_type="png",
+                url=url, parish=parish, status="error",
+                error="No PDF found",
                 candidate_urls=[h for h, _ in links],
             )
 
