@@ -135,6 +135,13 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
         except Exception:
             pass
 
+    # Validate that the downloaded file is a real PDF by checking magic bytes
+    with open(dest, "rb") as f:
+        first_bytes = f.read(5)
+    if first_bytes != b"%PDF-":
+        dest.unlink()
+        raise RuntimeError("Downloaded file is not a valid PDF (missing magic bytes)")
+
 
 # ---------------------------------------------------------------------------
 # Public API

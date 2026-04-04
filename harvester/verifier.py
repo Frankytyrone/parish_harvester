@@ -42,7 +42,10 @@ def _pdf_first_page_to_image(pdf_path: Path) -> Image.Image:
         from pdf2image import convert_from_path
     except ImportError as exc:
         raise RuntimeError("pdf2image is required for PDF verification") from exc
-    pages = convert_from_path(str(pdf_path), first_page=1, last_page=1, dpi=150)
+    try:
+        pages = convert_from_path(str(pdf_path), first_page=1, last_page=1, dpi=150)
+    except Exception as e:
+        raise RuntimeError(f"Failed to read PDF: {e}") from e
     if not pages:
         raise RuntimeError(f"Could not render any pages from {pdf_path}")
     return pages[0]
