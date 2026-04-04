@@ -12,7 +12,7 @@ from typing import Optional
 
 from PIL import Image
 
-from .config import OPENAI_API_KEY, OPENAI_MODEL, is_fresh
+from .config import GITHUB_TOKEN, GITHUB_MODELS_ENDPOINT, MODEL_NAME, is_fresh
 
 # Lazy import so the rest of the app works without openai installed
 try:
@@ -67,16 +67,19 @@ def _load_image(file_path: Path) -> Image.Image:
 # OpenAI call
 # ---------------------------------------------------------------------------
 
-def _call_openai(b64_image: str) -> str:
-    """Call GPT-4o vision and return raw text response."""
+def _call_model(b64_image: str) -> str:
+    """Call GPT-4o vision via GitHub Models API and return raw text response."""
     if not _openai_available:
-        raise RuntimeError("openai package is not installed")
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY is not set")
+        raise RuntimeError("openai-compatible client package is not installed")
+    if not GITHUB_TOKEN:
+        raise RuntimeError("GITHUB_TOKEN is not set")
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = OpenAI(
+        base_url=GITHUB_MODELS_ENDPOINT,
+        api_key=GITHUB_TOKEN,
+    )
     response = client.chat.completions.create(
-        model=OPENAI_MODEL,
+        model=MODEL_NAME,
         messages=[
             {
                 "role": "user",
@@ -122,7 +125,7 @@ def verify_file(file_path: Path, target: date) -> str:
     try:
         img = _load_image(file_path)
         b64 = _image_to_base64(img)
-        raw = _call_openai(b64)
+        raw = _call_model(b64)
 
         if raw.upper() == "UNKNOWN" or not _ISO_DATE_RE.search(raw):
             return "UNKNOWN"
