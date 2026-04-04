@@ -1,0 +1,5 @@
+playwright==1.49.1
+openai>=1.0.0
+pdf2image>=1.16.0
+Pillow>=10.0.0
+python-dotenv>=1.0.0
