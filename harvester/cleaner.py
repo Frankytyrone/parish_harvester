@@ -50,7 +50,7 @@ def clean(
     target: date | None = None,
 ) -> CleanResult:
     """
-    Move FRESH files to *current_dir*, delete STALE/UNKNOWN/ERROR files from *raw_dir*,
+    Move FRESH and UNKNOWN files to *current_dir*, delete STALE/ERROR files from *raw_dir*,
     and write JSON + text reports.
 
     *verdicts* maps file basename → "FRESH" | "STALE" | "UNKNOWN" | "ERROR:..."
@@ -76,11 +76,11 @@ def clean(
 
         result.add(parish, src, verdict)
 
-        if verdict == "FRESH":
+        if verdict == "FRESH" or verdict == "UNKNOWN":
             dest = current_dir / filename
             shutil.move(str(src), str(dest))
         else:
-            # STALE, UNKNOWN, or ERROR → delete
+            # STALE or ERROR → delete
             src.unlink(missing_ok=True)
 
     # -----------------------------------------------------------------------
