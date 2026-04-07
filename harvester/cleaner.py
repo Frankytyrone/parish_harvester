@@ -9,7 +9,9 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from .config import CURRENT_DIR, RAW_DIR, REPORT_JSON, REPORT_TXT
+from .config import BULLETINS_DIR, CURRENT_DIR, RAW_DIR, REPORT_JSON, REPORT_TXT
+
+HISTORY_DIR = BULLETINS_DIR / "history"
 
 
 class CleanResult:
@@ -103,6 +105,13 @@ def clean(
     }
 
     report_json.write_text(json.dumps(report_data, indent=2), encoding="utf-8")
+
+    # Save a dated copy in history/
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    date_suffix = str(target) if target else datetime.utcnow().strftime("%Y-%m-%d")
+    history_path = HISTORY_DIR / f"report_{date_suffix}.json"
+    history_path.write_text(json.dumps(report_data, indent=2), encoding="utf-8")
+    print(f"  📚 History : {history_path}")
 
     lines = [
         "Parish Bulletin Harvest Report",

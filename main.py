@@ -82,6 +82,203 @@ def parse_args() -> argparse.Namespace:
 
 
 # ---------------------------------------------------------------------------
+# Stage 4: Stitch A–Z mega PDF
+# ---------------------------------------------------------------------------
+
+def _stitch_mega_pdf(
+    urls: list[str],
+    fetch_results: list,
+    current_dir: Path,
+    target: date,
+) -> None:
+    """
+    Merge all fresh PDFs in *current_dir* into a single A–Z mega PDF.
+    Parishes with no valid PDF get a placeholder page with a clickable link.
+    """
+    try:
+        import PyPDF2
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import cm
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+        from reportlab.lib import colors
+        from reportlab.platypus.flowables import HRFlowable
+        import io
+    except ImportError as exc:
+        print(f"  ⚠️  Skipping mega PDF — missing library: {exc}")
+        return
+
+    from harvester.utils import parish_name_from_url
+
+    # Build a mapping: parish_key → (pdf_path | None, parish_url)
+    # parish_key is the sanitized parish name used as filename prefix
+    parish_map: dict[str, tuple[Path | None, str]] = {}
+    for fr in fetch_results:
+        key = fr.parish
+        if fr.status == "ok" and fr.file_path:
+            pdf_path = current_dir / fr.file_path.name
+            if not pdf_path.exists():
+                # may still be in raw if verifier marked stale
+                pdf_path = None
+            parish_map[key] = (pdf_path if (pdf_path and pdf_path.exists()) else None, fr.url)
+        else:
+            parish_map.setdefault(key, (None, fr.url))
+
+    # Sort entries A–Z by parish key
+    sorted_entries = sorted(parish_map.items())
+
+    output_path = BULLETINS_DIR / f"all_bulletins_{target}.pdf"
+    merger = PyPDF2.PdfWriter()
+    real_count = 0
+    placeholder_count = 0
+
+    styles = getSampleStyleSheet()
+
+    for parish_key, (pdf_path, parish_url) in sorted_entries:
+        if pdf_path and pdf_path.exists():
+            try:
+                reader = PyPDF2.PdfReader(str(pdf_path))
+                for page in reader.pages:
+                    merger.add_page(page)
+                real_count += 1
+            except Exception as exc:
+                print(f"    ⚠️  Could not merge {parish_key}: {exc}")
+                pdf_path = None  # fall through to placeholder
+
+        if not pdf_path or not pdf_path.exists():
+            # Generate a placeholder page via reportlab
+            buf = io.BytesIO()
+            doc = SimpleDocTemplate(buf, pagesize=A4,
+                                    topMargin=3*cm, bottomMargin=3*cm,
+                                    leftMargin=2.5*cm, rightMargin=2.5*cm)
+            parish_display = parish_key.replace("_", " ").title()
+            link_para = (
+                f'<link href="{parish_url}" color="blue">'
+                f'{parish_url}'
+                f'</link>'
+            )
+            story = [
+                Paragraph(parish_display, styles["Title"]),
+                Spacer(1, 0.5*cm),
+                HRFlowable(width="100%", thickness=1, color=colors.grey),
+                Spacer(1, 0.5*cm),
+                Paragraph("Bulletin not available this week", styles["Heading2"]),
+                Spacer(1, 0.5*cm),
+                Paragraph(
+                    "Please visit the parish website to find the bulletin:",
+                    styles["Normal"],
+                ),
+                Spacer(1, 0.3*cm),
+                Paragraph(link_para, styles["Normal"]),
+            ]
+            try:
+                doc.build(story)
+                buf.seek(0)
+                placeholder_reader = PyPDF2.PdfReader(buf)
+                for page in placeholder_reader.pages:
+                    merger.add_page(page)
+                placeholder_count += 1
+            except Exception as exc:
+                print(f"    ⚠️  Could not create placeholder for {parish_key}: {exc}")
+
+    if real_count + placeholder_count > 0:
+        with output_path.open("wb") as fh:
+            merger.write(fh)
+        print(f"  📖 Mega PDF  : {output_path}")
+        print(f"     Real PDFs      : {real_count}")
+        print(f"     Placeholders   : {placeholder_count}")
+    else:
+        print("  ⚠️  No pages to include in mega PDF — skipping.")
+
+
+# ---------------------------------------------------------------------------
+# Stage 5: Write Copilot review file
+# ---------------------------------------------------------------------------
+
+def _write_copilot_review(
+    fetch_results: list,
+    result,
+    target: date,
+    history_dir: Path,
+) -> None:
+    """Write a Copilot-readable review file summarising this run."""
+    from harvester.cleaner import HISTORY_DIR
+
+    review_path = BULLETINS_DIR / "copilot_review.md"
+    lines = [
+        "# Copilot Review — Parish Bulletin Harvester",
+        "",
+        f"**Run date:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}  ",
+        f"**Target Sunday:** {target}",
+        "",
+        "## Summary",
+        "",
+        f"| Category | Count |",
+        f"|----------|-------|",
+        f"| ✅ Fresh   | {len(result.fresh)} |",
+        f"| ❌ Stale   | {len(result.stale)} |",
+        f"| ⚠️ Unknown | {len(result.unknown)} |",
+        f"| 💥 Errors  | {len(result.errors)} |",
+        "",
+    ]
+
+    if result.errors:
+        lines += [
+            "## Errors this run",
+            "",
+        ]
+        for e in result.errors:
+            lines.append(f"- **{e['parish']}**: {e['verdict']}")
+        lines.append("")
+
+    # Check history for consistently failing parishes
+    consistent_failures: dict[str, int] = {}
+    history_dir_path = HISTORY_DIR
+    if history_dir_path.exists():
+        history_files = sorted(history_dir_path.glob("report_*.json"))[-8:]  # last 8 weeks
+        for hf in history_files:
+            try:
+                import json
+                data = json.loads(hf.read_text(encoding="utf-8"))
+                for err_entry in data.get("errors", []):
+                    p = err_entry.get("parish", "")
+                    consistent_failures[p] = consistent_failures.get(p, 0) + 1
+            except Exception:
+                pass
+
+    if consistent_failures:
+        lines += [
+            "## Consistently failing parishes (last 8 weeks)",
+            "",
+        ]
+        for parish, count in sorted(consistent_failures.items(), key=lambda x: -x[1]):
+            if count >= 2:
+                lines.append(f"- **{parish}**: failed {count} time(s)")
+                if count >= 4:
+                    lines.append(
+                        f"  > 💡 Suggestion: Consider removing **{parish}** — "
+                        f"it has failed {count} weeks in a row."
+                    )
+        lines.append("")
+
+    lines += [
+        "## Suggestions for next run",
+        "",
+        "- Review the errors above and check whether the parish websites are still active.",
+        "- Parishes consistently failing may have changed their URL structure.",
+        "- If a parish always returns 'No PDF found', consider adding its URL directly to the list.",
+        "",
+        "---",
+        "_This file is auto-generated by the Parish Bulletin Harvester. "
+        "It is committed to the repository so Copilot can read it in future PRs._",
+    ]
+
+    BULLETINS_DIR.mkdir(parents=True, exist_ok=True)
+    review_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"  🤖 Copilot review: {review_path}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -172,7 +369,28 @@ def main() -> int:
     print(f"\n📄 Report  : {REPORT_JSON}")
     print(f"📄 Report  : {REPORT_TXT}")
 
-    return 0 if len(result.errors) == 0 else 1
+    # ------------------------------------------------------------------
+    # Stage 4: Stitch A–Z mega PDF
+    # ------------------------------------------------------------------
+    print("\n── Stage 4: Stitch Mega PDF ────────────────────────────────")
+    try:
+        _stitch_mega_pdf(urls, fetch_results, CURRENT_DIR, target)
+    except Exception as exc:
+        print(f"  ⚠️  Mega PDF generation failed (non-fatal): {exc}")
+
+    # ------------------------------------------------------------------
+    # Stage 5: Write Copilot review
+    # ------------------------------------------------------------------
+    print("\n── Stage 5: Copilot Review ─────────────────────────────────")
+    try:
+        from harvester.cleaner import HISTORY_DIR
+        _write_copilot_review(fetch_results, result, target, HISTORY_DIR)
+    except Exception as exc:
+        print(f"  ⚠️  Copilot review failed (non-fatal): {exc}")
+
+    # Exit 0 always — errors are logged in the reports.
+    # Only return 1 if something truly catastrophic happened (unhandled exception above).
+    return 0
 
 
 if __name__ == "__main__":
