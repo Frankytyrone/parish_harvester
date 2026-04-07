@@ -155,3 +155,16 @@ def safe_filename(prefix: str, suffix: str) -> str:
     """Combine a sanitized parish prefix with a file suffix."""
     prefix = re.sub(r"[^a-z0-9_-]", "_", prefix.lower())
     return f"{prefix}{suffix}"
+
+
+# ---------------------------------------------------------------------------
+# PDF validation
+# ---------------------------------------------------------------------------
+
+def is_valid_pdf(path: Path) -> bool:
+    """Return True if the file at *path* starts with the PDF magic bytes ``%PDF``."""
+    try:
+        with path.open("rb") as fh:
+            return fh.read(4) == b"%PDF"
+    except OSError:
+        return False

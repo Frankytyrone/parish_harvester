@@ -61,18 +61,21 @@ python main.py --dry-run
 
 ```
 Bulletins/
-├── current/          # ✅ Verified fresh bulletins for the current week
-├── raw/              # Intermediate files (cleared after each run)
-├── report.json       # Machine-readable summary
-└── report.txt        # Human-readable summary
+├── current/                      # ✅ Verified fresh bulletins for the current week
+├── raw/                          # Intermediate files (cleared after each run)
+├── history/                      # 📚 Dated report archive (report_YYYY-MM-DD.json)
+├── all_bulletins_YYYY-MM-DD.pdf  # 📖 A–Z mega PDF (real bulletins + placeholder pages)
+├── copilot_review.md             # 🤖 Auto-generated review file for Copilot
+├── report.json                   # Machine-readable summary
+└── report.txt                    # Human-readable summary
 ```
 
 ### Exit codes
 
 | Code | Meaning |
 |------|---------|
-| 0    | Success (all parishes attempted, no fetch errors) |
-| 1    | Partial failure (one or more parishes errored) |
+| 0    | Success (run completed; individual parish errors are logged in the report) |
+| 1    | Catastrophic failure (unhandled exception; the run did not complete) |
 
 ---
 

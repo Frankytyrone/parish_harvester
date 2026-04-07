@@ -6,7 +6,8 @@ on:
   workflow_dispatch:        # Manual trigger
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
   models: read
 
 jobs:
@@ -36,6 +37,59 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python main.py --diocese derry_diocese
+
+      - name: Post GitHub Issue summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f Bulletins/report.json ]; then
+            REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
+            FRESH=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['fresh'])")
+            STALE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['stale'])")
+            UNKNOWN=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['unknown'])")
+            ERRORS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['errors'])")
+            ERROR_LIST=$(python -c "
+          import json
+          d = json.load(open('Bulletins/report.json'))
+          errs = d.get('errors', [])
+          if errs:
+              print('\n'.join(f\"- **{e['parish']}**: {e['verdict']}\" for e in errs))
+          else:
+              print('_No errors this run_ 🎉')
+          ")
+            BODY="## 📋 Bulletin Harvest Report — ${REPORT_DATE}
+
+          | Category | Count |
+          |----------|-------|
+          | ✅ Fresh   | ${FRESH} |
+          | ❌ Stale   | ${STALE} |
+          | ⚠️ Unknown | ${UNKNOWN} |
+          | 💥 Errors  | ${ERRORS} |
+
+          ### Errors
+
+          ${ERROR_LIST}
+
+          [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            gh issue create \
+              --title "📋 Bulletin Harvest Report — ${REPORT_DATE}" \
+              --body "${BODY}" \
+              --label "harvest-report" 2>/dev/null || \
+            gh issue create \
+              --title "📋 Bulletin Harvest Report — ${REPORT_DATE}" \
+              --body "${BODY}" || true
+          fi
+
+      - name: Commit history and review files back to repo
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Bulletins/history/ Bulletins/copilot_review.md || true
+          # Only commit if there are staged changes
+          git diff --cached --quiet || git commit -m "chore: update harvest history and copilot review [skip ci]"
+          git push || true
 
       - name: Upload Bulletins artifact
         if: always()

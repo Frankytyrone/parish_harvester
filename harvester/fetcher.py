@@ -29,10 +29,16 @@ _PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
 from .utils import (
     date_variants,
     extract_date_from_string,
+    is_valid_pdf,
     parish_name_from_url,
     rewrite_date_url,
     safe_filename,
 )
+
+# Seconds to wait between retry attempts
+_RETRY_DELAY_S: float = 3.0
+# Number of attempts (1 original + 1 retry)
+_MAX_ATTEMPTS: int = 2
 
 
 @dataclass
@@ -148,18 +154,29 @@ async def fetch_parish(
 ) -> FetchResult:
     """
     Fetch bulletins/screenshots for a single parish URL.
-    Returns a FetchResult describing what was saved (or what error occurred).
+    Retries once on failure before returning an error result.
     """
     parish = parish_name_from_url(url)
 
-    try:
-        async with asyncio.timeout(TOTAL_TIMEOUT_S):
-            return await _fetch_inner(url, parish, output_dir, target, browser)
-    except TimeoutError:
-        return FetchResult(url=url, parish=parish, status="error",
-                           error="Total timeout exceeded")
-    except Exception as exc:
-        return FetchResult(url=url, parish=parish, status="error", error=str(exc))
+    last_error: str = ""
+    for attempt in range(_MAX_ATTEMPTS):
+        try:
+            async with asyncio.timeout(TOTAL_TIMEOUT_S):
+                result = await _fetch_inner(url, parish, output_dir, target, browser)
+            if result.status == "ok":
+                return result
+            # _fetch_inner returned an error result (e.g. no PDF found) — retry
+            last_error = result.error
+        except TimeoutError:
+            last_error = "Total timeout exceeded"
+        except Exception as exc:
+            last_error = str(exc)
+
+        if attempt < _MAX_ATTEMPTS - 1:
+            print(f"  ↩️  Retrying {parish} (attempt {attempt + 2}/{_MAX_ATTEMPTS}): {last_error}")
+            await asyncio.sleep(_RETRY_DELAY_S)
+
+    return FetchResult(url=url, parish=parish, status="error", error=last_error)
 
 
 async def _fetch_inner(
@@ -175,8 +192,14 @@ async def _fetch_inner(
     if _url_ends_in_pdf(url):
         # Try to rewrite date to target week
         rewritten = rewrite_date_url(url, target)
+        if rewritten != url:
+            print(f"  🔗 Rewrote URL for {parish}: {url} → {rewritten}")
         dest = output_dir / safe_filename(parish, ".pdf")
         await _download_pdf(rewritten, dest, browser)
+        if not is_valid_pdf(dest):
+            dest.unlink(missing_ok=True)
+            return FetchResult(url=rewritten, parish=parish, status="error",
+                               error="Downloaded file is not a valid PDF")
         return FetchResult(url=rewritten, parish=parish, status="ok",
                            file_path=dest, file_type="pdf")
 
@@ -196,14 +219,21 @@ async def _fetch_inner(
             # networkidle timed out — page still loaded enough, continue
             pass
 
+        page_url = page.url
+
         # Collect all <a> links
         anchors = await page.eval_on_selector_all(
             "a[href]",
             "els => els.map(el => [el.href, el.innerText.trim()])",
         )
 
+        # Collect <iframe src> attributes
+        iframes = await page.eval_on_selector_all(
+            "iframe[src]",
+            "els => els.map(el => [el.src, ''])",
+        )
+
         # Build absolute hrefs, collect PDF candidates and bulletin-keyword links
-        page_url = page.url
         links: list[tuple[str, str]] = []
         for href, text in anchors:
             if not href:
@@ -215,16 +245,34 @@ async def _fetch_inner(
             ):
                 links.append((abs_href, text))
 
+        # Also include iframes that reference PDFs or bulletin keywords
+        for src, _ in iframes:
+            if not src:
+                continue
+            abs_src = urljoin(page_url, src)
+            if ".pdf" in abs_src.lower() or any(
+                kw in abs_src.lower() for kw in BULLETIN_KEYWORDS
+            ):
+                links.append((abs_src, "iframe"))
+
         best_pdf = _pick_best_pdf(links, target)
 
         if best_pdf:
             dest = output_dir / safe_filename(parish, ".pdf")
             await _download_pdf(best_pdf, dest, browser)
-            result = FetchResult(
-                url=url, parish=parish, status="ok",
-                file_path=dest, file_type="pdf",
-                candidate_urls=[h for h, _ in links],
-            )
+            if not is_valid_pdf(dest):
+                dest.unlink(missing_ok=True)
+                result = FetchResult(
+                    url=url, parish=parish, status="error",
+                    error="Downloaded file is not a valid PDF",
+                    candidate_urls=[h for h, _ in links],
+                )
+            else:
+                result = FetchResult(
+                    url=url, parish=parish, status="ok",
+                    file_path=dest, file_type="pdf",
+                    candidate_urls=[h for h, _ in links],
+                )
         else:
             # --- No PDF found → report error ---
             result = FetchResult(
