@@ -235,7 +235,7 @@ def _write_copilot_review(
     consistent_failures: dict[str, int] = {}
     history_dir_path = HISTORY_DIR
     if history_dir_path.exists():
-        history_files = sorted(history_dir_path.glob("report_*.json"))[-8:]  # last 8 weeks
+        history_files = sorted(history_dir_path.glob("report_*.json"))[-8:]  # last 8 reports
         for hf in history_files:
             try:
                 import json
@@ -248,16 +248,16 @@ def _write_copilot_review(
 
     if consistent_failures:
         lines += [
-            "## Consistently failing parishes (last 8 weeks)",
+            "## Consistently failing parishes (last 8 reports)",
             "",
         ]
         for parish, count in sorted(consistent_failures.items(), key=lambda x: -x[1]):
             if count >= 2:
-                lines.append(f"- **{parish}**: failed {count} time(s)")
+                lines.append(f"- **{parish}**: failed {count} time(s) in recent runs")
                 if count >= 4:
                     lines.append(
                         f"  > 💡 Suggestion: Consider removing **{parish}** — "
-                        f"it has failed {count} weeks in a row."
+                        f"it has failed {count} time(s) in recent runs."
                     )
         lines.append("")
 

@@ -86,9 +86,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Bulletins/history/ Bulletins/copilot_review.md Bulletins/report.json Bulletins/report.txt || true
+          git add Bulletins/history/ Bulletins/copilot_review.md || true
           # Only commit if there are staged changes
-          git diff --cached --quiet || git commit -m "chore: update harvest reports and copilot review [skip ci]"
+          git diff --cached --quiet || git commit -m "chore: update harvest history and copilot review [skip ci]"
           git push || true
 
       - name: Upload Bulletins artifact
