@@ -21,7 +21,7 @@ try:
 except Exception:
     _TargetClosedError = Exception  # type: ignore[assignment,misc]
 
-from .config import BULLETIN_KEYWORDS, CONCURRENCY, PAGE_LOAD_TIMEOUT_MS, TOTAL_TIMEOUT_S
+from .config import BULLETIN_KEYWORDS, CONCURRENCY, PAGE_LOAD_TIMEOUT_MS, TOTAL_TIMEOUT_S, SUB_PAGE_KEYWORDS
 
 # Seconds to wait after all tasks finish before closing the browser, to allow
 # any lingering Playwright background futures to settle gracefully.
@@ -256,6 +256,77 @@ async def _fetch_inner(
                 links.append((abs_src, "iframe"))
 
         best_pdf = _pick_best_pdf(links, target)
+
+        # --- Sub-page crawling when no direct PDF found ---
+        if not best_pdf:
+            sub_page_links: list[tuple[str, str]] = []
+            for href, text in anchors:
+                if not href:
+                    continue
+                text_lower = text.lower()
+                if any(kw in text_lower for kw in SUB_PAGE_KEYWORDS):
+                    abs_href = urljoin(page_url, href)
+                    if abs_href.startswith("http") and abs_href != page_url:
+                        sub_page_links.append((abs_href, text))
+
+            for sub_url, sub_text in sub_page_links[:3]:
+                sub_page = None
+                try:
+                    sub_page = await context.new_page()
+                    sub_response = None
+                    try:
+                        sub_response = await sub_page.goto(
+                            sub_url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="networkidle"
+                        )
+                    except PlaywrightTimeout:
+                        pass
+
+                    # Check if we landed on a PDF directly
+                    content_type = ""
+                    if sub_response:
+                        content_type = sub_response.headers.get("content-type", "")
+                    final_sub_url = sub_page.url
+                    if content_type.startswith("application/pdf") or _url_ends_in_pdf(final_sub_url):
+                        dest = output_dir / safe_filename(parish, ".pdf")
+                        await _download_pdf(final_sub_url, dest, browser)
+                        if is_valid_pdf(dest):
+                            print(f"  🔍 Found PDF via sub-page for {parish}: {final_sub_url}")
+                            best_pdf = final_sub_url
+                            break
+                        else:
+                            dest.unlink(missing_ok=True)
+                        continue
+
+                    # Scan sub-page for PDF links
+                    sub_anchors = await sub_page.eval_on_selector_all(
+                        "a[href]",
+                        "els => els.map(el => [el.href, el.innerText.trim()])",
+                    )
+                    sub_links: list[tuple[str, str]] = []
+                    sub_page_url = sub_page.url
+                    for sh, st in sub_anchors:
+                        if not sh:
+                            continue
+                        abs_sh = urljoin(sub_page_url, sh)
+                        if ".pdf" in abs_sh.lower() or any(
+                            kw in st.lower() for kw in BULLETIN_KEYWORDS
+                        ):
+                            sub_links.append((abs_sh, st))
+
+                    sub_best = _pick_best_pdf(sub_links, target)
+                    if sub_best:
+                        print(f"  🔍 Found PDF via sub-page for {parish}: {sub_best}")
+                        best_pdf = sub_best
+                        break
+                except Exception as sub_exc:
+                    print(f"  ⚠️  Sub-page error for {parish} ({sub_url}): {sub_exc}")
+                finally:
+                    if sub_page is not None:
+                        try:
+                            await sub_page.close()
+                        except Exception:
+                            pass
+
 
         if best_pdf:
             dest = output_dir / safe_filename(parish, ".pdf")

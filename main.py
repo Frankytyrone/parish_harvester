@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import logging
 import sys
+import time
 from datetime import date, datetime
 from pathlib import Path
 
@@ -339,15 +340,22 @@ def main() -> int:
                 verdicts[r.file_path.name] = "UNKNOWN"
     else:
         print("\n── Stage 2: Verify ─────────────────────────────────────────")
-        for r in fetch_results:
-            if r.status != "ok" or not r.file_path or not r.file_path.exists():
-                continue
+        verify_queue = [
+            r for r in fetch_results
+            if r.status == "ok" and r.file_path and r.file_path.exists()
+        ]
+        total_verify = len(verify_queue)
+        for i, r in enumerate(verify_queue):
             verdict = verify_file(r.file_path, target)
             verdicts[r.file_path.name] = verdict
             icon = {"FRESH": "✅", "STALE": "❌", "UNKNOWN": "⚠️ "}.get(
                 verdict.split(":")[0], "💥"
             )
             print(f"  {icon} {r.parish}: {verdict}")
+            # Rate-limit: stay under 10 requests per 60 s
+            if i < total_verify - 1:
+                print(f"  ⏳ Rate limit pause ({i + 1}/{total_verify})...")
+                time.sleep(7)
 
     # ------------------------------------------------------------------
     # Stage 3: Clean
