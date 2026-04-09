@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import io
 import re
+import time
 from datetime import date
 from pathlib import Path
 from typing import Optional
@@ -68,7 +69,11 @@ def _load_image(file_path: Path) -> Image.Image:
 # ---------------------------------------------------------------------------
 
 def _call_model(b64_image: str) -> str:
-    """Call GPT-4o vision via GitHub Models API and return raw text response."""
+    """Call GPT-4o vision via GitHub Models API and return raw text response.
+
+    Retries automatically on HTTP 429 (rate limit) errors, waiting the
+    suggested retry-after time (or 60 s as a fallback).
+    """
     if not _openai_available:
         raise RuntimeError("openai-compatible client package is not installed")
     if not GITHUB_TOKEN:
@@ -78,27 +83,50 @@ def _call_model(b64_image: str) -> str:
         base_url=GITHUB_MODELS_ENDPOINT,
         api_key=GITHUB_TOKEN,
     )
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {
-                "role": "user",
-                "content": [
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
                     {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{b64_image}",
-                            "detail": "low",
-                        },
-                    },
-                    {"type": "text", "text": VERIFY_PROMPT},
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{b64_image}",
+                                    "detail": "low",
+                                },
+                            },
+                            {"type": "text", "text": VERIFY_PROMPT},
+                        ],
+                    }
                 ],
-            }
-        ],
-        max_tokens=20,
-        temperature=0,
-    )
-    return response.choices[0].message.content.strip()
+                max_tokens=20,
+                temperature=0,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as exc:
+            # Check for rate-limit (429) error
+            exc_str = str(exc)
+            is_rate_limit = (
+                "429" in exc_str
+                or "rate limit" in exc_str.lower()
+                or "RateLimitError" in type(exc).__name__
+            )
+            if is_rate_limit and attempt < max_retries - 1:
+                # Try to extract retry-after from the error message
+                wait_s = 60
+                m = re.search(r"retry after (\d+)", exc_str, re.IGNORECASE)
+                if m:
+                    wait_s = int(m.group(1))
+                print(f"  ⏳ Rate limit hit — waiting {wait_s}s before retry "
+                      f"(attempt {attempt + 1}/{max_retries})...")
+                time.sleep(wait_s)
+                continue
+            raise
 
 
 def _parse_date(text: str) -> Optional[date]:

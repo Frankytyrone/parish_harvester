@@ -50,6 +50,24 @@ BULLETIN_KEYWORDS: tuple[str, ...] = (
     "leaflet",
 )
 
+SUB_PAGE_KEYWORDS: tuple[str, ...] = (
+    "read more",
+    "click here",
+    "download",
+    "view",
+    "open",
+    "current newsletter",
+    "latest newsletter",
+    "this week",
+    "view bulletin",
+    "download bulletin",
+    "more info",
+    "full newsletter",
+    "read newsletter",
+    "view newsletter",
+    "parish bulletin",
+)
+
 
 # ---------------------------------------------------------------------------
 # Target date helpers
