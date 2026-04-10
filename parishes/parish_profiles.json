@@ -1,9 +1,9 @@
 {
   "parishofaghyaran": {
-    "url": "https://www.parishofaghyaran.com/news.html",
+    "url": "https://www.parishofaghyaran.com/pdf/050426.pdf",
     "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
-    "last_success_url": "https://www.parishofaghyaran.com/news.html",
+    "last_success_url": "https://www.parishofaghyaran.com/pdf/050426.pdf",
     "failure_count": 0,
     "consecutive_failures": 0,
     "last_failure_reason": null,
@@ -12,10 +12,10 @@
     "notes": []
   },
   "ardmoreparish": {
-    "url": "http://www.ardmoreparish.com/news.html",
+    "url": "http://www.ardmoreparish.com/pdf/120426.pdf",
     "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
-    "last_success_url": "http://www.ardmoreparish.com/news.html",
+    "last_success_url": "http://www.ardmoreparish.com/pdf/120426.pdf",
     "failure_count": 0,
     "consecutive_failures": 0,
     "last_failure_reason": null,
@@ -25,14 +25,14 @@
   },
   "parishofballinascreen": {
     "url": "https://www.parishofballinascreen.com/",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-5_april_2026",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.parishofballinascreen.com/latest-news (Content-Type: text/html; charset=UTF-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
-    "site_type": null,
+    "site_type": "wix",
     "notes": []
   },
   "holyfamily-parish": {
@@ -64,12 +64,14 @@
     "last_success_method": null,
     "last_success_date": null,
     "last_success_url": null,
-    "failure_count": 2,
-    "consecutive_failures": 2,
+    "failure_count": 3,
+    "consecutive_failures": 3,
     "last_failure_reason": "Page.goto: net::ERR_ABORTED at https://bellaghyparish.com/current-newsletter/\nCall log:\n  - navigating to \"https://bellaghyparish.com/current-newsletter/\", waiting until \"networkidle\"\n",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "buncranaparish_pastnews": {
     "url": "https://www.buncranaparish.com/pastnews.htm",
@@ -109,12 +111,12 @@
   },
   "parishofclaudy_weekly-bulletin": {
     "url": "https://www.parishofclaudy.com/welcome/weekly-bulletin.html",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.parishofclaudy.com/welcome/weekly-bulletin.html",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.parishofclaudy.com/welcome/weekly-bulletin.html (Content-Type: text/html)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -145,12 +147,12 @@
   },
   "stmarysparishcreggan_bulletins": {
     "url": "https://www.stmarysparishcreggan.com/bulletins",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.stmarysparishcreggan.com/bulletins#news",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.stmarysparishcreggan.com/bulletins#news (Content-Type: text/html; charset=utf-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -181,12 +183,12 @@
   },
   "desertmartinparish": {
     "url": "https://www.desertmartinparish.com/?page_id=6",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.desertmartinparish.com/?page_id=6",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.desertmartinparish.com/?page_id=6 (Content-Type: text/html; charset=UTF-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -277,12 +279,12 @@
   },
   "iskaheenparish_bulletin": {
     "url": "https://www.iskaheenparish.com/bulletin",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.iskaheenparish.com/mass-times",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.iskaheenparish.com/bulletin (Content-Type: text/html; charset=UTF-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -337,12 +339,12 @@
   },
   "clonleighparish_newsletter": {
     "url": "https://clonleighparish.com/category/newsletter/",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter-for-easter-sunday-5th-april-2026/",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://clonleighparish.com/category/newsletter/ (Content-Type: text/html; charset=UTF-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -385,24 +387,24 @@
   },
   "derrydiocese_garvagh": {
     "url": "https://www.derrydiocese.org/parishes/garvagh",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.derrydiocese.org/mass-times",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.derrydiocese.org/news (Content-Type: text/html; charset=utf-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
   },
   "derrydiocese_gortin": {
     "url": "https://www.derrydiocese.org/parishes/gortin",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.derrydiocese.org/mass-times",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.derrydiocese.org/news (Content-Type: text/html; charset=utf-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -412,21 +414,23 @@
     "last_success_method": null,
     "last_success_date": null,
     "last_success_url": null,
-    "failure_count": 2,
-    "consecutive_failures": 2,
+    "failure_count": 3,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "derrydiocese_killygordon": {
     "url": "https://www.derrydiocese.org/parishes/killygordon",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.derrydiocese.org/mass-times",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.derrydiocese.org/news (Content-Type: text/html; charset=utf-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -469,12 +473,12 @@
   },
   "parishofardstraweast": {
     "url": "http://parishofardstraweast.com/parishnews.html",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "http://parishofardstraweast.com/contactnewsletter.html",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for http://parishofardstraweast.com/contactnewsletter.html (Content-Type: text/html)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -493,12 +497,12 @@
   },
   "derrydiocese_plumbridge": {
     "url": "https://www.derrydiocese.org/parishes/plumbridge",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
+    "last_success_method": "html_to_pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.derrydiocese.org/mass-times",
     "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://www.derrydiocese.org/news (Content-Type: text/html; charset=utf-8)",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -544,12 +548,14 @@
     "last_success_method": null,
     "last_success_date": null,
     "last_success_url": null,
-    "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://watersideparish.net/ (Content-Type: text/html; charset=UTF-8)",
+    "failure_count": 3,
+    "consecutive_failures": 3,
+    "last_failure_reason": "Total timeout exceeded",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "granaghanparish": {
     "url": "https://granaghanparish.com/",
@@ -568,12 +574,14 @@
     "last_success_method": null,
     "last_success_date": null,
     "last_success_url": null,
-    "failure_count": 2,
-    "consecutive_failures": 2,
+    "failure_count": 3,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "steugenescathedral": {
     "url": "https://steugenescathedral.com/",
@@ -592,12 +600,14 @@
     "last_success_method": null,
     "last_success_date": null,
     "last_success_url": null,
-    "failure_count": 2,
-    "consecutive_failures": 2,
+    "failure_count": 3,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "parishofaghyaran_050426": {
     "url": "https://www.parishofaghyaran.com/pdf/050426.pdf",
@@ -616,6 +626,54 @@
     "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "http://www.ardmoreparish.com/pdf/120426.pdf",
+    "failure_count": 0,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": null,
+    "site_type": null,
+    "notes": []
+  },
+  "dmaparish": {
+    "url": "https://dmaparish.com/pdf/050426.pdf",
+    "last_success_method": "pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://dmaparish.com/pdf/050426.pdf",
+    "failure_count": 0,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": null,
+    "site_type": null,
+    "notes": []
+  },
+  "culdaffparish": {
+    "url": "http://www.culdaffparish.com/pdf/120426.pdf",
+    "last_success_method": "pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "http://www.culdaffparish.com/pdf/120426.pdf",
+    "failure_count": 0,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": null,
+    "site_type": null,
+    "notes": []
+  },
+  "fahanparish": {
+    "url": "http://www.fahanparish.com/pdf/050426.pdf",
+    "last_success_method": "pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "http://www.fahanparish.com/pdf/050426.pdf",
+    "failure_count": 0,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": null,
+    "site_type": null,
+    "notes": []
+  },
+  "cappaghparish": {
+    "url": "https://www.cappaghparish.com/pdf/050426.pdf",
+    "last_success_method": "pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.cappaghparish.com/pdf/050426.pdf",
     "failure_count": 0,
     "consecutive_failures": 0,
     "last_failure_reason": null,
