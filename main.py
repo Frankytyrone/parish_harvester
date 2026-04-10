@@ -418,7 +418,7 @@ def main() -> int:
                 print(f"  ✅ {r.parish}: FRESH (date from URL: {url_date})")
                 continue
             # Rate-limit: stay under 10 requests per 60 s
-            if api_call_count > 0:
+            if api_call_count > 0 and api_call_count < total_verify:
                 print(f"  ⏳ Rate limit pause ({api_call_count}/{total_verify})...")
                 time.sleep(7)
             verdict = verify_file(r.file_path, target)

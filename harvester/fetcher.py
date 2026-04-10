@@ -690,7 +690,6 @@ async def _fetch_inner(
                     dest.unlink(missing_ok=True)
                     html_returned = True
                     print(f"  ⚠️  {parish}: {best_pdf} returned HTML — trying HTML bulletin path")
-                    best_pdf = best_pdf  # keep for use as bulletin_link candidate
                 else:
                     raise
             if not html_returned:
