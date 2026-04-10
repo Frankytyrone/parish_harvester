@@ -14,6 +14,20 @@ from .config import BULLETINS_DIR, CURRENT_DIR, RAW_DIR, REPORT_JSON, REPORT_TXT
 HISTORY_DIR = BULLETINS_DIR / "history"
 
 
+def _categorise_fetch_error(error: str) -> str:
+    """Return a short category label for a fetch error message."""
+    e = error.lower()
+    if "timeout" in e:
+        return "Timeout"
+    if "no pdf found" in e:
+        return "No PDF Found"
+    if "not a valid pdf" in e or "invalid pdf" in e:
+        return "Invalid PDF"
+    if "http " in e or "http error" in e or "status" in e:
+        return "HTTP Error"
+    return "Other"
+
+
 class CleanResult:
     """Summary of what the cleaner did."""
 
@@ -22,6 +36,8 @@ class CleanResult:
         self.stale: list[dict[str, Any]] = []
         self.unknown: list[dict[str, Any]] = []
         self.errors: list[dict[str, Any]] = []
+        # Parishes that could not be fetched at all (no file downloaded)
+        self.failed_fetches: list[dict[str, Any]] = []
 
     def add(self, parish: str, file_path: Path, verdict: str) -> None:
         entry: dict[str, Any] = {
@@ -50,23 +66,27 @@ def clean(
     report_json: Path | None = None,
     report_txt: Path | None = None,
     target: date | None = None,
+    failed_fetches: list[dict[str, Any]] | None = None,
 ) -> CleanResult:
     """
-    Move FRESH and UNKNOWN files to *current_dir*, delete STALE/ERROR files from *raw_dir*,
-    and write JSON + text reports.
+    Move FRESH and UNKNOWN files to *current_dir*, delete STALE/ERROR files
+    from *raw_dir*, and write JSON + text reports.
 
     *verdicts* maps file basename → "FRESH" | "STALE" | "UNKNOWN" | "ERROR:..."
+    *failed_fetches* is an optional list of dicts with keys: parish, url, error.
     """
     raw_dir = raw_dir or RAW_DIR
     current_dir = current_dir or CURRENT_DIR
     report_json = report_json or REPORT_JSON
     report_txt = report_txt or REPORT_TXT
+    failed_fetches = failed_fetches or []
 
     current_dir.mkdir(parents=True, exist_ok=True)
     raw_dir.mkdir(parents=True, exist_ok=True)
     report_json.parent.mkdir(parents=True, exist_ok=True)
 
     result = CleanResult()
+    result.failed_fetches = list(failed_fetches)
 
     for filename, verdict in verdicts.items():
         src = raw_dir / filename
@@ -97,11 +117,13 @@ def clean(
             "stale": len(result.stale),
             "unknown": len(result.unknown),
             "errors": len(result.errors),
+            "failed_fetches": len(result.failed_fetches),
         },
         "fresh": result.fresh,
         "stale": result.stale,
         "unknown": result.unknown,
         "errors": result.errors,
+        "failed_fetches": result.failed_fetches,
     }
 
     report_json.write_text(json.dumps(report_data, indent=2), encoding="utf-8")
@@ -124,6 +146,7 @@ def clean(
         f"❌ STALE         : {len(result.stale)}",
         f"⚠️  UNKNOWN       : {len(result.unknown)}",
         f"💥 ERRORS         : {len(result.errors)}",
+        f"🚫 FAILED FETCH   : {len(result.failed_fetches)}",
         "",
     ]
     if result.fresh:
@@ -145,6 +168,22 @@ def clean(
         lines.append("--- ERRORS ---")
         for e in result.errors:
             lines.append(f"  {e['parish']:40s}  {e['file']}  ({e['verdict']})")
+        lines.append("")
+
+    if result.failed_fetches:
+        lines.append("--- FAILED TO RETRIEVE ---")
+        # Group by error category
+        by_category: dict[str, list[dict[str, Any]]] = {}
+        for ff in result.failed_fetches:
+            cat = _categorise_fetch_error(ff.get("error", ""))
+            by_category.setdefault(cat, []).append(ff)
+
+        for cat in sorted(by_category):
+            lines.append(f"  [{cat}]")
+            for ff in by_category[cat]:
+                lines.append(
+                    f"    {ff['parish']:38s}  {ff.get('url', '')}  —  {ff.get('error', '')}"
+                )
         lines.append("")
 
     report_txt.write_text("\n".join(lines), encoding="utf-8")

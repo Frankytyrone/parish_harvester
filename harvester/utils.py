@@ -57,6 +57,33 @@ _DDMMYYYY_RE = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{4})(?!\d)")    # 31082025
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")                     # 2025-08-31
 _ISO_NODASH_RE = re.compile(r"(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)")  # 20250831
 
+# Month name → month number mapping (English, full and abbreviated)
+_MONTH_MAP: dict[str, int] = {
+    "january": 1,  "jan": 1,
+    "february": 2, "feb": 2,
+    "march": 3,    "mar": 3,
+    "april": 4,    "apr": 4,
+    "may": 5,
+    "june": 6,     "jun": 6,
+    "july": 7,     "jul": 7,
+    "august": 8,   "aug": 8,
+    "september": 9, "sep": 9, "sept": 9,
+    "october": 10, "oct": 10,
+    "november": 11, "nov": 11,
+    "december": 12, "dec": 12,
+}
+
+# Matches date slugs like "5_april_2026", "15-february-2026", "2-february-2025"
+_SLUG_DATE_RE = re.compile(
+    r"(\d{1,2})[_\-]([a-z]+)[_\-](\d{4})",
+    re.IGNORECASE,
+)
+
+_MONTH_NAMES: list[str] = [
+    "", "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december",
+]
+
 
 def extract_date_from_string(text: str) -> date | None:
     """Try to parse a date from a filename/URL fragment. Returns None on failure."""
@@ -94,6 +121,53 @@ def extract_date_from_string(text: str) -> date | None:
             pass
 
     return None
+
+
+def extract_date_from_slug(slug: str) -> date | None:
+    """
+    Extract a date from a URL slug like '5_april_2026' or '15-february-2026'.
+
+    Returns None if no recognisable date pattern is found.
+    """
+    m = _SLUG_DATE_RE.search(slug)
+    if not m:
+        return None
+    try:
+        day = int(m.group(1))
+        month = _MONTH_MAP.get(m.group(2).lower())
+        year = int(m.group(3))
+        if month:
+            return date(year, month, day)
+    except ValueError:
+        pass
+    return None
+
+
+def rewrite_slug_url(url: str, target: date) -> str:
+    """
+    If a URL contains a date slug like '5_april_2026', rewrite it to use
+    the *target* date.  Preserves the separator character (_ or -).
+
+    Returns the original URL unchanged if no slug date is found.
+    """
+    m = _SLUG_DATE_RE.search(url)
+    if not m:
+        return url
+    try:
+        # Validate original date
+        old_month = _MONTH_MAP.get(m.group(2).lower())
+        if not old_month:
+            return url
+        date(int(m.group(3)), old_month, int(m.group(1)))  # raises ValueError if invalid
+    except ValueError:
+        return url
+
+    # Determine the separator used in the original slug
+    sep_pos = m.start() + len(m.group(1))
+    sep = url[sep_pos] if sep_pos < len(url) else "_"
+
+    new_slug = f"{target.day}{sep}{_MONTH_NAMES[target.month]}{sep}{target.year}"
+    return url[: m.start()] + new_slug + url[m.end() :]
 
 
 def date_variants(target: date) -> list[str]:
