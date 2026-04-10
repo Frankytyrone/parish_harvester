@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin, urlparse
@@ -146,6 +146,12 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
             page = await context.new_page()
             response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
             if response.ok:
+                content_type = response.headers.get("content-type", "")
+                if "text/html" in content_type:
+                    raise RuntimeError(
+                        f"Server returned HTML instead of a PDF for {url} "
+                        f"(Content-Type: {content_type})"
+                    )
                 dest.write_bytes(await response.body())
             else:
                 raise RuntimeError(f"HTTP {response.status} for {url}")
@@ -436,14 +442,35 @@ async def _fetch_inner(
         rewritten = rewrite_date_url(url, target)
         if rewritten != url:
             print(f"  🔗 Rewrote URL for {parish}: {url} → {rewritten}")
+
+        # Build a list of candidate URLs: target date first, then each prior day
+        # up to 6 days back (covers the full week in case mid-week run).
+        candidates = [rewritten]
+        for delta in range(1, 7):
+            earlier = rewrite_date_url(url, target - timedelta(days=delta))
+            if earlier not in candidates:
+                candidates.append(earlier)
+
         dest = output_dir / safe_filename(parish, ".pdf")
-        await _download_pdf(rewritten, dest, browser)
-        if not is_valid_pdf(dest):
+        last_err = "No valid PDF found for any date candidate"
+        for candidate in candidates:
+            try:
+                await _download_pdf(candidate, dest, browser)
+            except Exception as exc:
+                dest.unlink(missing_ok=True)
+                last_err = str(exc)
+                print(f"  ↩️  {parish}: {candidate} failed ({last_err}), trying next date...")
+                continue
+            if is_valid_pdf(dest):
+                if candidate != rewritten:
+                    print(f"  📅 Used fallback date URL for {parish}: {candidate}")
+                return FetchResult(url=candidate, parish=parish, status="ok",
+                                   file_path=dest, file_type="pdf")
             dest.unlink(missing_ok=True)
-            return FetchResult(url=rewritten, parish=parish, status="error",
-                               error="Downloaded file is not a valid PDF")
-        return FetchResult(url=rewritten, parish=parish, status="ok",
-                           file_path=dest, file_type="pdf")
+            print(f"  ↩️  {parish}: {candidate} not a valid PDF, trying next date...")
+
+        return FetchResult(url=rewritten, parish=parish, status="error",
+                           error=last_err)
 
     # --- Load page ---
     context = await browser.new_context(

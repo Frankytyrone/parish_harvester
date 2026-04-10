@@ -115,6 +115,12 @@ def week_range(target: date) -> tuple[date, date]:
 
 
 def is_fresh(bulletin_date: date, target: date) -> bool:
-    """Return True if *bulletin_date* falls within the same Mon–Sun week as *target*."""
-    monday, sunday = week_range(target)
-    return monday <= bulletin_date <= sunday
+    """Return True if *bulletin_date* is within 10 days before *target*.
+
+    Parish bulletins are weekly.  Running mid-week means the most recent
+    bulletin is from last Sunday, which falls outside the current Mon–Sun
+    week.  Accepting anything within 10 days ensures we never mark a
+    genuinely current bulletin as stale just because we ran before the new
+    one was uploaded.
+    """
+    return 0 <= (target - bulletin_date).days <= 10
