@@ -45,6 +45,7 @@ from .config import (
 _PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
 from .utils import (
     date_variants,
+    extract_date_from_slug,
     extract_date_from_string,
     is_valid_pdf,
     parish_name_from_url,
@@ -384,9 +385,66 @@ async def _scrape_html_to_pdf(
                 pass
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+async def _find_dated_bulletin_link(
+    listing_url: str,
+    target: date,
+    context,
+    base_domain: str,
+) -> Optional[str]:
+    """
+    Load a bulletin listing page and return the link to the actual bulletin
+    page whose URL slug date is closest to (and within 10 days of) *target*.
+
+    Handles sites like Ballinascreen where clicking the bulletin image
+    leads to a /latest-news listing page rather than the bulletin itself,
+    and the actual bulletin is at a dated slug like
+    ``ballinascreen-desertmartin-parishes-5_april_2026``.
+    """
+    page = None
+    try:
+        page = await context.new_page()
+        try:
+            await page.goto(
+                listing_url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="domcontentloaded"
+            )
+        except PlaywrightTimeout:
+            pass
+
+        anchors = await page.eval_on_selector_all(
+            "a[href]",
+            "els => els.map(el => [el.href, el.innerText.trim()])",
+        )
+
+        best_url: Optional[str] = None
+        best_delta: Optional[int] = None
+
+        for href, _ in anchors:
+            if not href:
+                continue
+            abs_href = urljoin(listing_url, href)
+            if urlparse(abs_href).netloc != base_domain:
+                continue
+            link_date = extract_date_from_slug(abs_href)
+            if link_date is None:
+                continue
+            delta = (target - link_date).days
+            if 0 <= delta <= 10:
+                if best_delta is None or delta < best_delta:
+                    best_delta = delta
+                    best_url = abs_href
+
+        return best_url
+    except Exception:
+        return None
+    finally:
+        if page is not None:
+            try:
+                await page.close()
+            except Exception:
+                pass
+
+
+
 
 async def fetch_parish(
     url: str,
@@ -443,10 +501,17 @@ async def _fetch_inner(
         if rewritten != url:
             print(f"  🔗 Rewrote URL for {parish}: {url} → {rewritten}")
 
-        # Build a list of candidate URLs: target date first, then each prior day
-        # up to 6 days back (covers the full week in case mid-week run).
+        # Build a list of candidate URLs: target date first, then last Sunday
+        # (the most likely bulletin date), then the remaining days up to 10 days
+        # back.  This ensures we try the most probable dates first.
         candidates = [rewritten]
-        for delta in range(1, 7):
+        # Last Sunday is almost always the bulletin date — try it second
+        last_sunday = rewrite_date_url(url, target - timedelta(days=7))
+        if last_sunday not in candidates:
+            candidates.append(last_sunday)
+        for delta in range(1, 11):
+            if delta == 7:
+                continue  # already added above
             earlier = rewrite_date_url(url, target - timedelta(days=delta))
             if earlier not in candidates:
                 candidates.append(earlier)
@@ -615,28 +680,63 @@ async def _fetch_inner(
 
         if best_pdf:
             dest = output_dir / safe_filename(parish, ".pdf")
-            await _download_pdf(best_pdf, dest, browser)
-            if not is_valid_pdf(dest):
-                dest.unlink(missing_ok=True)
+            html_returned = False
+            try:
+                await _download_pdf(best_pdf, dest, browser)
+            except RuntimeError as exc:
+                if "returned HTML" in str(exc):
+                    # The URL returned an HTML page instead of a PDF.
+                    # Fall through to the HTML bulletin scraping path below.
+                    dest.unlink(missing_ok=True)
+                    html_returned = True
+                    print(f"  ⚠️  {parish}: {best_pdf} returned HTML — trying HTML bulletin path")
+                else:
+                    raise
+            if not html_returned:
+                if not is_valid_pdf(dest):
+                    dest.unlink(missing_ok=True)
+                    return FetchResult(
+                        url=url, parish=parish, status="error",
+                        error="Downloaded file is not a valid PDF",
+                        candidate_urls=[h for h, _ in links],
+                        site_type=site_type,
+                    )
                 return FetchResult(
-                    url=url, parish=parish, status="error",
-                    error="Downloaded file is not a valid PDF",
+                    url=url, parish=parish, status="ok",
+                    file_path=dest, file_type="pdf",
                     candidate_urls=[h for h, _ in links],
                     site_type=site_type,
                 )
-            return FetchResult(
-                url=url, parish=parish, status="ok",
-                file_path=dest, file_type="pdf",
-                candidate_urls=[h for h, _ in links],
-                site_type=site_type,
-            )
 
         # --- HTML bulletin fallback ---
         # When no PDF is found anywhere, look for a bulletin image/text link
         # pointing to an HTML page and scrape+convert it.
         bulletin_link = await _find_bulletin_image_link(page, page_url)
+        # Also consider the HTML-returning link found above as a candidate
+        if not bulletin_link and best_pdf:
+            bulletin_link = best_pdf
         if bulletin_link:
             print(f"  🌐 Trying HTML bulletin fallback for {parish}: {bulletin_link}")
+            base_domain = urlparse(page_url).netloc
+            # First: look for a dated bulletin link within the landing page.
+            # Handles listing pages (e.g. /latest-news) that link to dated bulletin pages.
+            dated_link = await _find_dated_bulletin_link(
+                bulletin_link, target, context, base_domain
+            )
+            if dated_link:
+                print(f"  📅 Found dated bulletin link for {parish}: {dated_link}")
+                html_pdf = await _scrape_html_to_pdf(
+                    dated_link, parish, output_dir, browser, context, site_type
+                )
+                if html_pdf and is_valid_pdf(html_pdf):
+                    return FetchResult(
+                        url=url, parish=parish, status="ok",
+                        file_path=html_pdf, file_type="html_to_pdf",
+                        candidate_urls=[h for h, _ in links],
+                        site_type=site_type,
+                        source_url=dated_link,
+                    )
+            # Fallback: scrape the bulletin landing page directly
             html_pdf = await _scrape_html_to_pdf(
                 bulletin_link, parish, output_dir, browser, context, site_type
             )
