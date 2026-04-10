@@ -22,13 +22,14 @@ from harvester.config import (
     RAW_DIR,
     REPORT_JSON,
     REPORT_TXT,
+    is_fresh,
     next_sunday,
 )
 from harvester.fetcher import fetch_all
 from harvester.verifier import verify_file
 from harvester.cleaner import clean
 from harvester.profiles import get_hint, load_profiles, save_profiles, update_profile
-from harvester.utils import parish_name_from_url
+from harvester.utils import parish_name_from_url, extract_date_from_string
 
 PROFILES_PATH = PARISHES_DIR / "parish_profiles.json"
 
@@ -405,17 +406,28 @@ def main() -> int:
             if r.status == "ok" and r.file_path and r.file_path.exists()
         ]
         total_verify = len(verify_queue)
+        api_call_count = 0
         for i, r in enumerate(verify_queue):
+            # Short-circuit: if the bulletin URL contains an embedded date (e.g.
+            # /pdf/050426.pdf), use that date directly and skip the AI verifier.
+            # This avoids false STALE verdicts caused by AI misreading dates.
+            url_date = extract_date_from_string(r.url)
+            if url_date is not None and is_fresh(url_date, target):
+                verdict = "FRESH"
+                verdicts[r.file_path.name] = verdict
+                print(f"  ✅ {r.parish}: FRESH (date from URL: {url_date})")
+                continue
+            # Rate-limit: stay under 10 requests per 60 s
+            if api_call_count > 0:
+                print(f"  ⏳ Rate limit pause ({api_call_count}/{total_verify})...")
+                time.sleep(7)
             verdict = verify_file(r.file_path, target)
+            api_call_count += 1
             verdicts[r.file_path.name] = verdict
             icon = {"FRESH": "✅", "STALE": "❌", "UNKNOWN": "⚠️ "}.get(
                 verdict.split(":")[0], "💥"
             )
             print(f"  {icon} {r.parish}: {verdict}")
-            # Rate-limit: stay under 10 requests per 60 s
-            if i < total_verify - 1:
-                print(f"  ⏳ Rate limit pause ({i + 1}/{total_verify})...")
-                time.sleep(7)
 
     # ------------------------------------------------------------------
     # Stage 3: Clean

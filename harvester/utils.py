@@ -39,7 +39,7 @@ def parish_name_from_url(url: str) -> str:
         # e.g. /parishes/gortin  →  append "gortin"
         # Skip generic page names that add no information
         _SKIP = {"news", "parishnews", "html", "htm", "php", "pdf", "aspx", "index"}
-        if last and last.lower() not in _SKIP:
+        if last and last.lower() not in _SKIP and not last.isdigit():
             base = f"{base}_{last}"
 
     # Remove any URL-encoded characters and reduce to safe chars
