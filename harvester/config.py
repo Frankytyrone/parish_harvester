@@ -68,6 +68,31 @@ SUB_PAGE_KEYWORDS: tuple[str, ...] = (
     "parish bulletin",
 )
 
+# Keywords used to find the bulletin image/link on Wix and similar sites.
+# These are matched against both anchor text and <img> alt attributes.
+BULLETIN_IMAGE_KEYWORDS: tuple[str, ...] = (
+    "bulletin",
+    "mass times",
+    "parish bulletin",
+    "newsletter",
+    "weekly bulletin",
+    "parish news",
+)
+
+# CSS selectors tried (in order) when scraping text from an HTML bulletin page.
+# Wix-specific selectors are listed first, then generic fallbacks.
+WIX_SELECTORS: tuple[str, ...] = (
+    "[data-hook='post-description']",
+    "[data-hook='post-content']",
+    "div[data-testid='site-root']",
+    "div#site-content",
+    "div.wix-rich-text",
+    "article",
+    "main",
+    "div.content",
+    "div#content",
+)
+
 
 # ---------------------------------------------------------------------------
 # Target date helpers

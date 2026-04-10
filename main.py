@@ -27,6 +27,10 @@ from harvester.config import (
 from harvester.fetcher import fetch_all
 from harvester.verifier import verify_file
 from harvester.cleaner import clean
+from harvester.profiles import get_hint, load_profiles, save_profiles, update_profile
+from harvester.utils import parish_name_from_url
+
+PROFILES_PATH = PARISHES_DIR / "parish_profiles.json"
 
 
 # ---------------------------------------------------------------------------
@@ -109,23 +113,18 @@ def _stitch_mega_pdf(
         print(f"  ⚠️  Skipping mega PDF — missing library: {exc}")
         return
 
-    from harvester.utils import parish_name_from_url
-
     # Build a mapping: parish_key → (pdf_path | None, parish_url)
-    # parish_key is the sanitized parish name used as filename prefix
     parish_map: dict[str, tuple[Path | None, str]] = {}
     for fr in fetch_results:
         key = fr.parish
         if fr.status == "ok" and fr.file_path:
             pdf_path = current_dir / fr.file_path.name
             if not pdf_path.exists():
-                # may still be in raw if verifier marked stale
                 pdf_path = None
             parish_map[key] = (pdf_path if (pdf_path and pdf_path.exists()) else None, fr.url)
         else:
             parish_map.setdefault(key, (None, fr.url))
 
-    # Sort entries A–Z by parish key
     sorted_entries = sorted(parish_map.items())
 
     output_path = BULLETINS_DIR / f"all_bulletins_{target}.pdf"
@@ -144,10 +143,9 @@ def _stitch_mega_pdf(
                 real_count += 1
             except Exception as exc:
                 print(f"    ⚠️  Could not merge {parish_key}: {exc}")
-                pdf_path = None  # fall through to placeholder
+                pdf_path = None
 
         if not pdf_path or not pdf_path.exists():
-            # Generate a placeholder page via reportlab
             buf = io.BytesIO()
             doc = SimpleDocTemplate(buf, pagesize=A4,
                                     topMargin=3*cm, bottomMargin=3*cm,
@@ -220,29 +218,58 @@ def _write_copilot_review(
         f"| ❌ Stale   | {len(result.stale)} |",
         f"| ⚠️ Unknown | {len(result.unknown)} |",
         f"| 💥 Errors  | {len(result.errors)} |",
+        f"| 🚫 Failed  | {len(result.failed_fetches)} |",
         "",
     ]
 
     if result.errors:
         lines += [
-            "## Errors this run",
+            "## Verification Errors this run",
             "",
         ]
         for e in result.errors:
             lines.append(f"- **{e['parish']}**: {e['verdict']}")
         lines.append("")
 
+    if result.failed_fetches:
+        lines += [
+            "## Failed to Retrieve",
+            "",
+            "The following parishes could not be fetched this run:",
+            "",
+        ]
+        for ff in result.failed_fetches:
+            lines.append(
+                f"- **{ff['parish']}** — [{ff.get('url', '')}]({ff.get('url', '')})  "
+            )
+            lines.append(f"  _Reason: {ff.get('error', 'unknown')}_")
+        lines.append("")
+
+    if result.stale:
+        lines += [
+            "## Stale Bulletins",
+            "",
+            "These bulletins were fetched but are from a previous week:",
+            "",
+        ]
+        for e in result.stale:
+            lines.append(f"- **{e['parish']}**: `{e['file']}`")
+        lines.append("")
+
     # Check history for consistently failing parishes
     consistent_failures: dict[str, int] = {}
     history_dir_path = HISTORY_DIR
     if history_dir_path.exists():
-        history_files = sorted(history_dir_path.glob("report_*.json"))[-8:]  # last 8 reports
+        history_files = sorted(history_dir_path.glob("report_*.json"))[-8:]
         for hf in history_files:
             try:
                 import json
                 data = json.loads(hf.read_text(encoding="utf-8"))
                 for err_entry in data.get("errors", []):
                     p = err_entry.get("parish", "")
+                    consistent_failures[p] = consistent_failures.get(p, 0) + 1
+                for ff_entry in data.get("failed_fetches", []):
+                    p = ff_entry.get("parish", "")
                     consistent_failures[p] = consistent_failures.get(p, 0) + 1
             except Exception:
                 pass
@@ -257,7 +284,7 @@ def _write_copilot_review(
                 lines.append(f"- **{parish}**: failed {count} time(s) in recent runs")
                 if count >= 4:
                     lines.append(
-                        f"  > 💡 Suggestion: Consider removing **{parish}** — "
+                        f"  > 💡 Suggestion: Consider reviewing **{parish}** — "
                         f"it has failed {count} time(s) in recent runs."
                     )
         lines.append("")
@@ -304,6 +331,19 @@ def main() -> int:
     print(f"🌐 Parishes     : {len(urls)}")
 
     # ------------------------------------------------------------------
+    # Load parish profiles (self-learning hints)
+    # ------------------------------------------------------------------
+    profiles = load_profiles(PROFILES_PATH)
+    hints: dict[str, dict] = {}
+    for url in urls:
+        key = parish_name_from_url(url)
+        h = get_hint(profiles, key, target)
+        if h:
+            hints[key] = h
+    if hints:
+        print(f"🧠 Profile hints: {len(hints)} parish(es) have prior history")
+
+    # ------------------------------------------------------------------
     # Stage 1: Fetch
     # ------------------------------------------------------------------
     print("\n── Stage 1: Fetch ──────────────────────────────────────────")
@@ -312,17 +352,37 @@ def main() -> int:
     loop.set_exception_handler(_silence_playwright_shutdown)
     asyncio.set_event_loop(loop)
     try:
-        fetch_results = loop.run_until_complete(fetch_all(urls, RAW_DIR, target))
+        fetch_results = loop.run_until_complete(
+            fetch_all(urls, RAW_DIR, target, hints=hints)
+        )
     finally:
         loop.close()
 
     ok_count = sum(1 for r in fetch_results if r.status == "ok")
     err_count = sum(1 for r in fetch_results if r.status == "error")
-    print(f"  ✅ Fetched : {ok_count}")
-    print(f"  💥 Errors  : {err_count}")
+    html_count = sum(1 for r in fetch_results if r.file_type == "html_to_pdf")
+    print(f"  ✅ Fetched     : {ok_count}  (of which {html_count} HTML→PDF)")
+    print(f"  💥 Errors      : {err_count}")
+
+    if err_count:
+        print(f"\n  Failed parishes ({err_count}):")
+        for i, r in enumerate(
+            (r for r in fetch_results if r.status == "error"), start=1
+        ):
+            print(f"  {i:2d}. {r.parish}")
+            print(f"       URL    : {r.url}")
+            print(f"       Reason : {r.error}")
+
+    # ------------------------------------------------------------------
+    # Update and save parish profiles
+    # ------------------------------------------------------------------
     for r in fetch_results:
-        if r.status == "error":
-            print(f"     {r.parish}: {r.error}")
+        update_profile(profiles, r.parish, r, target)
+    try:
+        save_profiles(profiles, PROFILES_PATH)
+        print(f"\n  🧠 Profiles saved: {PROFILES_PATH}")
+    except Exception as exc:
+        print(f"  ⚠️  Could not save profiles: {exc}")
 
     if args.dry_run:
         print("\n⚠️  --dry-run: stopping after fetch.")
@@ -361,6 +421,11 @@ def main() -> int:
     # Stage 3: Clean
     # ------------------------------------------------------------------
     print("\n── Stage 3: Clean ──────────────────────────────────────────")
+    failed_fetches = [
+        {"parish": r.parish, "url": r.url, "error": r.error}
+        for r in fetch_results
+        if r.status == "error"
+    ]
     result = clean(
         verdicts=verdicts,
         raw_dir=RAW_DIR,
@@ -368,12 +433,14 @@ def main() -> int:
         report_json=REPORT_JSON,
         report_txt=REPORT_TXT,
         target=target,
+        failed_fetches=failed_fetches,
     )
 
     print(f"  ✅ Fresh   : {len(result.fresh)}")
     print(f"  ❌ Stale   : {len(result.stale)}")
     print(f"  ⚠️  Unknown  : {len(result.unknown)}")
     print(f"  💥 Errors  : {len(result.errors)}")
+    print(f"  🚫 Failed  : {len(result.failed_fetches)}")
     print(f"\n📄 Report  : {REPORT_JSON}")
     print(f"📄 Report  : {REPORT_TXT}")
 
@@ -397,7 +464,6 @@ def main() -> int:
         print(f"  ⚠️  Copilot review failed (non-fatal): {exc}")
 
     # Exit 0 always — errors are logged in the reports.
-    # Only return 1 if something truly catastrophic happened (unhandled exception above).
     return 0
 
 
