@@ -182,7 +182,7 @@ def clean(
             lines.append(f"  [{cat}]")
             for ff in by_category[cat]:
                 lines.append(
-                    f"    {ff['parish']:38s}  {ff.get('url', '')}  —  {ff.get('error', '')}"
+                    f"    {ff['parish']:38s}  {ff.get('url', '')}  -  {ff.get('error', '')}"
                 )
         lines.append("")
 

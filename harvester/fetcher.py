@@ -20,6 +20,8 @@ from urllib.parse import urljoin, urlparse
 
 from playwright.async_api import (
     Browser,
+    Page,
+    Response,
     async_playwright,
     TimeoutError as PlaywrightTimeout,
 )
@@ -157,7 +159,14 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
 
 
 def _text_to_pdf(text: str, dest: Path, title: str = "", source_url: str = "") -> None:
-    """Convert plain text to a PDF file at *dest* using reportlab."""
+    """
+    Convert plain text to a single PDF file at *dest* using reportlab.
+
+    :param text: The raw text content to render (newlines become paragraph breaks).
+    :param dest: Output path for the generated PDF file.
+    :param title: Optional title displayed at the top of the first page.
+    :param source_url: Optional source URL printed below the title for reference.
+    """
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import cm
@@ -209,7 +218,7 @@ def _text_to_pdf(text: str, dest: Path, title: str = "", source_url: str = "") -
     doc.build(story)
 
 
-async def _is_wix_page(page, response=None) -> bool:
+async def _is_wix_page(page: Page, response: Response | None = None) -> bool:
     """Return True if the current page appears to be built with Wix."""
     if response:
         for header_name in response.headers:
@@ -224,7 +233,7 @@ async def _is_wix_page(page, response=None) -> bool:
     return False
 
 
-async def _find_bulletin_image_link(page, page_url: str) -> Optional[str]:
+async def _find_bulletin_image_link(page: Page, page_url: str) -> Optional[str]:
     """
     Look for a link to an HTML bulletin page by checking anchor text AND the
     ``alt`` attribute of any ``<img>`` elements nested inside the anchor.

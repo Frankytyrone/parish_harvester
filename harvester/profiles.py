@@ -115,6 +115,10 @@ def get_hint(
     Return a hint dict for *parish* based on its recorded history, or ``None``
     if no useful history exists.
 
+    *target* is the intended bulletin date and is available for callers that
+    wish to build date-aware hints (e.g. constructing a URL slug for the target
+    week from a stored URL pattern) in future extensions.
+
     The hint dict may contain any subset of:
         last_success_url, last_success_method, site_type, url_pattern
     """
