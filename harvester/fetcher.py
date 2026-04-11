@@ -51,6 +51,8 @@ from .utils import (
     is_valid_pdf,
     parish_name_from_url,
     rewrite_date_url,
+    rewrite_slug_url,
+    rewrite_wp_url,
     safe_filename,
 )
 
@@ -58,6 +60,12 @@ from .utils import (
 _RETRY_DELAY_S: float = 3.0
 # Number of attempts (1 original + 1 retry)
 _MAX_ATTEMPTS: int = 2
+
+# Minimum PDF size (bytes). Files smaller than this are almost always HTML
+# error pages disguised as PDFs (e.g. a "404 Not Found" page returned with
+# a .pdf Content-Disposition header).  30 KB is well below the size of even
+# the smallest single-page church bulletin.
+_MIN_PDF_BYTES: int = 30_000
 
 # Wix page-source signatures used to identify Wix sites
 _WIX_SIGNATURES: tuple[str, ...] = (
@@ -88,6 +96,32 @@ class FetchResult:
 def _url_ends_in_pdf(url: str) -> bool:
     path = urlparse(url).path.lower()
     return path.endswith(".pdf")
+
+
+def _is_real_pdf(path: Path, parish: str = "", url: str = "") -> bool:
+    """
+    Return True if *path* is a valid PDF **and** is at least 30 KB in size.
+
+    Files that are valid PDF magic-bytes but smaller than 30 KB are almost
+    always HTML error pages (e.g. "404 Not Found") returned by the server and
+    saved with a ``.pdf`` extension.  Rule 1 of AI_HISTORY.md: never accept a
+    PDF smaller than 30 KB.
+    """
+    if not is_valid_pdf(path):
+        return False
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return False
+    if size < _MIN_PDF_BYTES:
+        tag = f" for {parish}" if parish else ""
+        src = f" ({url})" if url else ""
+        print(
+            f"  🗑️  Discarding tiny PDF{tag}{src}: "
+            f"{size:,} bytes < 30 KB — likely a fake PDF / HTML error page"
+        )
+        return False
+    return True
 
 
 def _score_link(href: str, text: str, target: date) -> int:
@@ -501,24 +535,43 @@ async def _fetch_inner(
     hint_site_type: Optional[str] = hint.get("site_type")
     fast_html_path: bool = hint.get("last_success_method") == "html_to_pdf"
 
-    # --- Memory: try last known source URL first ---
-    source_url_hint: Optional[str] = hint.get("source_url")
-    if source_url_hint and source_url_hint != url:
-        print(f"  🧠 Trying remembered source URL for {parish}: {source_url_hint}")
+    # --- Predictive URL Generator (Rule 2 / Rule 3 from AI_HISTORY.md) -------
+    # If a previous successful download URL is stored, try to predict this
+    # week's bulletin URL by date-shifting the stored URL before doing a full
+    # site crawl.  Patterns handled:
+    #   • DDMMYY / DDMMYYYY  – e.g. carndonaghparish.com/pdf/050426.pdf
+    #   • WordPress YYYY/MM + DD-Month-YYYY slug  – bellaghyparish.com/wp-content/…
+    # -------------------------------------------------------------------------
+    last_success_url: Optional[str] = hint.get("last_success_url")
+    if last_success_url and last_success_url != url:
+        predicted_candidates: list[str] = []
+        for rewrite_fn in (rewrite_date_url, rewrite_wp_url):
+            predicted = rewrite_fn(last_success_url, target)
+            if predicted != last_success_url and predicted not in predicted_candidates:
+                predicted_candidates.append(predicted)
+        # If no date pattern was found in the stored URL (e.g. /current-newsletter/)
+        # try it directly — it may be a stable weekly URL.
+        if not predicted_candidates:
+            predicted_candidates.append(last_success_url)
+
         dest = output_dir / safe_filename(parish, ".pdf")
-        try:
-            await _download_pdf(source_url_hint, dest, browser)
-            if is_valid_pdf(dest):
-                print(f"  ✅ Retrieved bulletin from remembered URL for {parish}")
-                return FetchResult(
-                    url=url, parish=parish, status="ok",
-                    file_path=dest, file_type="pdf",
-                    source_url=source_url_hint,
-                )
+        for candidate in predicted_candidates:
+            print(f"  🔮 Predicting bulletin URL for {parish}: {candidate}")
+            try:
+                await _download_pdf(candidate, dest, browser)
+                if _is_real_pdf(dest, parish, candidate):
+                    print(f"  ✅ Predicted URL succeeded for {parish}")
+                    return FetchResult(
+                        url=url, parish=parish, status="ok",
+                        file_path=dest, file_type="pdf",
+                        source_url=candidate,
+                    )
+            except Exception as exc:
+                print(f"  ⚠️  Predicted URL {candidate} failed for {parish}: {exc}")
+            # Clean up any partial/invalid download before trying the next candidate
             dest.unlink(missing_ok=True)
-        except Exception as exc:
-            print(f"  ⚠️  Remembered URL failed for {parish} ({exc}), falling back to root scan")
-            dest.unlink(missing_ok=True)
+        if predicted_candidates:
+            print(f"  ↩️  Predicted URL(s) failed for {parish}, falling back to full site crawl")
 
     # --- Direct PDF URL ---
     if _url_ends_in_pdf(url):
@@ -551,11 +604,12 @@ async def _fetch_inner(
                 last_err = str(exc)
                 print(f"  ↩️  {parish}: {candidate} failed ({last_err}), trying next date...")
                 continue
-            if is_valid_pdf(dest):
+            if _is_real_pdf(dest, parish, candidate):
                 if candidate != rewritten:
                     print(f"  📅 Used fallback date URL for {parish}: {candidate}")
                 return FetchResult(url=candidate, parish=parish, status="ok",
-                                   file_path=dest, file_type="pdf")
+                                   file_path=dest, file_type="pdf",
+                                   source_url=candidate)
             dest.unlink(missing_ok=True)
             print(f"  ↩️  {parish}: {candidate} not a valid PDF, trying next date...")
 
@@ -673,7 +727,7 @@ async def _fetch_inner(
                     if content_type.startswith("application/pdf") or _url_ends_in_pdf(final_sub_url):
                         dest = output_dir / safe_filename(parish, ".pdf")
                         await _download_pdf(final_sub_url, dest, browser)
-                        if is_valid_pdf(dest):
+                        if _is_real_pdf(dest, parish, final_sub_url):
                             print(f"  🔍 Found PDF via sub-page for {parish}: {final_sub_url}")
                             best_pdf = final_sub_url
                             break
@@ -725,11 +779,11 @@ async def _fetch_inner(
                 else:
                     raise
             if not html_returned:
-                if not is_valid_pdf(dest):
+                if not _is_real_pdf(dest, parish, best_pdf):
                     dest.unlink(missing_ok=True)
                     return FetchResult(
                         url=url, parish=parish, status="error",
-                        error="Downloaded file is not a valid PDF",
+                        error="Downloaded file is not a valid PDF or is below the 30 KB minimum",
                         candidate_urls=[h for h, _ in links],
                         site_type=site_type,
                     )
@@ -738,6 +792,7 @@ async def _fetch_inner(
                     file_path=dest, file_type="pdf",
                     candidate_urls=[h for h, _ in links],
                     site_type=site_type,
+                    source_url=best_pdf,
                 )
 
         # --- HTML bulletin fallback ---

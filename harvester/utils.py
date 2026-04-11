@@ -56,6 +56,7 @@ _DDMMYY_RE = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)")      # 310825
 _DDMMYYYY_RE = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{4})(?!\d)")    # 31082025
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")                     # 2025-08-31
 _ISO_NODASH_RE = re.compile(r"(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)")  # 20250831
+_WP_YEAR_MONTH_RE = re.compile(r"/(\d{4})/(\d{2})/")                 # /2026/04/
 
 # Month name → month number mapping (English, full and abbreviated)
 _MONTH_MAP: dict[str, int] = {
@@ -168,6 +169,39 @@ def rewrite_slug_url(url: str, target: date) -> str:
 
     new_slug = f"{target.day}{sep}{_MONTH_NAMES[target.month]}{sep}{target.year}"
     return url[: m.start()] + new_slug + url[m.end() :]
+
+
+def rewrite_wp_url(url: str, target: date) -> str:
+    """
+    Rewrite a WordPress-style URL by updating both the ``YYYY/MM`` path
+    component *and* any date slug in the filename (e.g. ``DD-Month-YYYY``).
+
+    Examples::
+
+        /wp-content/uploads/2026/03/29-March-2026.pdf
+        → /wp-content/uploads/2026/04/5-April-2026.pdf   (target = 2026-04-05)
+
+        /wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf
+        → /wp-content/uploads/2026/04/Newsletter-19-April-2026-1.pdf  (target = 2026-04-19)
+
+    Returns the original URL unchanged if neither pattern is found.
+    """
+    # First update the date slug in the filename part
+    new_url = rewrite_slug_url(url, target)
+
+    # Then update the YYYY/MM path segment
+    def _replace_ym(m: re.Match) -> str:
+        try:
+            orig_year = int(m.group(1))
+            # Allow ±1 year to handle year-boundary transitions
+            # (e.g. a December bulletin URL used to predict a January one)
+            if abs(orig_year - target.year) <= 1:
+                return f"/{target.year}/{target.month:02d}/"
+        except (ValueError, AttributeError):
+            pass
+        return m.group(0)
+
+    return _WP_YEAR_MONTH_RE.sub(_replace_ym, new_url)
 
 
 def date_variants(target: date) -> list[str]:
