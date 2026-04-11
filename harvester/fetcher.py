@@ -52,7 +52,6 @@ from .utils import (
     parish_name_from_url,
     rewrite_date_url,
     rewrite_slug_url,
-    rewrite_wp_url,
     safe_filename,
 )
 
@@ -538,17 +537,20 @@ async def _fetch_inner(
     # --- Predictive URL Generator (Rule 2 / Rule 3 from AI_HISTORY.md) -------
     # If a previous successful download URL is stored, try to predict this
     # week's bulletin URL by date-shifting the stored URL before doing a full
-    # site crawl.  Patterns handled:
-    #   • DDMMYY / DDMMYYYY  – e.g. carndonaghparish.com/pdf/050426.pdf
-    #   • WordPress YYYY/MM + DD-Month-YYYY slug  – bellaghyparish.com/wp-content/…
+    # site crawl.  rewrite_date_url() handles all known patterns:
+    #   • Pattern A: DDMMYY / DDMMYYYY  (e.g. carndonaghparish.com/pdf/050426.pdf)
+    #   • Pattern B: D-M-YY             (e.g. limavadyparish.org/onewebmedia/5-4-26.pdf)
+    #   • Pattern C: ISO YYYY-MM-DD     (e.g. clonmanyparish.ie/2026/04/2026-04-12.pdf)
+    #   • Pattern D: DD-Month-YYYY slug (e.g. bellaghyparish.com/wp-content/.../12-April-2026.pdf)
+    #   • Pattern E: [YYYY-M-D]         (e.g. greenlough.com/newsletter/[2026-4-12].pdf)
+    #   • Pattern F: static filename    (e.g. laveyparishbulletin.pdf - returned unchanged)
     # -------------------------------------------------------------------------
     last_success_url: Optional[str] = hint.get("last_success_url")
     if last_success_url and last_success_url != url:
         predicted_candidates: list[str] = []
-        for rewrite_fn in (rewrite_date_url, rewrite_wp_url):
-            predicted = rewrite_fn(last_success_url, target)
-            if predicted != last_success_url and predicted not in predicted_candidates:
-                predicted_candidates.append(predicted)
+        predicted = rewrite_date_url(last_success_url, target)
+        if predicted != last_success_url:
+            predicted_candidates.append(predicted)
         # If no date pattern was found in the stored URL (e.g. /current-newsletter/)
         # try it directly — it may be a stable weekly URL.
         if not predicted_candidates:

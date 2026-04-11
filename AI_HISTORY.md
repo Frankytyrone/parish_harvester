@@ -118,3 +118,42 @@ did not include `source_url=best_pdf`.  This caused the memory bank to store
 the homepage URL instead of the actual PDF URL, making date prediction
 impossible next week.  Fixed by adding `source_url=best_pdf` to the relevant
 `FetchResult` return statements.
+
+### Session 4 — Safe Cracker Patterns B, C, D, E + Amalgamated Parishes
+
+**User mapping:** The user provided a complete manual survey of all 51 parishes in
+Derry Diocese, discovering that sites use six distinct URL date patterns.
+
+**New patterns added to `rewrite_date_url()` in `harvester/utils.py`:**
+
+| Code | Pattern | Regex | Example parish |
+|------|---------|-------|----------------|
+| B | `D-M-YY` | `_D_M_YY_RE` | Limavady: `5-4-26.pdf` → `12-4-26.pdf` |
+| C | ISO `YYYY-MM-DD` + `/YYYY/MM/` dir | `_ISO_RE` + dir update | Clonmany: `2026-04-12.pdf` → `2026-04-19.pdf` |
+| D | `DD-Month-YYYY` slug + `/YYYY/MM/` dir | `_SLUG_DATE_RE` + dir | Bellaghy: `12-April-2026.pdf` |
+| E | `[YYYY-M-D]` bracketed | `_BRACKETED_ISO_RE` | Greenlough: `[2026-4-12].pdf` |
+
+Pattern D was previously split across `rewrite_date_url()` (DDMMYY only) and
+`rewrite_wp_url()` (WordPress slug + dir).  These are now **unified** into a single
+`rewrite_date_url()` function that tries all patterns in order (A → C → B → D → E).
+The separate `rewrite_wp_url()` is kept in `utils.py` for backwards compatibility
+but the fetcher now calls only `rewrite_date_url()`.
+
+**Amalgamated parish deduplication:** Several Derry parishes share one bulletin.
+`parishes/derry_diocese.txt` now marks the duplicate URLs as comments so the app
+never downloads the same bulletin twice:
+- Ballinascreen ↔ Desertmartin
+- Melmount ↔ Camus (Strabane)
+- Waterside ↔ Strathfoyle
+- St Eugene's Cathedral ↔ Longtower (Templemore)
+- Three Patrons ↔ Pennyburn / Carnhill / Galliagh
+- Cappagh ↔ Killyclogher
+
+**Future scaling:** A `scout.py` tool is planned to auto-discover parish websites
+from a diocesan directory page (e.g. `downandconnor.org/parishes-ministries/`) and
+automatically identify which of the A–F patterns each parish uses.  See
+`CONVERSATION_LOG_STRATEGY.md` for full design details.
+
+**OCR strategy for 26 dioceses:** At ~24,000 pages/month, third-party OCR (DocStrange/
+Nanonets) is too expensive.  Recommended approach: `pymupdf4llm` (free, runs on
+GitHub Actions) or `gpt-4o-mini` vision (~$2–3/month for all 26 dioceses).
