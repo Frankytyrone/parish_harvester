@@ -62,9 +62,9 @@ _MAX_ATTEMPTS: int = 2
 
 # Minimum PDF size (bytes). Files smaller than this are almost always HTML
 # error pages disguised as PDFs (e.g. a "404 Not Found" page returned with
-# a .pdf Content-Disposition header).  30 KB is well below the size of even
+# a .pdf Content-Disposition header).  50 KB is well below the size of even
 # the smallest single-page church bulletin.
-_MIN_PDF_BYTES: int = 30_000
+_MIN_PDF_BYTES: int = 50_000
 
 # Wix page-source signatures used to identify Wix sites
 _WIX_SIGNATURES: tuple[str, ...] = (
@@ -117,7 +117,7 @@ def _is_real_pdf(path: Path, parish: str = "", url: str = "") -> bool:
         src = f" ({url})" if url else ""
         print(
             f"  🗑️  Discarding tiny PDF{tag}{src}: "
-            f"{size:,} bytes < 30 KB — likely a fake PDF / HTML error page"
+            f"{size:,} bytes < 50 KB — likely a fake PDF / HTML error page"
         )
         return False
     return True
@@ -170,6 +170,21 @@ def _pick_best_pdf(links: list[tuple[str, str]], target: date) -> Optional[str]:
         return None
     scored.sort(key=lambda x: x[0], reverse=True)
     return scored[0][1]
+
+
+def _pick_top_pdfs(links: list[tuple[str, str]], target: date, n: int = 5) -> list[str]:
+    """Return the top-*n* PDF link hrefs sorted best-first.
+
+    Tries up to *n* candidates so that the caller can fall back to the next
+    best link when the highest-scoring one turns out to be a junk/tiny file.
+    """
+    scored = []
+    for href, text in links:
+        s = _score_link(href, text, target)
+        if s >= 0:
+            scored.append((s, href))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [href for _, href in scored[:n]]
 
 
 async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
@@ -323,10 +338,17 @@ async def _scrape_html_to_pdf(
     browser: Browser,
     context,
     site_type: Optional[str] = None,
+    target: Optional[date] = None,
 ) -> Optional[Path]:
     """
     Navigate to *url*, wait for JS rendering (Wix-aware), extract text, and
     write a PDF via reportlab.  Returns the saved Path or None.
+
+    Before falling back to text extraction, the function scans the rendered
+    HTML for any linked PDF files (e.g. bulletin listing pages that embed
+    direct PDF download links) and tries to download the best match first.
+    *target* is the target bulletin date used for link scoring; if omitted,
+    today's date is used as a best-effort fallback.
     """
     html_page = None
     try:
@@ -346,7 +368,7 @@ async def _scrape_html_to_pdf(
             if ct.startswith("application/pdf") or _url_ends_in_pdf(final_url):
                 dest = output_dir / safe_filename(parish, ".pdf")
                 await _download_pdf(final_url, dest, browser)
-                if is_valid_pdf(dest):
+                if _is_real_pdf(dest, parish, final_url):
                     return dest
                 dest.unlink(missing_ok=True)
                 return None
@@ -372,6 +394,57 @@ async def _scrape_html_to_pdf(
                 await html_page.wait_for_load_state("networkidle", timeout=15_000)
             except Exception:
                 pass
+
+        # --- Scan the HTML page for direct PDF links before text extraction ---
+        # This handles sites like stmarysparishcreggan.com/bulletins where the
+        # bulletins listing page embeds links to actual PDF bulletin files.
+        try:
+            page_anchors = await html_page.eval_on_selector_all(
+                "a[href]",
+                "els => els.map(el => [el.href, el.innerText.trim()])",
+            )
+            pdf_links: list[tuple[str, str]] = []
+            for href, link_text in page_anchors:
+                if not href or ".pdf" not in href.lower():
+                    continue
+                abs_href = urljoin(url, href)
+                pdf_links.append((abs_href, link_text))
+
+            # Also collect <embed> and <object data> PDF sources on this page
+            try:
+                embed_srcs = await html_page.eval_on_selector_all(
+                    "embed[src]", "els => els.map(el => [el.src, ''])"
+                )
+                object_srcs = await html_page.eval_on_selector_all(
+                    "object[data]", "els => els.map(el => [el.data, ''])"
+                )
+                for src, _ in embed_srcs + object_srcs:
+                    if src and ".pdf" in src.lower():
+                        pdf_links.append((urljoin(url, src), "embed/object"))
+            except Exception:
+                pass
+
+            if pdf_links:
+                # Use the scoring function to pick the best candidates
+                scoring_date = target if target is not None else date.today()
+                top_candidates = _pick_top_pdfs(pdf_links, scoring_date, n=5)
+                if not top_candidates:
+                    # Fall back to any PDF link if scoring finds none
+                    top_candidates = [href for href, _ in pdf_links[:5]]
+
+                for pdf_url in top_candidates:
+                    pdf_dest = output_dir / safe_filename(parish, ".pdf")
+                    try:
+                        await _download_pdf(pdf_url, pdf_dest, browser)
+                        if _is_real_pdf(pdf_dest, parish, pdf_url):
+                            print(f"  📎 Found PDF link in HTML page for {parish}: {pdf_url}")
+                            return pdf_dest
+                        pdf_dest.unlink(missing_ok=True)
+                    except Exception as exc:
+                        pdf_dest.unlink(missing_ok=True)
+                        print(f"  ⚠️  PDF link in HTML page failed for {parish} ({pdf_url}): {exc}")
+        except Exception:
+            pass
 
         # Extract text — try specific selectors first, fall back to whole body
         text_content = ""
@@ -649,7 +722,8 @@ async def _fetch_inner(
             if bulletin_link:
                 print(f"  ⚡ Fast-path HTML bulletin for {parish}: {bulletin_link}")
                 html_pdf = await _scrape_html_to_pdf(
-                    bulletin_link, parish, output_dir, browser, context, site_type
+                    bulletin_link, parish, output_dir, browser, context, site_type,
+                    target=target,
                 )
                 if html_pdf and is_valid_pdf(html_pdf):
                     return FetchResult(
@@ -669,6 +743,17 @@ async def _fetch_inner(
             "iframe[src]",
             "els => els.map(el => [el.src, ''])",
         )
+
+        # Collect <embed src> and <object data> attributes (PDF viewers)
+        try:
+            embeds = await page.eval_on_selector_all(
+                "embed[src]", "els => els.map(el => [el.src, ''])"
+            )
+            objects = await page.eval_on_selector_all(
+                "object[data]", "els => els.map(el => [el.data, ''])"
+            )
+        except Exception:
+            embeds, objects = [], []
 
         links: list[tuple[str, str]] = []
         for href, text in anchors:
@@ -696,10 +781,18 @@ async def _fetch_inner(
             ):
                 links.append((abs_src, "iframe"))
 
-        best_pdf = _pick_best_pdf(links, target)
+        for src, _ in embeds + objects:
+            if not src:
+                continue
+            abs_src = urljoin(page_url, src)
+            if ".pdf" in abs_src.lower():
+                links.append((abs_src, "embed/object"))
+
+        top_pdfs = _pick_top_pdfs(links, target)
+        best_pdf = top_pdfs[0] if top_pdfs else None
 
         # --- Sub-page crawling when no direct PDF found ---
-        if not best_pdf:
+        if not top_pdfs:
             sub_page_links: list[tuple[str, str]] = []
             for href, text in anchors:
                 if not href:
@@ -732,6 +825,7 @@ async def _fetch_inner(
                         if _is_real_pdf(dest, parish, final_sub_url):
                             print(f"  🔍 Found PDF via sub-page for {parish}: {final_sub_url}")
                             best_pdf = final_sub_url
+                            top_pdfs = [final_sub_url]
                             break
                         else:
                             dest.unlink(missing_ok=True)
@@ -752,10 +846,11 @@ async def _fetch_inner(
                         ):
                             sub_links.append((abs_sh, st))
 
-                    sub_best = _pick_best_pdf(sub_links, target)
-                    if sub_best:
-                        print(f"  🔍 Found PDF via sub-page for {parish}: {sub_best}")
-                        best_pdf = sub_best
+                    sub_top = _pick_top_pdfs(sub_links, target)
+                    if sub_top:
+                        print(f"  🔍 Found PDF(s) via sub-page for {parish}: {sub_top[0]}")
+                        top_pdfs = sub_top
+                        best_pdf = sub_top[0]
                         break
                 except Exception as sub_exc:
                     print(f"  ⚠️  Sub-page error for {parish} ({sub_url}): {sub_exc}")
@@ -766,36 +861,66 @@ async def _fetch_inner(
                         except Exception:
                             pass
 
-        if best_pdf:
+        # --- Try each PDF candidate in ranked order ---
+        # Attempt download + validation for all top candidates before giving up.
+        # Tiny files (< 50 KB) and invalid PDFs are skipped so we always try
+        # the next-best link rather than returning an error immediately.
+        html_fallback_url: Optional[str] = None  # first candidate that returned HTML
+
+        for pdf_candidate in top_pdfs:
+            # Skip if already successfully downloaded via sub-page crawl above
             dest = output_dir / safe_filename(parish, ".pdf")
-            html_returned = False
-            try:
-                await _download_pdf(best_pdf, dest, browser)
-            except RuntimeError as exc:
-                if "returned HTML" in str(exc):
-                    # The URL returned an HTML page instead of a PDF.
-                    # Fall through to the HTML bulletin scraping path below.
-                    dest.unlink(missing_ok=True)
-                    html_returned = True
-                    print(f"  ⚠️  {parish}: {best_pdf} returned HTML — trying HTML bulletin path")
-                else:
-                    raise
-            if not html_returned:
-                if not _is_real_pdf(dest, parish, best_pdf):
-                    dest.unlink(missing_ok=True)
-                    return FetchResult(
-                        url=url, parish=parish, status="error",
-                        error="Downloaded file is not a valid PDF or is below the 30 KB minimum",
-                        candidate_urls=[h for h, _ in links],
-                        site_type=site_type,
-                    )
+            if dest.exists() and _is_real_pdf(dest, parish, pdf_candidate):
                 return FetchResult(
                     url=url, parish=parish, status="ok",
                     file_path=dest, file_type="pdf",
                     candidate_urls=[h for h, _ in links],
                     site_type=site_type,
-                    source_url=best_pdf,
+                    source_url=pdf_candidate,
                 )
+
+            html_from_candidate = False
+            try:
+                await _download_pdf(pdf_candidate, dest, browser)
+            except RuntimeError as exc:
+                if "returned HTML" in str(exc):
+                    dest.unlink(missing_ok=True)
+                    html_from_candidate = True
+                    if html_fallback_url is None:
+                        html_fallback_url = pdf_candidate
+                    print(
+                        f"  ⚠️  {parish}: {pdf_candidate} returned HTML — "
+                        f"trying next PDF candidate"
+                    )
+                else:
+                    dest.unlink(missing_ok=True)
+                    print(f"  ↩️  {parish}: {pdf_candidate} download error: {exc}")
+                continue
+            except Exception as exc:
+                dest.unlink(missing_ok=True)
+                print(f"  ↩️  {parish}: {pdf_candidate} download error: {exc}")
+                continue
+
+            if not html_from_candidate:
+                if _is_real_pdf(dest, parish, pdf_candidate):
+                    return FetchResult(
+                        url=url, parish=parish, status="ok",
+                        file_path=dest, file_type="pdf",
+                        candidate_urls=[h for h, _ in links],
+                        site_type=site_type,
+                        source_url=pdf_candidate,
+                    )
+                dest.unlink(missing_ok=True)
+                print(
+                    f"  ↩️  {parish}: {pdf_candidate} is not a valid/sufficient PDF "
+                    f"(< 50 KB or corrupt), trying next candidate..."
+                )
+
+        # All PDF candidates exhausted — update best_pdf for the HTML fallback path
+        if html_fallback_url:
+            best_pdf = html_fallback_url
+        elif not top_pdfs:
+            best_pdf = None  # no candidates were found
 
         # --- HTML bulletin fallback ---
         # When no PDF is found anywhere, look for a bulletin image/text link
@@ -815,7 +940,8 @@ async def _fetch_inner(
             if dated_link:
                 print(f"  📅 Found dated bulletin link for {parish}: {dated_link}")
                 html_pdf = await _scrape_html_to_pdf(
-                    dated_link, parish, output_dir, browser, context, site_type
+                    dated_link, parish, output_dir, browser, context, site_type,
+                    target=target,
                 )
                 if html_pdf and is_valid_pdf(html_pdf):
                     return FetchResult(
@@ -827,7 +953,8 @@ async def _fetch_inner(
                     )
             # Fallback: scrape the bulletin landing page directly
             html_pdf = await _scrape_html_to_pdf(
-                bulletin_link, parish, output_dir, browser, context, site_type
+                bulletin_link, parish, output_dir, browser, context, site_type,
+                target=target,
             )
             if html_pdf and is_valid_pdf(html_pdf):
                 return FetchResult(
