@@ -568,6 +568,7 @@ async def _fetch_inner(
                     )
             except Exception as exc:
                 print(f"  ⚠️  Predicted URL {candidate} failed for {parish}: {exc}")
+            # Clean up any partial/invalid download before trying the next candidate
             dest.unlink(missing_ok=True)
         if predicted_candidates:
             print(f"  ↩️  Predicted URL(s) failed for {parish}, falling back to full site crawl")

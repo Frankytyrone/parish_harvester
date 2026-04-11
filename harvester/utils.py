@@ -193,6 +193,8 @@ def rewrite_wp_url(url: str, target: date) -> str:
     def _replace_ym(m: re.Match) -> str:
         try:
             orig_year = int(m.group(1))
+            # Allow ±1 year to handle year-boundary transitions
+            # (e.g. a December bulletin URL used to predict a January one)
             if abs(orig_year - target.year) <= 1:
                 return f"/{target.year}/{target.month:02d}/"
         except (ValueError, AttributeError):
