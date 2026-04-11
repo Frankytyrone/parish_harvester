@@ -318,6 +318,8 @@ def rewrite_date_url(url: str, target: date) -> str:
     # ------------------------------------------------------------------
     # Pattern B: D-M-YY (dashed, 1-2 digit day/month, 2-digit year)
     # e.g. 5-4-26  ->  12-4-26  (Limavady parish)
+    # Day and month intentionally omit leading zeros (matching the input pattern).
+    # Year uses :02d so that e.g. year 2005 produces "05" not "5".
     # ------------------------------------------------------------------
     def _replace_d_m_yy(m: re.Match) -> str:
         try:
