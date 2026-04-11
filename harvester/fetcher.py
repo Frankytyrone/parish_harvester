@@ -177,6 +177,9 @@ def _pick_top_pdfs(links: list[tuple[str, str]], target: date, n: int = 5) -> li
 
     Tries up to *n* candidates so that the caller can fall back to the next
     best link when the highest-scoring one turns out to be a junk/tiny file.
+
+    Returns fewer than *n* items if there are not enough viable candidates,
+    or an empty list if no links score >= 0.
     """
     scored = []
     for href, text in links:
@@ -427,6 +430,8 @@ async def _scrape_html_to_pdf(
             if pdf_links:
                 # Use the scoring function to pick the best candidates
                 scoring_date = target if target is not None else date.today()
+                if target is None:
+                    print(f"  ⚠️  No target date provided to _scrape_html_to_pdf for {parish}; using today as fallback for PDF link scoring")
                 top_candidates = _pick_top_pdfs(pdf_links, scoring_date, n=5)
                 if not top_candidates:
                     # Fall back to any PDF link if scoring finds none
@@ -865,7 +870,7 @@ async def _fetch_inner(
         # Attempt download + validation for all top candidates before giving up.
         # Tiny files (< 50 KB) and invalid PDFs are skipped so we always try
         # the next-best link rather than returning an error immediately.
-        html_fallback_url: Optional[str] = None  # first candidate that returned HTML
+        html_fallback_url: Optional[str] = None  # first candidate that returned HTML instead of a PDF
 
         for pdf_candidate in top_pdfs:
             dest = output_dir / safe_filename(parish, ".pdf")
