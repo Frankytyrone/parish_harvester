@@ -66,6 +66,18 @@ _MAX_ATTEMPTS: int = 2
 # the smallest single-page church bulletin.
 _MIN_PDF_BYTES: int = 50_000
 
+# Minimum visible-text characters required before converting an HTML page to
+# a PDF using reportlab.  Bot-protection / Cloudflare challenge pages rarely
+# have more than a handful of sentences of visible text, while a real parish
+# bulletin will have mass times, notices, etc. — typically 500+ characters.
+_MIN_HTML_TEXT_CHARS: int = 300
+
+# Minimum PDF size (bytes) for a reportlab-generated HTML-to-PDF file.
+# A real bulletin page with >= _MIN_HTML_TEXT_CHARS of content will produce
+# a PDF well above this threshold; a bot-protection page converted via
+# reportlab typically produces a < 5 KB file.
+_MIN_HTML_PDF_BYTES: int = 10_000
+
 # Wix page-source signatures used to identify Wix sites
 _WIX_SIGNATURES: tuple[str, ...] = (
     "wix-site",
@@ -99,12 +111,12 @@ def _url_ends_in_pdf(url: str) -> bool:
 
 def _is_real_pdf(path: Path, parish: str = "", url: str = "") -> bool:
     """
-    Return True if *path* is a valid PDF **and** is at least 30 KB in size.
+    Return True if *path* is a valid PDF **and** is at least 50 KB in size.
 
-    Files that are valid PDF magic-bytes but smaller than 30 KB are almost
+    Files that are valid PDF magic-bytes but smaller than 50 KB are almost
     always HTML error pages (e.g. "404 Not Found") returned by the server and
     saved with a ``.pdf`` extension.  Rule 1 of AI_HISTORY.md: never accept a
-    PDF smaller than 30 KB.
+    PDF smaller than 50 KB.
     """
     if not is_valid_pdf(path):
         return False
@@ -473,6 +485,19 @@ async def _scrape_html_to_pdf(
         if not text_content.strip():
             return None
 
+        # Guard: reject pages whose visible text is too short to be a real
+        # bulletin.  Bot-protection / Cloudflare challenge pages typically
+        # expose only a few sentences of text; a genuine parish bulletin has
+        # hundreds of words.
+        text_stripped = text_content.strip()
+        if len(text_stripped) < _MIN_HTML_TEXT_CHARS:
+            print(
+                f"  🗑️  {parish}: page text only "
+                f"{len(text_stripped)} chars — too short to be a "
+                f"real bulletin (likely bot-protection page), skipping HTML-to-PDF"
+            )
+            return None
+
         dest = output_dir / safe_filename(parish, ".pdf")
         try:
             _text_to_pdf(
@@ -487,6 +512,15 @@ async def _scrape_html_to_pdf(
             return None
 
         if dest.exists() and dest.stat().st_size > 0:
+            pdf_size = dest.stat().st_size
+            if pdf_size < _MIN_HTML_PDF_BYTES:
+                print(
+                    f"  🗑️  Discarding tiny HTML-to-PDF for {parish}: "
+                    f"{pdf_size:,} bytes < {_MIN_HTML_PDF_BYTES // 1_000} KB "
+                    f"— likely a bot-protection page"
+                )
+                dest.unlink(missing_ok=True)
+                return None
             return dest
 
         return None
