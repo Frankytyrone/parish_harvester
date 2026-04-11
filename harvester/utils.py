@@ -57,6 +57,14 @@ _DDMMYYYY_RE = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{4})(?!\d)")    # 31082025
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")                     # 2025-08-31
 _ISO_NODASH_RE = re.compile(r"(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)")  # 20250831
 
+# Pattern B: D-M-YY (1–2 digit day/month, 2-digit year, dash-separated)
+# e.g. 5-4-26, 12-4-26, 15-3-26
+_D_M_YY_RE = re.compile(r"(?<!\d)(\d{1,2})-(\d{1,2})-(\d{2})(?!\d)")
+
+# Pattern E: [YYYY-M-D] bracketed ISO variant
+# e.g. [2026-4-12], [2026-12-25]
+_BRACKETED_ISO_RE = re.compile(r"\[(\d{4})-(\d{1,2})-(\d{1,2})\]")
+
 # Month name → month number mapping (English, full and abbreviated)
 _MONTH_MAP: dict[str, int] = {
     "january": 1,  "jan": 1,
@@ -193,36 +201,160 @@ def date_variants(target: date) -> list[str]:
 
 def rewrite_date_url(url: str, target: date) -> str:
     """
-    If a URL contains a DDMMYY/DDMMYYYY date pattern in its path, rewrite it
-    to use the *target* date.  Used for sites like dmaparish.com/pdf/310825.pdf.
+    Rewrite a URL's date component(s) to use the *target* date.
+
+    Recognised patterns (tried in order; first match wins):
+    - Pattern A (DDMMYYYY / DDMMYY): /pdf/050426.pdf  →  /pdf/120426.pdf
+    - Pattern C (ISO YYYY-MM-DD):    /2026/04/2026-04-05.pdf  →  /2026/04/2026-04-12.pdf
+                                     (also updates any /YYYY/MM/ directory segment)
+    - Pattern B (D-M-YY):            /onewebmedia/5-4-26.pdf  →  /onewebmedia/12-4-26.pdf
+    - Pattern D (DD-Month-YYYY):     Newsletter-12-April-2026.pdf  →  Newsletter-19-April-2026.pdf
+                                     (also updates any /YYYY/MM/ directory segment)
+    - Pattern E ([YYYY-M-D]):        [2026-4-5].pdf  →  [2026-4-12].pdf
+
+    Returns the original URL unchanged if no date pattern is detected (Pattern F –
+    static files like laveyparishbulletin.pdf are downloaded as-is).
     """
     parsed = urlparse(url)
     path = parsed.path
 
-    def _replace(m: re.Match) -> str:
+    def _update_yyyymm_dir(old_d: date, p: str) -> str:
+        """Replace /YYYY/MM/ directory segments matching *old_d* with the target."""
+        old_seg = f"/{old_d.year}/{old_d.month:02d}/"
+        new_seg = f"/{target.year}/{target.month:02d}/"
+        return p.replace(old_seg, new_seg)
+
+    # ------------------------------------------------------------------
+    # Pattern A: DDMMYYYY (8 consecutive digits)
+    # ------------------------------------------------------------------
+    def _replace_ddmmyyyy(m: re.Match) -> str:
         try:
-            if len(m.group(0)) == 8:
-                # DDMMYYYY
-                orig = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-            else:
-                # DDMMYY
-                year = 2000 + int(m.group(3))
-                orig = date(year, int(m.group(2)), int(m.group(1)))
-            # Only rewrite if it looks like a plausible bulletin date
+            orig = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
             if abs((orig - target).days) < 365:
-                if len(m.group(0)) == 8:
-                    return f"{target.day:02d}{target.month:02d}{target.year}"
-                else:
-                    return f"{target.day:02d}{target.month:02d}{target.year % 100:02d}"
+                return f"{target.day:02d}{target.month:02d}{target.year}"
         except ValueError:
             pass
         return m.group(0)
 
-    new_path = _DDMMYYYY_RE.sub(_replace, path)
-    if new_path == path:
-        new_path = _DDMMYY_RE.sub(_replace, path)
+    new_path = _DDMMYYYY_RE.sub(_replace_ddmmyyyy, path)
+    if new_path != path:
+        return parsed._replace(path=new_path).geturl()
 
-    return parsed._replace(path=new_path).geturl()
+    # Pattern A: DDMMYY (6 consecutive digits)
+    def _replace_ddmmyy(m: re.Match) -> str:
+        try:
+            year = 2000 + int(m.group(3))
+            orig = date(year, int(m.group(2)), int(m.group(1)))
+            if abs((orig - target).days) < 365:
+                return f"{target.day:02d}{target.month:02d}{target.year % 100:02d}"
+        except ValueError:
+            pass
+        return m.group(0)
+
+    new_path = _DDMMYY_RE.sub(_replace_ddmmyy, path)
+    if new_path != path:
+        return parsed._replace(path=new_path).geturl()
+
+    # ------------------------------------------------------------------
+    # Pattern C: ISO YYYY-MM-DD (with optional /YYYY/MM/ directory update)
+    # ------------------------------------------------------------------
+    orig_iso: date | None = None
+    iso_m = _ISO_RE.search(path)
+    if iso_m:
+        try:
+            orig_iso = date(int(iso_m.group(1)), int(iso_m.group(2)), int(iso_m.group(3)))
+        except ValueError:
+            pass
+
+    if orig_iso and abs((orig_iso - target).days) < 365:
+        def _replace_iso(m: re.Match) -> str:
+            try:
+                d = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                if abs((d - target).days) < 365:
+                    return f"{target.year}-{target.month:02d}-{target.day:02d}"
+            except ValueError:
+                pass
+            return m.group(0)
+
+        new_path = _ISO_RE.sub(_replace_iso, path)
+        new_path = _update_yyyymm_dir(orig_iso, new_path)
+        return parsed._replace(path=new_path).geturl()
+
+    # ------------------------------------------------------------------
+    # Pattern B: D-M-YY (dashed, 1–2 digit day/month, 2-digit year)
+    # e.g. 5-4-26  →  12-4-26
+    # ------------------------------------------------------------------
+    def _replace_d_m_yy(m: re.Match) -> str:
+        try:
+            year = 2000 + int(m.group(3))
+            orig = date(year, int(m.group(2)), int(m.group(1)))
+            if abs((orig - target).days) < 365:
+                return f"{target.day}-{target.month}-{target.year % 100:02d}"
+        except ValueError:
+            pass
+        return m.group(0)
+
+    new_path = _D_M_YY_RE.sub(_replace_d_m_yy, path)
+    if new_path != path:
+        return parsed._replace(path=new_path).geturl()
+
+    # ------------------------------------------------------------------
+    # Pattern D: DD-Month-YYYY / D-Month-YYYY  (month name, any separator)
+    # e.g. 12-April-2026  →  19-April-2026
+    # (also updates any /YYYY/MM/ directory segment)
+    # ------------------------------------------------------------------
+    slug_m = _SLUG_DATE_RE.search(path)
+    orig_slug: date | None = None
+    if slug_m:
+        try:
+            old_month = _MONTH_MAP.get(slug_m.group(2).lower())
+            if old_month:
+                orig_slug = date(int(slug_m.group(3)), old_month, int(slug_m.group(1)))
+        except ValueError:
+            pass
+
+    if orig_slug and abs((orig_slug - target).days) < 365:
+        def _replace_slug(m: re.Match) -> str:
+            try:
+                old_month_num = _MONTH_MAP.get(m.group(2).lower())
+                if not old_month_num:
+                    return m.group(0)
+                d = date(int(m.group(3)), old_month_num, int(m.group(1)))
+                if abs((d - target).days) < 365:
+                    sep_pos = m.start() + len(m.group(1))
+                    sep = path[sep_pos] if sep_pos < len(path) else "-"
+                    month_str = _MONTH_NAMES[target.month].capitalize()
+                    return f"{target.day:02d}{sep}{month_str}{sep}{target.year}"
+            except ValueError:
+                pass
+            return m.group(0)
+
+        new_path = _SLUG_DATE_RE.sub(_replace_slug, path)
+        new_path = _update_yyyymm_dir(orig_slug, new_path)
+        return parsed._replace(path=new_path).geturl()
+
+    # ------------------------------------------------------------------
+    # Pattern E: [YYYY-M-D] bracketed ISO variant
+    # e.g. [2026-4-5]  →  [2026-4-12]
+    # ------------------------------------------------------------------
+    def _replace_bracketed(m: re.Match) -> str:
+        try:
+            orig = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            if abs((orig - target).days) < 365:
+                return f"[{target.year}-{target.month}-{target.day}]"
+        except ValueError:
+            pass
+        return m.group(0)
+
+    new_path = _BRACKETED_ISO_RE.sub(_replace_bracketed, path)
+    if new_path != path:
+        return parsed._replace(path=new_path).geturl()
+
+    # ------------------------------------------------------------------
+    # Pattern F: No date found – return URL unchanged.
+    # The caller will download the static URL as-is (e.g. laveyparishbulletin.pdf).
+    # ------------------------------------------------------------------
+    return url
 
 
 def safe_filename(prefix: str, suffix: str) -> str:

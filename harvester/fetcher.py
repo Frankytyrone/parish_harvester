@@ -51,6 +51,7 @@ from .utils import (
     is_valid_pdf,
     parish_name_from_url,
     rewrite_date_url,
+    rewrite_slug_url,
     safe_filename,
 )
 
@@ -502,23 +503,32 @@ async def _fetch_inner(
     fast_html_path: bool = hint.get("last_success_method") == "html_to_pdf"
 
     # --- Memory: try last known source URL first ---
+    # Also attempt a date-rewritten version of the remembered URL so that
+    # weekly-updating parishes (e.g. DDMMYY pattern) are fetched instantly.
     source_url_hint: Optional[str] = hint.get("source_url")
     if source_url_hint and source_url_hint != url:
-        print(f"  🧠 Trying remembered source URL for {parish}: {source_url_hint}")
         dest = output_dir / safe_filename(parish, ".pdf")
-        try:
-            await _download_pdf(source_url_hint, dest, browser)
-            if is_valid_pdf(dest):
-                print(f"  ✅ Retrieved bulletin from remembered URL for {parish}")
-                return FetchResult(
-                    url=url, parish=parish, status="ok",
-                    file_path=dest, file_type="pdf",
-                    source_url=source_url_hint,
-                )
-            dest.unlink(missing_ok=True)
-        except Exception as exc:
-            print(f"  ⚠️  Remembered URL failed for {parish} ({exc}), falling back to root scan")
-            dest.unlink(missing_ok=True)
+        candidates_from_memory: list[str] = []
+        rewritten_hint = rewrite_date_url(source_url_hint, target)
+        if rewritten_hint != source_url_hint:
+            candidates_from_memory.append(rewritten_hint)
+        candidates_from_memory.append(source_url_hint)
+        for mem_url in candidates_from_memory:
+            print(f"  🧠 Trying remembered URL for {parish}: {mem_url}")
+            try:
+                await _download_pdf(mem_url, dest, browser)
+                if is_valid_pdf(dest):
+                    print(f"  ✅ Retrieved bulletin from remembered URL for {parish}")
+                    return FetchResult(
+                        url=url, parish=parish, status="ok",
+                        file_path=dest, file_type="pdf",
+                        source_url=mem_url,
+                    )
+                dest.unlink(missing_ok=True)
+            except Exception as exc:
+                print(f"  ⚠️  Remembered URL {mem_url} failed for {parish} ({exc})")
+                dest.unlink(missing_ok=True)
+        print(f"  ↩️  All remembered URLs failed for {parish}, falling back to root scan")
 
     # --- Direct PDF URL ---
     if _url_ends_in_pdf(url):
@@ -601,6 +611,25 @@ async def _fetch_inner(
                         file_path=html_pdf, file_type="html_to_pdf",
                         site_type=site_type, source_url=bulletin_link,
                     )
+
+        # --- Predictive slug URL (HTML bulletin pages with a date in the path) ---
+        # e.g. Ballinascreen: /ballinascreen-desertmartin-parishes-5_april_2026
+        #      Clonleigh:     /news/YYYY/MM/DD/
+        # We mathematically rewrite the slug to this week's date and attempt a
+        # direct scrape before falling back to a full-page crawl.
+        predicted_slug = rewrite_slug_url(url, target)
+        if predicted_slug != url:
+            print(f"  🔮 Predictive slug for {parish}: {url} → {predicted_slug}")
+            html_pdf = await _scrape_html_to_pdf(
+                predicted_slug, parish, output_dir, browser, context, site_type
+            )
+            if html_pdf and is_valid_pdf(html_pdf):
+                return FetchResult(
+                    url=url, parish=parish, status="ok",
+                    file_path=html_pdf, file_type="html_to_pdf",
+                    site_type=site_type, source_url=predicted_slug,
+                )
+            print(f"  ↩️  Predictive slug failed for {parish}, falling back to full crawl")
 
         # Collect all <a> links
         anchors = await page.eval_on_selector_all(

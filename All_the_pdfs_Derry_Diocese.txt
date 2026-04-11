@@ -1,0 +1,176 @@
+Derry Diocese – Parish Bulletin URL Master Reference
+=====================================================
+Compiled from manual research by the user.  This file is the "Safe Cracker's
+Manual" – every pattern needed to predict next week's bulletin URL is documented
+here so the harvester never has to guess blind.
+
+Last updated: April 2026
+
+Key to Pattern Codes
+--------------------
+A  = /pdf/DDMMYY.pdf           (6-digit run, e.g. 050426)
+B  = /onewebmedia/D-M-YY.pdf   (dashes, no leading zeros, e.g. 5-4-26)
+C  = /YYYY/MM/YYYY-MM-DD.pdf   (ISO date + folder structure, e.g. 2026-04-12)
+D  = /YYYY/MM/DD-Month-YYYY.pdf (WordPress named, e.g. 12-April-2026)
+E  = [YYYY-M-D].pdf            (bracketed ISO, e.g. [2026-4-12])
+F  = static filename            (same URL every week, e.g. laveyparishbulletin.pdf)
+HTML-SLUG = dated URL slug      (e.g. /parish-name-5_april_2026)
+HTML-ID   = sequential DB ID    (e.g. /files/9/Newsletters/384/...)
+DOCX      = Word document via Google Docs Viewer
+
+===========================================================================
+PARISH LISTING
+===========================================================================
+
+1. AGHYARAN
+   Homepage : https://www.parishofaghyaran.com/news.html
+   Pattern  : A
+   Examples :
+     https://www.parishofaghyaran.com/pdf/050426.pdf
+     https://www.parishofaghyaran.com/pdf/220326.pdf
+     https://www.parishofaghyaran.com/pdf/080226.pdf
+     https://www.parishofaghyaran.com/pdf/010326.pdf
+   Notes    : Click "Latest Parish News" to find the current PDF link.
+              The app should generate /pdf/DDMMYY.pdf directly without
+              loading the homepage.
+
+2. ARDMORE
+   Homepage : http://www.ardmoreparish.com/news.html
+   Pattern  : A
+   Examples :
+     http://www.ardmoreparish.com/pdf/050426.pdf
+     http://www.ardmoreparish.com/pdf/290326.pdf
+     http://www.ardmoreparish.com/pdf/281225.pdf
+   Notes    : Navigate to the most recent date entry (e.g. "Sunday, 5th April
+              2026") to confirm the PDF.  The DDMMYY formula is reliable.
+
+3. BALLINASCREEN
+   Homepage : https://www.parishofballinascreen.com/
+   Pattern  : HTML-SLUG  (D_month_YYYY or D-month-YYYY in the path)
+   Examples :
+     https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-5_april_2026
+     https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-15_february_2026
+     https://www.parishofballinascreen.com/ballinascreen-parish-2-february-2025
+     https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-11_january_2026
+   Notes    : The bulletin is an HTML page (not a PDF).  Click the "Parish
+              Bulletin & Mass Times" image on the homepage.  The app should
+              rewrite the date slug and scrape the HTML page to PDF.
+
+4. BANAGHER
+   Homepage : https://banagherparish.com/
+   Pattern  : HTML-ID  (sequential integer; cannot be predicted safely)
+   Examples :
+     https://banagherparish.com/files/9/Newsletters/383/Bulletin---Easter-Day-of-the-Lord-s-Resurrection--5th-April-2026
+     https://banagherparish.com/files/9/Newsletters/382/Bulletin---Palm-Sunday---29th-March-2026
+     https://banagherparish.com/files/9/Newsletters/381/Bulletin---5th-Sunday-of-Lent---22nd-March-2026
+     https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026
+   Notes    : IDs increase by 1 per upload but other (non-bulletin) uploads
+              can consume IDs.  The app should try ID+1 and ID+2; if the
+              download is under 30 KB it's a 404 page and the app should fall
+              back to scraping the homepage for the correct link.
+
+5. BELLAGHY
+   Homepage : https://bellaghyparish.com/current-newsletter/
+   Pattern  : D  (WordPress /YYYY/MM/DD-Month-YYYY.pdf or Newsletter-DD-Month-YYYY.pdf)
+   Examples :
+     https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf
+     https://bellaghyparish.com/wp-content/uploads/2026/04/29-March-2026.pdf
+   Notes    : WordPress folder structure (/YYYY/MM/) must also be updated when
+              the month changes.  The "-1" suffix on some files is arbitrary
+              and should be stripped or tried with/without.
+
+6. BUNCRANA
+   Homepage : (similar to Ardmore/Aghyaran)
+   Pattern  : A
+   Notes    : DDMMYY formula expected.  Confirm URL format on first successful
+              scrape.
+
+7. CARNDONAGH
+   Homepage : http://www.carndonaghparish.com/
+   Pattern  : A
+   Examples :
+     http://www.carndonaghparish.com/pdf/050426.pdf
+     http://www.carndonaghparish.com/pdf/150326.pdf
+   Notes    : Identical pattern to Aghyaran and Ardmore.
+
+8. CASTLEDERG
+   Homepage : (to be confirmed)
+   Pattern  : A  (expected, consistent with other Derry DDMMYY parishes)
+   Notes    : Confirm URL format on first successful scrape.
+
+9. CLAUDY
+   Homepage : http://parishofclaudy.com/  (very slow – avoid loading if possible)
+   Pattern  : DOCX via Google Docs Viewer (Pattern B variant with .docx)
+   Examples (Google Viewer URLs) :
+     https://docs.google.com/viewerng/viewer?url=http://parishofclaudy.com/onewebmedia/NEWSLETTER%252012-4-26.docx&_r=3
+     https://docs.google.com/viewerng/viewer?url=http://parishofclaudy.com/onewebmedia/NEWSLETTER%252015-3-26.docx&_r=5
+   Direct file URLs (bypass the slow viewer) :
+     http://parishofclaudy.com/onewebmedia/NEWSLETTER%2012-4-26.docx
+     http://parishofclaudy.com/onewebmedia/NEWSLETTER%2015-3-26.docx
+   Notes    : The filename uses D-M-YY with NO leading zeros (e.g. 12-4-26,
+              not 12-04-26).  Download the .docx directly from onewebmedia
+              instead of loading the Google Viewer to avoid the slow website.
+              The app should extract the inner URL from the Google Viewer link
+              and apply the D-M-YY rewrite.
+
+10. CLONMANY
+    Homepage : https://www.clonmanyparish.ie/  (to be confirmed)
+    Pattern  : C  (ISO date + folder: /YYYY/MM/YYYY-MM-DD.pdf)
+    Example  :
+      https://www.clonmany.ie/2026/04/2026-04-12.pdf
+    Notes    : Both the filename (YYYY-MM-DD) and the folder (/YYYY/MM/) must
+               be updated together when the date changes.
+
+11. GREENLOUGH
+    Homepage : (to be confirmed)
+    Pattern  : E  (bracketed ISO: [YYYY-M-D].pdf)
+    Example  :
+      [2026-4-12].pdf  (within the site's upload directory)
+    Notes    : Month and day have NO leading zeros in this pattern.
+
+12. LAVEY
+    Homepage : (to be confirmed)
+    Pattern  : F  (static filename – priest overwrites the same file each week)
+    Example  :
+      laveyparishbulletin.pdf
+    Notes    : No date in the URL.  The app should just download the same URL
+               again each week and check whether the content is fresh.
+
+13. LIMAVADY
+    Homepage : (to be confirmed)
+    Pattern  : B  (D-M-YY with dashes, no leading zeros)
+    Example  :
+      /onewebmedia/5-4-26.pdf
+    Notes    : Similar to Claudy but a PDF rather than a DOCX file.
+
+===========================================================================
+PATTERN SUMMARY TABLE
+===========================================================================
+
+Pattern | Format             | Example             | Parishes
+--------|--------------------|---------------------|---------------------------
+A       | DDMMYY             | 050426              | Aghyaran, Ardmore, Buncrana,
+        |                    |                     | Carndonagh, Castlederg
+B       | D-M-YY             | 5-4-26              | Limavady, Claudy (docx)
+C       | YYYY-MM-DD         | 2026-04-12          | Clonmany
+        | + /YYYY/MM/ folder |                     |
+D       | DD-Month-YYYY      | 12-April-2026       | Bellaghy (WordPress)
+        | + /YYYY/MM/ folder |                     |
+E       | [YYYY-M-D]         | [2026-4-12]         | Greenlough
+F       | static             | laveyparishbulletin | Lavey
+HTML-   | D_month_YYYY slug  | 5_april_2026        | Ballinascreen
+SLUG    |                    |                     |
+HTML-ID | /NN/Bulletin-...   | /384/Bulletin-...   | Banagher
+
+===========================================================================
+NOTES FOR FUTURE DIOCESES
+===========================================================================
+When adding a new diocese, follow these steps:
+1. Visit 2–3 recent bulletin URLs for each parish.
+2. Identify which pattern (A–F or HTML-SLUG/HTML-ID) the site uses.
+3. Add the parish URL and pattern code to a similar reference file.
+4. The harvester will automatically apply the correct rewrite logic on the
+   first successful download and remember it in the success_map for future runs.
+5. For HTML-ID sites, the app must scrape the homepage each week – there is
+   no safe mathematical prediction for sequential database IDs when other
+   uploads can consume ID numbers between Sundays.
