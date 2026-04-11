@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, parse_qs
 
 from playwright.async_api import (
     Browser,
@@ -34,6 +34,7 @@ from .config import (
     BULLETIN_IMAGE_KEYWORDS,
     BULLETIN_KEYWORDS,
     CONCURRENCY,
+    JUNK_KEYWORDS,
     PAGE_LOAD_TIMEOUT_MS,
     SUB_PAGE_KEYWORDS,
     TOTAL_TIMEOUT_S,
@@ -95,6 +96,11 @@ def _score_link(href: str, text: str, target: date) -> int:
     Returns -1 if the link should be completely ignored.
     """
     combined = (href + " " + text).lower()
+
+    # Reject links that contain junk keywords
+    if any(kw in combined for kw in JUNK_KEYWORDS):
+        return -1
+
     score = 0
 
     has_pdf_in_url = ".pdf" in href.lower()
@@ -495,6 +501,25 @@ async def _fetch_inner(
     hint_site_type: Optional[str] = hint.get("site_type")
     fast_html_path: bool = hint.get("last_success_method") == "html_to_pdf"
 
+    # --- Memory: try last known source URL first ---
+    source_url_hint: Optional[str] = hint.get("source_url")
+    if source_url_hint and source_url_hint != url:
+        print(f"  🧠 Trying remembered source URL for {parish}: {source_url_hint}")
+        dest = output_dir / safe_filename(parish, ".pdf")
+        try:
+            await _download_pdf(source_url_hint, dest, browser)
+            if is_valid_pdf(dest):
+                print(f"  ✅ Retrieved bulletin from remembered URL for {parish}")
+                return FetchResult(
+                    url=url, parish=parish, status="ok",
+                    file_path=dest, file_type="pdf",
+                    source_url=source_url_hint,
+                )
+            dest.unlink(missing_ok=True)
+        except Exception as exc:
+            print(f"  ⚠️  Remembered URL failed for {parish} ({exc}), falling back to root scan")
+            dest.unlink(missing_ok=True)
+
     # --- Direct PDF URL ---
     if _url_ends_in_pdf(url):
         rewritten = rewrite_date_url(url, target)
@@ -603,6 +628,13 @@ async def _fetch_inner(
             if not src:
                 continue
             abs_src = urljoin(page_url, src)
+            # Google Docs Viewer bypass: extract the real PDF URL from the viewer
+            if "docs.google.com/viewer" in abs_src:
+                qs = parse_qs(urlparse(abs_src).query)
+                extracted_urls = qs.get("url", [])
+                if extracted_urls and extracted_urls[0].startswith("http"):
+                    links.append((extracted_urls[0], "google-docs-viewer"))
+                continue
             if ".pdf" in abs_src.lower() or any(
                 kw in abs_src.lower() for kw in BULLETIN_KEYWORDS
             ):
