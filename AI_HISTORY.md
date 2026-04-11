@@ -8,7 +8,7 @@ before making changes, so that hard-won lessons are never forgotten.
 
 ## The Three Core Rules
 
-### Rule 1: Never Accept a PDF Smaller Than 30 KB
+### Rule 1: Never Accept a PDF Smaller Than 50 KB
 
 When a parish website cannot find a bulletin it often returns an HTML error page
 (e.g. a "404 Not Found" page) but delivers it with a `.pdf` Content-Disposition
@@ -16,9 +16,22 @@ header.  The resulting file is valid PDF magic-bytes but only 2–14 KB in size 
 completely useless.
 
 **The Fix:** After every PDF download, check the file size.  If it is less than
-30,000 bytes (30 KB), delete the file immediately, log a clear warning, and
+50,000 bytes (50 KB), delete the file immediately, log a clear warning, and
 continue searching other links.  This is implemented in `harvester/fetcher.py`
-via `_is_real_pdf()` and the `_MIN_PDF_BYTES = 30_000` constant.
+via `_is_real_pdf()` and the `_MIN_PDF_BYTES = 50_000` constant.
+
+**Rule 1b: Try Multiple PDF Candidates Before Giving Up.**  The scorer now
+returns up to 5 ranked candidates (`_pick_top_pdfs`).  If the highest-scoring
+link is a junk/tiny file the next candidate is tried automatically before
+falling back to HTML-to-PDF conversion.  This prevents false errors when a
+site publishes multiple PDFs (e.g. a small "Call to Pray" PDF alongside the
+real bulletin).
+
+**Rule 1c: Scan HTML Pages for Embedded PDF Links.**  When the fetch path lands
+on an HTML bulletin-listing page (e.g. stmarysparishcreggan.com/bulletins),
+`_scrape_html_to_pdf` first scans all `<a href>`, `<embed src>`, and
+`<object data>` elements for real PDF links and tries to download the best
+match before falling back to text extraction via reportlab.
 
 ---
 

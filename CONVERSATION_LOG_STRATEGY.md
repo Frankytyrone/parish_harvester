@@ -26,17 +26,19 @@ The six known "lock combinations" for Derry Diocese:
 
 ---
 
-## Rule 1: The 30 KB "Fake PDF" Blocker
+## Rule 1: The 50 KB "Fake PDF" Blocker
 
 **Problem:** When a parish website can't find the bulletin, it often returns an HTML
 "404 Not Found" page but sends it with a `.pdf` Content-Disposition header. The
 file looks like a PDF but is only 2–14 KB in size.
 
-**Fix:** After every download, check the file size. Reject anything under **30,000
-bytes (30 KB)**. Even the smallest single-page church bulletin is well over 30 KB.
+**Fix:** After every download, check the file size. Reject anything under **50,000
+bytes (50 KB)**. Even the smallest single-page church bulletin is well over 50 KB.
+If the highest-scoring PDF link is rejected, the next best candidate is tried
+automatically (up to 5 candidates via `_pick_top_pdfs`).
 
-**Implemented in:** `harvester/fetcher.py` → `_is_real_pdf()` and
-`_MIN_PDF_BYTES = 30_000`.
+**Implemented in:** `harvester/fetcher.py` → `_is_real_pdf()`,
+`_MIN_PDF_BYTES = 50_000`, and `_pick_top_pdfs()`.
 
 ---
 
