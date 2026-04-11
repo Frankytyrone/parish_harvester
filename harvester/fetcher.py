@@ -868,24 +868,12 @@ async def _fetch_inner(
         html_fallback_url: Optional[str] = None  # first candidate that returned HTML
 
         for pdf_candidate in top_pdfs:
-            # Skip if already successfully downloaded via sub-page crawl above
             dest = output_dir / safe_filename(parish, ".pdf")
-            if dest.exists() and _is_real_pdf(dest, parish, pdf_candidate):
-                return FetchResult(
-                    url=url, parish=parish, status="ok",
-                    file_path=dest, file_type="pdf",
-                    candidate_urls=[h for h, _ in links],
-                    site_type=site_type,
-                    source_url=pdf_candidate,
-                )
-
-            html_from_candidate = False
             try:
                 await _download_pdf(pdf_candidate, dest, browser)
             except RuntimeError as exc:
                 if "returned HTML" in str(exc):
                     dest.unlink(missing_ok=True)
-                    html_from_candidate = True
                     if html_fallback_url is None:
                         html_fallback_url = pdf_candidate
                     print(
@@ -901,20 +889,19 @@ async def _fetch_inner(
                 print(f"  ↩️  {parish}: {pdf_candidate} download error: {exc}")
                 continue
 
-            if not html_from_candidate:
-                if _is_real_pdf(dest, parish, pdf_candidate):
-                    return FetchResult(
-                        url=url, parish=parish, status="ok",
-                        file_path=dest, file_type="pdf",
-                        candidate_urls=[h for h, _ in links],
-                        site_type=site_type,
-                        source_url=pdf_candidate,
-                    )
-                dest.unlink(missing_ok=True)
-                print(
-                    f"  ↩️  {parish}: {pdf_candidate} is not a valid/sufficient PDF "
-                    f"(< 50 KB or corrupt), trying next candidate..."
+            if _is_real_pdf(dest, parish, pdf_candidate):
+                return FetchResult(
+                    url=url, parish=parish, status="ok",
+                    file_path=dest, file_type="pdf",
+                    candidate_urls=[h for h, _ in links],
+                    site_type=site_type,
+                    source_url=pdf_candidate,
                 )
+            dest.unlink(missing_ok=True)
+            print(
+                f"  ↩️  {parish}: {pdf_candidate} is not a valid/sufficient PDF "
+                f"(< 50 KB or corrupt), trying next candidate..."
+            )
 
         # All PDF candidates exhausted — update best_pdf for the HTML fallback path
         if html_fallback_url:
