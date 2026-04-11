@@ -50,6 +50,22 @@ BULLETIN_KEYWORDS: tuple[str, ...] = (
     "leaflet",
 )
 
+JUNK_KEYWORDS: tuple[str, ...] = (
+    "safeguarding",
+    "gdpr",
+    "privacy",
+    "policy",
+    "form",
+    "baptism",
+    "marriage",
+    "roster",
+    "schedule",
+    "facebook",
+    "twitter",
+    "youtube",
+    "mailto",
+)
+
 SUB_PAGE_KEYWORDS: tuple[str, ...] = (
     "read more",
     "click here",
