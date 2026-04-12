@@ -11,7 +11,7 @@ before making changes, so that hard-won lessons are never forgotten.
 ### Rule 1: Never Accept a PDF Smaller Than 50 KB
 
 When a parish website cannot find a bulletin it often returns an HTML error page
-(e.g. a "404 Not Found" page) but delivers it with a `.pdf` Content-Disposition
+e.g. a "404 Not Found" page but delivers it with a `.pdf` Content-Disposition
 header.  The resulting file is valid PDF magic-bytes but only 2–14 KB in size —
 completely useless.
 
@@ -170,3 +170,62 @@ automatically identify which of the A–F patterns each parish uses.  See
 **OCR strategy for 26 dioceses:** At ~24,000 pages/month, third-party OCR (DocStrange/
 Nanonets) is too expensive.  Recommended approach: `pymupdf4llm` (free, runs on
 GitHub Actions) or `gpt-4o-mini` vision (~$2–3/month for all 26 dioceses).
+
+### Session 5 — URL Evidence Log + Stale Placeholder Fixes (2026-04-12)
+
+**User action:** Provided a manually verified list of real bulletin URLs found on
+each Derry Diocese parish website.  This is the most complete evidence set gathered
+so far, covering ~20 parishes with multiple dated examples per parish.
+
+**Key discoveries from the URL evidence log:**
+
+1. **Stale placeholder URLs fixed** — `derry_diocese.txt` previously listed
+   `dmaparish.com/pdf/310825.pdf`, `culdaffparish.com/pdf/310825.pdf`,
+   `fahanparish.com/pdf/310825.pdf`, and `cappaghparish.com/pdf/310825.pdf`.
+   The `310825` filename (= 31 August 2025) was an old placeholder that was never
+   updated.  These have been replaced with their real current URLs.
+
+2. **New Pattern H discovered — Banagher numeric ID:**
+   `banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026`
+   The path contains a sequentially incrementing integer ID (382, 383, 384...).
+   Each week the ID goes up by 1.  The predictor should try `last_known_ID + 1`
+   as its first prediction for this parish.  This is a new pattern not previously
+   in `rewrite_date_url()` — it needs to be added to `harvester/utils.py`.
+
+3. **Desertmartin confirmed STALE** — `desertmartinparish.com` last updated
+   March 2025.  Already commented out in `derry_diocese.txt` (amalgamated with
+   Ballinascreen), but the staleness is now confirmed.
+
+4. **Cappagh 2025 content warning** — `cappaghparish.com/pdf/120426.pdf` has a
+   2026 filename but the bulletin content inside is from 2025.  The AI verifier
+   (Stage 2) should catch this, but it is noted here as a known anomaly.
+
+5. **Iskaheen uses JPEG images** — `iskaheenparish.com/bulletin` publishes the
+   bulletin as a `.jpg` image, not a PDF.  The harvester cannot meaningfully
+   convert a scanned JPEG to a searchable PDF.  The reader should be given a
+   direct link to the bulletin page instead.
+
+6. **Star of the Sea (Magilligan) SSL error** — main site has an SSL certificate
+   error.  Bulletin is on Google Drive.  Google Drive links do not follow a
+   predictable date pattern; this parish requires a manual check each week.
+
+7. **Clonleigh (Strabane Pastoral Area) HTML bulletins** — bulletins are WordPress
+   post pages, not PDFs.  The harvester should scrape the text and convert to PDF,
+   or failing that, provide the reader with a clickable link to the dated post.
+
+**New file created:** `parishes/derry_diocese_bulletin_urls.txt` — a manually
+verified evidence log of all known bulletin URLs grouped by parish, with pattern
+codes annotated.  The predictor reads this file to seed its memory bank for
+parishes that have never been run before.
+
+**Files changed this session:**
+- `parishes/derry_diocese_bulletin_urls.txt` — CREATED (new evidence log)
+- `parishes/derry_diocese.txt` — UPDATED (stale 310825 placeholders replaced)
+- `AI_HISTORY.md` — UPDATED (this session recorded)
+
+**TODO from this session (not yet implemented in code):**
+- Add Pattern H (Banagher numeric ID) to `harvester/utils.py`
+- Seed `parish_profiles.json` with `last_success_url` values from the evidence log
+  so the predictor fires immediately on first run without needing a prior success
+- Switch `MODEL_NAME` from `gpt-4o` to `gpt-4o-mini` in `harvester/config.py`
+- Remove stale duplicate keys (`_310825` variants) from `parish_profiles.json`
