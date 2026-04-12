@@ -73,10 +73,9 @@ _MIN_PDF_BYTES: int = 50_000
 _MIN_HTML_TEXT_CHARS: int = 300
 
 # Minimum PDF size (bytes) for a reportlab-generated HTML-to-PDF file.
-# A real bulletin page with >= _MIN_HTML_TEXT_CHARS of content will produce
-# a PDF well above this threshold; a bot-protection page converted via
-# reportlab typically produces a < 5 KB file.
-_MIN_HTML_PDF_BYTES: int = 10_000
+# Must match _MIN_PDF_BYTES: any file under 50 KB is rejected, whether it is
+# a direct download or a reportlab-generated HTML-to-PDF.
+_MIN_HTML_PDF_BYTES: int = 50_000
 
 # Wix page-source signatures used to identify Wix sites
 _WIX_SIGNATURES: tuple[str, ...] = (
@@ -764,7 +763,7 @@ async def _fetch_inner(
                     bulletin_link, parish, output_dir, browser, context, site_type,
                     target=target,
                 )
-                if html_pdf and is_valid_pdf(html_pdf):
+                if html_pdf and _is_real_pdf(html_pdf, parish, bulletin_link):
                     return FetchResult(
                         url=url, parish=parish, status="ok",
                         file_path=html_pdf, file_type="html_to_pdf",
@@ -969,7 +968,7 @@ async def _fetch_inner(
                     dated_link, parish, output_dir, browser, context, site_type,
                     target=target,
                 )
-                if html_pdf and is_valid_pdf(html_pdf):
+                if html_pdf and _is_real_pdf(html_pdf, parish, dated_link):
                     return FetchResult(
                         url=url, parish=parish, status="ok",
                         file_path=html_pdf, file_type="html_to_pdf",
@@ -982,7 +981,7 @@ async def _fetch_inner(
                 bulletin_link, parish, output_dir, browser, context, site_type,
                 target=target,
             )
-            if html_pdf and is_valid_pdf(html_pdf):
+            if html_pdf and _is_real_pdf(html_pdf, parish, bulletin_link):
                 return FetchResult(
                     url=url, parish=parish, status="ok",
                     file_path=html_pdf, file_type="html_to_pdf",
