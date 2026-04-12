@@ -407,6 +407,7 @@ def main() -> int:
         ]
         total_verify = len(verify_queue)
         api_call_count = 0
+        rate_limit_hit = False
         for i, r in enumerate(verify_queue):
             # Short-circuit: if the bulletin URL contains an embedded date (e.g.
             # /pdf/050426.pdf), use that date directly and skip the AI verifier.
@@ -417,12 +418,28 @@ def main() -> int:
                 verdicts[r.file_path.name] = verdict
                 print(f"  ✅ {r.parish}: FRESH (date from URL: {url_date})")
                 continue
+            # If the GitHub Models rate limit was already hit, skip all remaining
+            # AI verification calls and mark them as UNKNOWN instead of crashing.
+            if rate_limit_hit:
+                verdicts[r.file_path.name] = "UNKNOWN"
+                print(f"  ⚠️  {r.parish}: UNKNOWN (rate limit — skipping AI)")
+                continue
             # Rate-limit: stay under 10 requests per 60 s
             if api_call_count > 0 and api_call_count < total_verify:
                 print(f"  ⏳ Rate limit pause ({api_call_count}/{total_verify})...")
                 time.sleep(7)
             verdict = verify_file(r.file_path, target)
             api_call_count += 1
+            # Detect GitHub Models rate-limit (429) errors and stop calling the API
+            if verdict.startswith("ERROR") and (
+                "429" in verdict or "ratelimitreached" in verdict.lower()
+            ):
+                rate_limit_hit = True
+                print(
+                    "⚠️  GitHub Models rate limit reached — "
+                    "skipping AI verification for remaining parishes"
+                )
+                verdict = "UNKNOWN"
             verdicts[r.file_path.name] = verdict
             icon = {"FRESH": "✅", "STALE": "❌", "UNKNOWN": "⚠️ "}.get(
                 verdict.split(":")[0], "💥"

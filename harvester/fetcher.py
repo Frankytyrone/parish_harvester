@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import asyncio
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -48,11 +50,14 @@ from .utils import (
     date_variants,
     extract_date_from_slug,
     extract_date_from_string,
+    extract_newsletter_number,
     is_valid_pdf,
     parish_name_from_url,
     rewrite_date_url,
+    rewrite_newsletter_number_url,
     rewrite_slug_url,
     safe_filename,
+    _WP_DATE_PATH_RE,
 )
 
 # Seconds to wait between retry attempts
@@ -232,6 +237,100 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
         except Exception:
             pass
 
+
+async def _download_docx_as_pdf(url: str, dest: Path, browser) -> None:
+    """
+    Download a .docx file and convert it to PDF.
+
+    Conversion is attempted via LibreOffice (headless).  Falls back to a
+    reportlab placeholder if LibreOffice is not installed.
+
+    :raises RuntimeError: if both download and conversion fail.
+    """
+    # Download the raw .docx bytes using Playwright's request API
+    context = await browser.new_context()
+    try:
+        page = await context.new_page()
+        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+        if not response.ok:
+            raise RuntimeError(f"HTTP {response.status} downloading DOCX from {url}")
+        docx_bytes = await response.body()
+    finally:
+        try:
+            await context.close()
+        except Exception:
+            pass
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        docx_file = tmp_path / "bulletin.docx"
+        docx_file.write_bytes(docx_bytes)
+
+        # Try LibreOffice conversion
+        try:
+            result = subprocess.run(
+                [
+                    "libreoffice",
+                    "--headless",
+                    "--convert-to", "pdf",
+                    "--outdir", str(tmp_path),
+                    str(docx_file),
+                ],
+                capture_output=True,
+                timeout=60,
+            )
+            pdf_out = tmp_path / "bulletin.pdf"
+            if result.returncode == 0 and pdf_out.exists():
+                dest.write_bytes(pdf_out.read_bytes())
+                return
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
+        # Fallback: if LibreOffice not available, try python-docx for text extraction
+        # and convert to PDF via reportlab
+        try:
+            import docx  # type: ignore[import]
+            doc = docx.Document(str(docx_file))
+            text_lines = [para.text for para in doc.paragraphs if para.text.strip()]
+            text = "\n".join(text_lines)
+            if text.strip():
+                _text_to_pdf(text, dest, source_url=url)
+                return
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        raise RuntimeError(
+            f"Could not convert DOCX to PDF for {url} — "
+            "LibreOffice not installed and python-docx fallback failed"
+        )
+
+
+async def _download_image_as_pdf(url: str, dest: Path, browser) -> None:
+    """
+    Download a JPEG/PNG image and convert it to a single-page PDF using Pillow.
+
+    :raises RuntimeError: if download or conversion fails.
+    """
+    from PIL import Image  # type: ignore[import]
+    import io
+
+    context = await browser.new_context()
+    try:
+        page = await context.new_page()
+        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+        if not response.ok:
+            raise RuntimeError(f"HTTP {response.status} downloading image from {url}")
+        img_bytes = await response.body()
+    finally:
+        try:
+            await context.close()
+        except Exception:
+            pass
+
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    img.save(str(dest), "PDF", resolution=150)
 
 def _text_to_pdf(text: str, dest: Path, title: str = "", source_url: str = "") -> None:
     """
@@ -462,7 +561,69 @@ async def _scrape_html_to_pdf(
         except Exception:
             pass
 
-        # Extract text — try specific selectors first, fall back to whole body
+        # --- Scan for WordPress bulletin images (e.g. Iskaheen: 1.jpg) ---
+        # After PDF link scan fails, look for <img> tags in wp-content/uploads
+        # that are large enough (width >= 800px from query params or width attr)
+        # to be a bulletin image rather than a thumbnail.
+        try:
+            img_data = await html_page.eval_on_selector_all(
+                "img[src]",
+                """els => els.map(el => ({
+                    src: el.src,
+                    width: el.getAttribute('width'),
+                }))""",
+            )
+            bulletin_img_url: Optional[str] = None
+            for img in img_data:
+                src = img.get("src", "") or ""
+                if not src:
+                    continue
+                src_lower = src.lower()
+                if "wp-content/uploads" not in src_lower:
+                    continue
+                path_part = src_lower.split("?")[0]
+                if not (path_part.endswith(".jpg") or path_part.endswith(".jpeg")):
+                    continue
+                # Check apparent width from query params (?w=NNN or ?fit=WxH)
+                from urllib.parse import parse_qs as _parse_qs, urlparse as _urlparse
+                img_qs = _parse_qs(_urlparse(src).query)
+                apparent_w = 0
+                if "w" in img_qs:
+                    try:
+                        apparent_w = int(img_qs["w"][0])
+                    except (ValueError, IndexError):
+                        pass
+                if apparent_w == 0 and "fit" in img_qs:
+                    try:
+                        apparent_w = int(img_qs["fit"][0].split("%2C")[0].split(",")[0])
+                    except (ValueError, IndexError):
+                        pass
+                if apparent_w == 0:
+                    try:
+                        apparent_w = int(img.get("width") or 0)
+                    except (ValueError, TypeError):
+                        pass
+                if apparent_w >= 800 or apparent_w == 0:
+                    # Accept: wide image or no width info (give benefit of doubt)
+                    bulletin_img_url = src
+                    break
+
+            if bulletin_img_url:
+                print(f"  🖼️  Found bulletin image for {parish}: {bulletin_img_url}")
+                img_dest = output_dir / safe_filename(parish, ".pdf")
+                try:
+                    await _download_image_as_pdf(bulletin_img_url, img_dest, browser)
+                    if _is_real_pdf(img_dest, parish, bulletin_img_url):
+                        print(f"  ✅ Image-to-PDF succeeded for {parish}")
+                        return img_dest
+                    img_dest.unlink(missing_ok=True)
+                except Exception as exc:
+                    img_dest.unlink(missing_ok=True)
+                    print(f"  ⚠️  Image-to-PDF failed for {parish}: {exc}")
+        except Exception:
+            pass
+
+
         text_content = ""
         for selector in WIX_SELECTORS:
             try:
@@ -549,6 +710,10 @@ async def _find_dated_bulletin_link(
     leads to a /latest-news listing page rather than the bulletin itself,
     and the actual bulletin is at a dated slug like
     ``ballinascreen-desertmartin-parishes-5_april_2026``.
+
+    Also handles WordPress date-post URLs like
+    ``/2026/04/03/strabane-pastoral-area-newsletter.../`` where the date is
+    embedded in the path as ``/YYYY/MM/DD/``.
     """
     page = None
     try:
@@ -574,7 +739,20 @@ async def _find_dated_bulletin_link(
             abs_href = urljoin(listing_url, href)
             if urlparse(abs_href).netloc != base_domain:
                 continue
+            # Try slug-based date first (e.g. 5_april_2026)
             link_date = extract_date_from_slug(abs_href)
+            # Also try WordPress /YYYY/MM/DD/ path date
+            if link_date is None:
+                wp_m = _WP_DATE_PATH_RE.search(abs_href)
+                if wp_m:
+                    try:
+                        link_date = date(
+                            int(wp_m.group(1)),
+                            int(wp_m.group(2)),
+                            int(wp_m.group(3)),
+                        )
+                    except ValueError:
+                        pass
             if link_date is None:
                 continue
             delta = (target - link_date).days
@@ -592,7 +770,6 @@ async def _find_dated_bulletin_link(
                 await page.close()
             except Exception:
                 pass
-
 
 
 
@@ -654,7 +831,9 @@ async def _fetch_inner(
     #   • Pattern C: ISO YYYY-MM-DD     (e.g. clonmanyparish.ie/2026/04/2026-04-12.pdf)
     #   • Pattern D: DD-Month-YYYY slug (e.g. bellaghyparish.com/wp-content/.../12-April-2026.pdf)
     #   • Pattern E: [YYYY-M-D]         (e.g. greenlough.com/newsletter/[2026-4-12].pdf)
-    #   • Pattern F: static filename    (e.g. laveyparishbulletin.pdf - returned unchanged)
+    #   • Pattern F: /YYYY/MM/ dir only (e.g. iskaheenparish.com/wp-content/.../1.jpg)
+    #   • Pattern G: WP post /YYYY/MM/DD/slug/ (e.g. clonleighparish.com/2026/04/03/slug/)
+    #   • Pattern H: sequential number  (e.g. banagherparish.com/Newsletters/384/)
     # -------------------------------------------------------------------------
     last_success_url: Optional[str] = hint.get("last_success_url")
     if last_success_url and last_success_url != url:
@@ -670,21 +849,120 @@ async def _fetch_inner(
         dest = output_dir / safe_filename(parish, ".pdf")
         for candidate in predicted_candidates:
             print(f"  🔮 Predicting bulletin URL for {parish}: {candidate}")
+            candidate_path_str = urlparse(candidate).path.lower().split("?")[0]
+            # Determine the type of candidate and fetch accordingly
             try:
-                await _download_pdf(candidate, dest, browser)
-                if _is_real_pdf(dest, parish, candidate):
-                    print(f"  ✅ Predicted URL succeeded for {parish}")
-                    return FetchResult(
-                        url=url, parish=parish, status="ok",
-                        file_path=dest, file_type="pdf",
-                        source_url=candidate,
+                if candidate_path_str.endswith(".docx"):
+                    # DOCX bulletin (e.g. Claudy parish)
+                    await _download_docx_as_pdf(candidate, dest, browser)
+                    if _is_real_pdf(dest, parish, candidate):
+                        print(f"  ✅ Predicted DOCX URL succeeded for {parish}")
+                        return FetchResult(
+                            url=url, parish=parish, status="ok",
+                            file_path=dest, file_type="pdf",
+                            source_url=candidate,
+                        )
+                elif candidate_path_str.endswith((".jpg", ".jpeg", ".png")):
+                    # Image bulletin (e.g. Iskaheen parish)
+                    await _download_image_as_pdf(candidate, dest, browser)
+                    if _is_real_pdf(dest, parish, candidate):
+                        print(f"  ✅ Predicted image URL succeeded for {parish}")
+                        return FetchResult(
+                            url=url, parish=parish, status="ok",
+                            file_path=dest, file_type="image_to_pdf",
+                            source_url=candidate,
+                        )
+                elif candidate_path_str.endswith("/") or not Path(candidate_path_str).suffix:
+                    # Directory/archive URL — Pattern G (WP date archive) or similar
+                    # Try to find a dated bulletin post link on this page, then scrape it.
+                    tmp_ctx = await browser.new_context(
+                        user_agent=(
+                            "Mozilla/5.0 (X11; Linux x86_64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/120.0.0.0 Safari/537.36"
+                        )
                     )
+                    try:
+                        base_domain = urlparse(candidate).netloc
+                        dated_link = await _find_dated_bulletin_link(
+                            candidate, target, tmp_ctx, base_domain
+                        )
+                        scrape_url = dated_link or candidate
+                        if dated_link:
+                            print(f"  📅 Found dated post for {parish}: {dated_link}")
+                        g_pdf = await _scrape_html_to_pdf(
+                            scrape_url, parish, output_dir, browser, tmp_ctx,
+                            site_type=hint.get("site_type"),
+                            target=target,
+                        )
+                        if g_pdf and _is_real_pdf(g_pdf, parish, scrape_url):
+                            print(f"  ✅ Pattern G HTML scrape succeeded for {parish}")
+                            return FetchResult(
+                                url=url, parish=parish, status="ok",
+                                file_path=g_pdf, file_type="html_to_pdf",
+                                source_url=scrape_url,
+                            )
+                    except Exception as exc:
+                        print(f"  ⚠️  Pattern G scrape failed for {parish}: {exc}")
+                    finally:
+                        try:
+                            await tmp_ctx.close()
+                        except Exception:
+                            pass
+                else:
+                    await _download_pdf(candidate, dest, browser)
+                    if _is_real_pdf(dest, parish, candidate):
+                        print(f"  ✅ Predicted URL succeeded for {parish}")
+                        return FetchResult(
+                            url=url, parish=parish, status="ok",
+                            file_path=dest, file_type="pdf",
+                            source_url=candidate,
+                        )
             except Exception as exc:
                 print(f"  ⚠️  Predicted URL {candidate} failed for {parish}: {exc}")
             # Clean up any partial/invalid download before trying the next candidate
             dest.unlink(missing_ok=True)
         if predicted_candidates:
             print(f"  ↩️  Predicted URL(s) failed for {parish}, falling back to full site crawl")
+
+    # --- Pattern H: Sequential newsletter number (Banagher / Three Patrons) ---
+    # When last_success_url contains /Newsletters/NNN/ or /Weekly-Bulletins/NNN/,
+    # increment the number by 1 and try loading the resulting URL as an HTML page.
+    if last_success_url and extract_newsletter_number(last_success_url) is not None:
+        current_num = extract_newsletter_number(last_success_url)
+        predicted_h = rewrite_newsletter_number_url(last_success_url)
+        if predicted_h != last_success_url:
+            print(
+                f"  🔢 Pattern H: predicting {parish} "
+                f"newsletter #{(current_num or 0) + 1}: {predicted_h}"
+            )
+            tmp_ctx = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (X11; Linux x86_64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                )
+            )
+            try:
+                h_pdf = await _scrape_html_to_pdf(
+                    predicted_h, parish, output_dir, browser, tmp_ctx,
+                    site_type=hint.get("site_type"),
+                    target=target,
+                )
+                if h_pdf and _is_real_pdf(h_pdf, parish, predicted_h):
+                    return FetchResult(
+                        url=url, parish=parish, status="ok",
+                        file_path=h_pdf, file_type="html_to_pdf",
+                        source_url=predicted_h,
+                    )
+            except Exception as exc:
+                print(f"  ⚠️  Pattern H scrape failed for {parish}: {exc}")
+            finally:
+                try:
+                    await tmp_ctx.close()
+                except Exception:
+                    pass
+            print(f"  ↩️  Pattern H failed for {parish}, falling back to full site crawl")
 
     # --- Direct PDF URL ---
     if _url_ends_in_pdf(url):

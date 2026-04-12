@@ -58,6 +58,14 @@ _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")                     # 2025-08-3
 _ISO_NODASH_RE = re.compile(r"(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)")  # 20250831
 _WP_YEAR_MONTH_RE = re.compile(r"/(\d{4})/(\d{2})/")                 # /2026/04/
 
+# Pattern G: WordPress date-based post slug /YYYY/MM/DD/slug/
+# e.g. clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter.../
+_WP_DATE_POST_RE = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/[^/]+/")
+
+# Lighter variant: matches just the /YYYY/MM/DD/ path segment (no slug required).
+# Used by _find_dated_bulletin_link() to extract publish dates from WP post URLs.
+_WP_DATE_PATH_RE = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/")
+
 # Pattern B: D-M-YY (1–2 digit day/month, 2-digit year, dash-separated)
 # e.g. 5-4-26, 12-4-26, 15-3-26  (Limavady parish pattern)
 _D_M_YY_RE = re.compile(r"(?<!\d)(\d{1,2})-(\d{1,2})-(\d{2})(?!\d)")
@@ -387,59 +395,141 @@ def rewrite_date_url(url: str, target: date) -> str:
         return parsed._replace(path=new_path).geturl()
 
     # ------------------------------------------------------------------
-    # Pattern F: No date found - return URL unchanged (static files).
+    # Pattern G: WordPress date-based post slug /YYYY/MM/DD/slug/
+    # (e.g. clonleighparish.com/2026/04/03/strabane-newsletter-.../
+    #   -> clonleighparish.com/2026/04/10/)
+    # Strip the unpredictable slug and return the day-archive URL with
+    # the date shifted by 7 days so the fetcher can find the new post.
     # ------------------------------------------------------------------
+    g_m = _WP_DATE_POST_RE.search(path)
+    if g_m:
+        try:
+            g_orig = date(int(g_m.group(1)), int(g_m.group(2)), int(g_m.group(3)))
+            if abs((g_orig - target).days) < 365:
+                predicted_date = g_orig + timedelta(days=7)
+                new_seg = (
+                    f"/{predicted_date.year}"
+                    f"/{predicted_date.month:02d}"
+                    f"/{predicted_date.day:02d}/"
+                )
+                return parsed._replace(path=path[: g_m.start()] + new_seg).geturl()
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------
+    # Pattern F: No date found - return URL unchanged (static files).
+    # However, if the URL has a /YYYY/MM/ directory segment, update that
+    # even when the filename itself has no recognisable date.  This handles
+    # WordPress image bulletins (e.g. Iskaheen parish) where the filename
+    # is always "1.jpg" but the year/month directory changes monthly.
+    # ------------------------------------------------------------------
+    new_path = _WP_YEAR_MONTH_RE.sub(
+        lambda m: (
+            f"/{target.year}/{target.month:02d}/"
+            if abs(int(m.group(1)) - target.year) <= 1
+            else m.group(0)
+        ),
+        path,
+    )
+    if new_path != path:
+        return parsed._replace(path=new_path).geturl()
+
     return url
 
 
 # ---------------------------------------------------------------------------
-# Pattern H — Sequential newsletter number (Banagher parish)
+# Pattern G — WordPress date-based post slugs (Clonleigh / Strabane)
 # ---------------------------------------------------------------------------
 
-_NEWSLETTER_NUM_RE = re.compile(r"/Newsletters/(\d+)/")
+
+def rewrite_wp_date_post_url(url: str, target: date) -> str:
+    """
+    Rewrite a WordPress post URL in the format ``/YYYY/MM/DD/slug/`` by
+    date-shifting the date component 7 days forward and stripping the
+    unpredictable slug.
+
+    The resulting URL is the WordPress day-archive page (``/YYYY/MM/DD/``).
+    The fetcher uses ``_find_dated_bulletin_link()`` to locate the actual
+    newsletter post on that archive page.
+
+    Example::
+
+        https://clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter.../
+        → https://clonleighparish.com/2026/04/10/   (target 7 days later, slug stripped)
+
+    Returns the original URL unchanged if no ``/YYYY/MM/DD/slug/`` segment is found.
+    """
+    m = _WP_DATE_POST_RE.search(url)
+    if not m:
+        return url
+    try:
+        orig = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError:
+        return url
+
+    if abs((orig - target).days) >= 365:
+        return url
+
+    # Shift date by 7 days to predict next post publish date
+    predicted_date = orig + timedelta(days=7)
+    new_seg = f"/{predicted_date.year}/{predicted_date.month:02d}/{predicted_date.day:02d}/"
+    # Strip everything from the slug onwards; keep only up to /YYYY/MM/DD/
+    return url[: m.start()] + new_seg
+
+
+# ---------------------------------------------------------------------------
+# Pattern H — Sequential newsletter number (Banagher & Three Patrons)
+# ---------------------------------------------------------------------------
+
+# Matches both /Newsletters/NNN/ (Banagher) and /Weekly-Bulletins/NNN/ (Three Patrons)
+_NEWSLETTER_NUM_RE = re.compile(r"(/(?:Newsletters|Weekly-Bulletins)/)(\d+)/")
 
 
 def extract_newsletter_number(url: str) -> "int | None":
     """
-    Extract the sequential newsletter number from a Banagher-style URL.
+    Extract the sequential newsletter number from a Banagher- or Three-Patrons-style URL.
 
-    Example::
+    Examples::
 
         https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---...
         → 384
 
-    Returns ``None`` if the pattern ``/Newsletters/NNN/`` is not found.
+        https://www.threepatrons.org/files/10/Weekly-Bulletins/95/Sunday-12th-April-2026
+        → 95
+
+    Returns ``None`` if neither ``/Newsletters/NNN/`` nor ``/Weekly-Bulletins/NNN/``
+    is found.
     """
     m = _NEWSLETTER_NUM_RE.search(url)
     if m:
-        return int(m.group(1))
+        return int(m.group(2))
     return None
 
 
 def rewrite_newsletter_number_url(url: str, increment: int = 1) -> str:
     """
-    Increment the sequential newsletter number in a Banagher-style URL and
-    strip the unpredictable free-form slug that follows it.
+    Increment the sequential newsletter number in a Banagher- or Three-Patrons-style
+    URL and strip the unpredictable free-form slug that follows it.
 
-    Example::
+    Examples::
 
         https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026
         → https://www.banagherparish.com/files/9/Newsletters/385/
 
-    The slug after the number (e.g. ``Bulletin---Divine-Mercy-Sunday...``) is
-    removed because the parish secretary writes free-form text each week and it
-    cannot be predicted.
+        https://www.threepatrons.org/files/10/Weekly-Bulletins/95/Sunday-12th-April-2026
+        → https://www.threepatrons.org/files/10/Weekly-Bulletins/96/
 
-    Returns the original URL unchanged if no ``/Newsletters/NNN/`` segment is
-    found.
+    The slug after the number is removed because it cannot be predicted.
+
+    Returns the original URL unchanged if no ``/Newsletters/NNN/`` or
+    ``/Weekly-Bulletins/NNN/`` segment is found.
     """
     m = _NEWSLETTER_NUM_RE.search(url)
     if not m:
         return url
-    new_number = int(m.group(1)) + increment
-    # Replace from the start of the URL up to (and including) the number segment,
-    # discarding everything after it (the unpredictable slug).
-    return url[: m.start()] + f"/Newsletters/{new_number}/"
+    new_number = int(m.group(2)) + increment
+    # m.group(1) preserves the category name (/Newsletters/ or /Weekly-Bulletins/)
+    return url[: m.start()] + m.group(1) + f"{new_number}/"
 
 
 def safe_filename(prefix: str, suffix: str) -> str:

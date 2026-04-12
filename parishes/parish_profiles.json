@@ -109,16 +109,16 @@
   },
   "parishofclaudy_weekly-bulletin": {
     "url": "https://www.parishofclaudy.com/welcome/weekly-bulletin.html",
-    "last_success_method": "html_to_pdf",
+    "last_success_method": "docx",
     "last_success_date": "2026-04-12",
-    "last_success_url": "https://www.parishofclaudy.com/welcome/weekly-bulletin.html",
+    "last_success_url": "http://parishofclaudy.com/onewebmedia/NEWSLETTER 12-4-26.docx",
     "failure_count": 6,
-    "consecutive_failures": 3,
-    "last_failure_reason": "No PDF found",
-    "url_pattern": null,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": "B",
     "site_type": null,
     "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+      "Bulletins are DOCX files served from onewebmedia/, date pattern D-M-YY"
     ]
   },
   "clonmanyparish_newsletter": {
@@ -224,7 +224,7 @@
     "last_success_url": null,
     "failure_count": 1,
     "consecutive_failures": 1,
-    "last_failure_reason": "APIRequestContext.get: unable to verify the first certificate\nCall log:\n  - \u2192 GET https://staroftheseacatholic.com/parishes\n  -     - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.6778.33 Safari/537.36\n  -     - accept: */*\n  -     - accept-encoding: gzip,deflate,br\n",
+    "last_failure_reason": "APIRequestContext.get: unable to verify the first certificate\nCall log:\n  - → GET https://staroftheseacatholic.com/parishes\n  -     - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.6778.33 Safari/537.36\n  -     - accept: */*\n  -     - accept-encoding: gzip,deflate,br\n",
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -255,16 +255,16 @@
   },
   "iskaheenparish_bulletin": {
     "url": "https://www.iskaheenparish.com/bulletin",
-    "last_success_method": "html_to_pdf",
+    "last_success_method": "image_to_pdf",
     "last_success_date": "2026-04-12",
-    "last_success_url": "https://www.iskaheenparish.com/mass-times",
+    "last_success_url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1",
     "failure_count": 5,
-    "consecutive_failures": 3,
-    "last_failure_reason": "No PDF found",
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
     "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+      "Bulletin is a JPEG image (1.jpg) in wp-content/uploads/YYYY/MM/ — download and convert to PDF"
     ]
   },
   "cappaghparish_310825": {
@@ -319,14 +319,14 @@
     "url": "https://clonleighparish.com/category/newsletter/",
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
-    "last_success_url": "https://clonleighparish.com/mass-times/",
+    "last_success_url": "https://clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter-for-easter-sunday-5th-april-2026/",
     "failure_count": 5,
-    "consecutive_failures": 3,
-    "last_failure_reason": "No PDF found",
-    "url_pattern": null,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": "G",
     "site_type": null,
     "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+      "WP post slug — date is publish date (Saturday before Sunday). Predict by date-shifting /YYYY/MM/DD/ and scraping that day's posts."
     ]
   },
   "limavadyparish_parish_20bulletins": {
@@ -337,7 +337,7 @@
     "failure_count": 2,
     "consecutive_failures": 0,
     "last_failure_reason": null,
-    "url_pattern": null,
+    "url_pattern": "B",
     "site_type": null,
     "notes": []
   },
@@ -400,7 +400,7 @@
     "url_pattern": null,
     "site_type": null,
     "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+      "Consecutive failures >= 3 as of 2026-04-12 — may need manual review"
     ]
   },
   "derrydiocese_killygordon": {
@@ -497,7 +497,9 @@
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Parish does not consistently publish a PDF bulletin online. Skip on consecutive failures >= 3."
+    ]
   },
   "steelstownparish": {
     "url": "http://www.steelstownparish.com/",
@@ -525,17 +527,15 @@
   },
   "watersideparish": {
     "url": "https://watersideparish.net/",
-    "last_success_method": "html_to_pdf",
+    "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
-    "last_success_url": "https://watersideparish.net/parish-bulletin/",
+    "last_success_url": "https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf",
     "failure_count": 4,
-    "consecutive_failures": 1,
-    "last_failure_reason": "Total timeout exceeded",
-    "url_pattern": null,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": "A",
     "site_type": null,
-    "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
-    ]
+    "notes": []
   },
   "granaghanparish": {
     "url": "https://granaghanparish.com/",
@@ -560,7 +560,7 @@
     "url_pattern": null,
     "site_type": null,
     "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+      "Consecutive failures >= 3 as of 2026-04-12 — may need manual review"
     ]
   },
   "steugenescathedral": {
@@ -577,17 +577,15 @@
   },
   "threepatrons": {
     "url": "https://threepatrons.org/",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
-    "failure_count": 9,
-    "consecutive_failures": 9,
-    "last_failure_reason": "No PDF found",
-    "url_pattern": null,
+    "last_success_method": "pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://www.threepatrons.org/files/10/Weekly-Bulletins/95/Sunday-12th-April-2026",
+    "failure_count": 0,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": "H",
     "site_type": null,
-    "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
-    ]
+    "notes": []
   },
   "parishofaghyaran_050426": {
     "url": "https://www.parishofaghyaran.com/pdf/050426.pdf",
