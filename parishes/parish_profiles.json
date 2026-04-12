@@ -28,12 +28,14 @@
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-5_april_2026",
-    "failure_count": 4,
-    "consecutive_failures": 2,
+    "failure_count": 5,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": "wix",
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "holyfamily-parish": {
     "url": "https://www.holyfamily-parish.com/",
@@ -112,9 +114,9 @@
     "last_success_method": "docx",
     "last_success_date": "2026-04-12",
     "last_success_url": "http://parishofclaudy.com/onewebmedia/NEWSLETTER 12-4-26.docx",
-    "failure_count": 6,
-    "consecutive_failures": 0,
-    "last_failure_reason": null,
+    "failure_count": 7,
+    "consecutive_failures": 1,
+    "last_failure_reason": "No PDF found",
     "url_pattern": "B",
     "site_type": null,
     "notes": [
@@ -224,7 +226,7 @@
     "last_success_url": null,
     "failure_count": 1,
     "consecutive_failures": 1,
-    "last_failure_reason": "APIRequestContext.get: unable to verify the first certificate\nCall log:\n  - → GET https://staroftheseacatholic.com/parishes\n  -     - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.6778.33 Safari/537.36\n  -     - accept: */*\n  -     - accept-encoding: gzip,deflate,br\n",
+    "last_failure_reason": "APIRequestContext.get: unable to verify the first certificate\nCall log:\n  - \u2192 GET https://staroftheseacatholic.com/parishes\n  -     - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.6778.33 Safari/537.36\n  -     - accept: */*\n  -     - accept-encoding: gzip,deflate,br\n",
     "url_pattern": null,
     "site_type": null,
     "notes": []
@@ -264,7 +266,7 @@
     "url_pattern": null,
     "site_type": null,
     "notes": [
-      "Bulletin is a JPEG image (1.jpg) in wp-content/uploads/YYYY/MM/ — download and convert to PDF"
+      "Bulletin is a JPEG image (1.jpg) in wp-content/uploads/YYYY/MM/ \u2014 download and convert to PDF"
     ]
   },
   "cappaghparish_310825": {
@@ -320,13 +322,13 @@
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter-for-easter-sunday-5th-april-2026/",
-    "failure_count": 5,
-    "consecutive_failures": 0,
-    "last_failure_reason": null,
+    "failure_count": 6,
+    "consecutive_failures": 1,
+    "last_failure_reason": "No PDF found",
     "url_pattern": "G",
     "site_type": null,
     "notes": [
-      "WP post slug — date is publish date (Saturday before Sunday). Predict by date-shifting /YYYY/MM/DD/ and scraping that day's posts."
+      "WP post slug \u2014 date is publish date (Saturday before Sunday). Predict by date-shifting /YYYY/MM/DD/ and scraping that day's posts."
     ]
   },
   "limavadyparish_parish_20bulletins": {
@@ -370,37 +372,41 @@
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://www.derrydiocese.org/mass-times",
-    "failure_count": 4,
-    "consecutive_failures": 2,
+    "failure_count": 5,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "derrydiocese_gortin": {
     "url": "https://www.derrydiocese.org/parishes/gortin",
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://www.derrydiocese.org/mass-times",
-    "failure_count": 4,
-    "consecutive_failures": 2,
+    "failure_count": 5,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "greencastleparish": {
     "url": "https://greencastleparish.com/",
     "last_success_method": null,
     "last_success_date": null,
     "last_success_url": null,
-    "failure_count": 9,
-    "consecutive_failures": 9,
+    "failure_count": 10,
+    "consecutive_failures": 10,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
     "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 — may need manual review"
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
     ]
   },
   "derrydiocese_killygordon": {
@@ -408,12 +414,14 @@
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://www.derrydiocese.org/mass-times",
-    "failure_count": 4,
-    "consecutive_failures": 2,
+    "failure_count": 5,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "malinparish": {
     "url": "http://malinparish.ie/",
@@ -480,25 +488,28 @@
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://www.derrydiocese.org/mass-times",
-    "failure_count": 4,
-    "consecutive_failures": 2,
+    "failure_count": 5,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
-    "notes": []
+    "notes": [
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
+    ]
   },
   "parishofsionmills": {
     "url": "http://www.parishofsionmills.com/",
     "last_success_method": "html_to_pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "http://www.parishofsionmills.com/news.html",
-    "failure_count": 3,
-    "consecutive_failures": 2,
+    "failure_count": 4,
+    "consecutive_failures": 3,
     "last_failure_reason": "No PDF found",
     "url_pattern": null,
     "site_type": null,
     "notes": [
-      "Parish does not consistently publish a PDF bulletin online. Skip on consecutive failures >= 3."
+      "Parish does not consistently publish a PDF bulletin online. Skip on consecutive failures >= 3.",
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
     ]
   },
   "steelstownparish": {
@@ -560,7 +571,7 @@
     "url_pattern": null,
     "site_type": null,
     "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 — may need manual review"
+      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
     ]
   },
   "steugenescathedral": {
@@ -580,9 +591,9 @@
     "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://www.threepatrons.org/files/10/Weekly-Bulletins/95/Sunday-12th-April-2026",
-    "failure_count": 0,
-    "consecutive_failures": 0,
-    "last_failure_reason": null,
+    "failure_count": 1,
+    "consecutive_failures": 1,
+    "last_failure_reason": "No PDF found",
     "url_pattern": "H",
     "site_type": null,
     "notes": []
@@ -681,6 +692,20 @@
     "last_failure_reason": null,
     "url_pattern": "facebook_only",
     "site_type": "facebook",
-    "notes": ["Facebook-only parish — no PDF bulletin website. Always use fallback page with Facebook link."]
+    "notes": [
+      "Facebook-only parish \u2014 no PDF bulletin website. Always use fallback page with Facebook link."
+    ]
+  },
+  "facebook_onagheady-_arish-100070798662659": {
+    "url": "https://www.facebook.com/p/Donagheady-Parish-100070798662659/",
+    "last_success_method": null,
+    "last_success_date": null,
+    "last_success_url": null,
+    "failure_count": 1,
+    "consecutive_failures": 1,
+    "last_failure_reason": "Facebook-only parish \u2014 no PDF available",
+    "url_pattern": null,
+    "site_type": null,
+    "notes": []
   }
 }
