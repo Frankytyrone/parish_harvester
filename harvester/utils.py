@@ -62,6 +62,10 @@ _WP_YEAR_MONTH_RE = re.compile(r"/(\d{4})/(\d{2})/")                 # /2026/04/
 # e.g. clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter.../
 _WP_DATE_POST_RE = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/[^/]+/")
 
+# Lighter variant: matches just the /YYYY/MM/DD/ path segment (no slug required).
+# Used by _find_dated_bulletin_link() to extract publish dates from WP post URLs.
+_WP_DATE_PATH_RE = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/")
+
 # Pattern B: D-M-YY (1–2 digit day/month, 2-digit year, dash-separated)
 # e.g. 5-4-26, 12-4-26, 15-3-26  (Limavady parish pattern)
 _D_M_YY_RE = re.compile(r"(?<!\d)(\d{1,2})-(\d{1,2})-(\d{2})(?!\d)")

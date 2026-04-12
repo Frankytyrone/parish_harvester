@@ -57,6 +57,7 @@ from .utils import (
     rewrite_newsletter_number_url,
     rewrite_slug_url,
     safe_filename,
+    _WP_DATE_PATH_RE,
 )
 
 # Seconds to wait between retry attempts
@@ -714,8 +715,6 @@ async def _find_dated_bulletin_link(
     ``/2026/04/03/strabane-pastoral-area-newsletter.../`` where the date is
     embedded in the path as ``/YYYY/MM/DD/``.
     """
-    _WP_POST_DATE_PATH_RE = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/")
-
     page = None
     try:
         page = await context.new_page()
@@ -744,7 +743,7 @@ async def _find_dated_bulletin_link(
             link_date = extract_date_from_slug(abs_href)
             # Also try WordPress /YYYY/MM/DD/ path date
             if link_date is None:
-                wp_m = _WP_POST_DATE_PATH_RE.search(abs_href)
+                wp_m = _WP_DATE_PATH_RE.search(abs_href)
                 if wp_m:
                     try:
                         link_date = date(
@@ -930,9 +929,13 @@ async def _fetch_inner(
     # When last_success_url contains /Newsletters/NNN/ or /Weekly-Bulletins/NNN/,
     # increment the number by 1 and try loading the resulting URL as an HTML page.
     if last_success_url and extract_newsletter_number(last_success_url) is not None:
+        current_num = extract_newsletter_number(last_success_url)
         predicted_h = rewrite_newsletter_number_url(last_success_url)
         if predicted_h != last_success_url:
-            print(f"  🔢 Pattern H: predicting {parish} newsletter #{extract_newsletter_number(last_success_url) + 1}: {predicted_h}")  # type: ignore[operator]
+            print(
+                f"  🔢 Pattern H: predicting {parish} "
+                f"newsletter #{(current_num or 0) + 1}: {predicted_h}"
+            )
             tmp_ctx = await browser.new_context(
                 user_agent=(
                     "Mozilla/5.0 (X11; Linux x86_64) "
