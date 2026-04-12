@@ -37,6 +37,8 @@ http://www.culdaffparish.com/pdf/120426.pdf
 http://culmoreparish.com/news.html
 # http://urneyandcastlefinparish.com/?page_id=1227 # DNS dead
 https://drumquinparish.com/pdf/120426.pdf
+# Donagheady Parish — Facebook only (no bulletin website)
+https://www.facebook.com/p/Donagheady-Parish-100070798662659/
 https://parishofdungiven.com/parishnews.html
 http://www.fahanparish.com/pdf/120426.pdf
 # https://staroftheseacatholic.com/ # SSL certificate error — bulletin on Google Drive, manual check needed

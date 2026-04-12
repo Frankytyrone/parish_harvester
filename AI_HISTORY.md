@@ -338,3 +338,21 @@ mid-run rather than crashing with 429 errors. `MODEL_NAME` changed from `gpt-4o`
 
 9. **Ballinascreen** — `_find_dated_bulletin_link()` now also checks for `/YYYY/MM/DD/`
    path dates in URLs, improving detection of WP date-based post links.
+
+### Session 7 — Fallback Pages + Donagheady Parish + Facebook Links
+
+**User request:** When a bulletin PDF cannot be found, show the reader a proper fallback
+page (not just a blank error) with the parish name, a message explaining the bulletin
+isn't available as a PDF, and clickable links to the parish website and/or Facebook page.
+
+**Changes made:**
+- Created `parishes/parish_contacts.json` — lookup table of all Derry Diocese parishes
+  with display names, website URLs, and Facebook URLs
+- Added Donagheady Parish to `parishes/derry_diocese.txt` and `parishes/parish_profiles.json`
+  (Facebook-only parish, no PDF website)
+- Improved placeholder page in `main.py` `_stitch_mega_pdf()` — now shows parish display
+  name, human-readable message, and clickable website + Facebook links
+- Added Facebook-only short-circuit in `harvester/fetcher.py` — parishes with a
+  `facebook.com` URL are immediately returned as errors (no scraping attempt) so the
+  fallback page is used instead
+- Greenlough Parish Facebook page added: https://www.facebook.com/profile.php?id=100068680385618
