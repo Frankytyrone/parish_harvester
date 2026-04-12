@@ -1,0 +1,190 @@
+# ============================================================
+# Derry Diocese — Known Bulletin URL Evidence Log
+# ============================================================
+# Purpose: This file records REAL, manually verified bulletin URLs
+# found on each parish website.  The harvester code reads this file
+# to make mathematical predictions about where THIS WEEK's bulletin
+# will be located — by detecting the date pattern and shifting it.
+#
+# HOW IT WORKS (The "Safe Cracker"):
+#   Each parish uses one of these URL date patterns:
+#     Pattern A  →  DDMMYY       e.g. carndonaghparish.com/pdf/120426.pdf
+#     Pattern B  →  D-M-YY       e.g. limavadyparish.org/onewebmedia/5-4-26.pdf
+#     Pattern C  →  YYYY-MM-DD   e.g. clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-12.pdf
+#     Pattern D  →  DD-Month-YYYY slug  e.g. bellaghyparish.com/.../Newsletter-12-April-2026-1.pdf
+#     Pattern E  →  [YYYY-M-D]   e.g. greenlough.com/.../[2026-4-12].pdf
+#     Pattern F  →  Static URL   e.g. laveyparish.com/.../laveyparishbulletin.pdf (never changes)
+#     Pattern G  →  HTML page / WP post slug  e.g. clonleighparish.com/2026/04/03/strabane-...
+#     Pattern H  →  Banagher numeric ID  e.g. banagherparish.com/files/9/Newsletters/384/Bulletin-...
+#
+# FORMAT:
+#   One URL per line.  Blank lines and lines starting with # are ignored.
+#   Group entries by parish name.  Most recent bulletin first.
+#
+# SPECIAL NOTES:
+#   - desertmartinparish.com  →  STALE (last bulletin March 2025), do not use
+#   - urneyandcastlefinparish.com  →  DEAD URL, do not use
+#   - staroftheseacatholic.com  →  SSL error on main site; bulletin is on Google Drive (see below)
+#   - iskaheenparish.com  →  bulletin is a JPEG image, not a PDF
+#   - cappaghparish.com/pdf/120426.pdf  →  URL looks current but content is from 2025, ignore
+# ============================================================
+
+# --- Ballinascreen (& Desertmartin amalgamated) ---
+# Pattern: HTML slug  DD_Month_YYYY  (Wix site)
+# Base: https://www.parishofballinascreen.com/
+https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-5_april_2026
+
+# --- Ardmore ---
+# Pattern A: DDMMYY
+http://www.ardmoreparish.com/pdf/120426.pdf
+
+# --- Banagher ---
+# Pattern H: Numeric ID in path — ID increments each week (384, 383, 382...)
+# The harvester should try ID = last_known_ID + 1 as its first prediction.
+https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026
+https://www.banagherparish.com/files/9/Newsletters/383/Bulletin---Easter-Day-of-the-Lord-s-Resurrection--5th-April-2026
+https://www.banagherparish.com/files/9/Newsletters/382/Bulletin---Palm-Sunday---29th-March-2026
+
+# --- Bellaghy ---
+# Pattern D: DD-Month-YYYY slug inside WordPress /YYYY/MM/ directory
+https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf
+https://bellaghyparish.com/wp-content/uploads/2026/04/29-March-2026.pdf
+
+# --- Buncrana ---
+# Pattern A: DDMMYY
+https://www.buncranaparish.com/pdf/050426.pdf
+https://www.buncranaparish.com/pdf/220326.pdf
+
+# --- Carndonagh ---
+# Pattern A: DDMMYY
+http://www.carndonaghparish.com/pdf/120426.pdf
+http://www.carndonaghparish.com/pdf/290326.pdf
+
+# --- Castlederg ---
+# Pattern A: DDMMYY
+https://www.castledergparish.com/pdf/120426.pdf
+https://www.castledergparish.com/pdf/290326.pdf
+
+# --- Clonmany ---
+# Pattern C: ISO YYYY-MM-DD inside WordPress /YYYY/MM/ directory
+https://clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-12.pdf
+https://clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-05.pdf
+
+# --- DMA Parish (Claudy area) ---
+# Pattern A: DDMMYY
+https://dmaparish.com/pdf/120426.pdf
+https://dmaparish.com/pdf/220326.pdf
+
+# --- St Mary's Parish Creggan ---
+# Pattern: CDN bulletin listing page — PDF links change each week at a stable listing URL.
+# The harvester scrapes https://www.stmarysparishcreggan.com/bulletins to find the latest PDF.
+# Known CDN PDF URLs (most recent first):
+https://www.stmarysparishcreggan.com/bulletins
+https://assets.cdn.filesafe.space/t4AV7E7OSM542PucNRsH/media/69ccd1f79d9be6ab5fe09a2b.pdf
+https://assets.cdn.filesafe.space/t4AV7E7OSM542PucNRsH/media/69b44639fb38ca5d629449c4.pdf
+https://assets.cdn.filesafe.space/t4AV7E7OSM542PucNRsH/media/69b445d0277ba0c27ed5a84a.pdf
+https://assets.cdn.filesafe.space/t4AV7E7OSM542PucNRsH/media/69b444a2d54817788523421c.pdf
+
+# --- Culdaff ---
+# Pattern A: DDMMYY
+http://www.culdaffparish.com/pdf/120426.pdf
+http://www.culdaffparish.com/pdf/050426.pdf
+
+# --- Culmoe ---
+# Pattern A: DDMMYY
+http://culmoreparish.com/pdf/120426.pdf
+http://culmoreparish.com/pdf/290326.pdf
+
+# --- Desertmartin ---
+# AMALGAMATED with Ballinascreen — use Ballinascreen URL above.
+# NOTE: This site appears STALE (last bulletin was March 2025). Do NOT use.
+# https://www.desertmartinparish.com/?page_id=6
+
+# --- Urney & Castlefin ---
+# DEAD URL — DNS does not resolve. Do NOT use.
+# http://urneyandcastlefinparish.com/
+
+# --- Drumquin ---
+# Pattern A: DDMMYY
+https://drumquinparish.com/pdf/120426.pdf
+https://drumquinparish.com/pdf/050426.pdf
+
+# --- Dungiven ---
+# Pattern A: DDMMYY
+https://parishofdungiven.com/pdf/120426.pdf
+https://parishofdungiven.com/pdf/050426.pdf
+
+# --- Fahan ---
+# Pattern A: DDMMYY
+# NOTE: The base URL in derry_diocese.txt was a placeholder (310825 = 31 Aug 2025).
+# The REAL working URL pattern is confirmed below:
+http://www.fahanparish.com/pdf/120426.pdf
+# The 310825 URL below is an OLD placeholder — ignore for prediction:
+# http://www.fahanparish.com/pdf/310825.pdf
+
+# --- Star of the Sea (Magilligan) ---
+# SSL certificate error on main site.
+# Bulletin is hosted on Google Drive — direct link below.
+# NOTE: Google Drive links do not follow a predictable date pattern.
+# The harvester should treat this as a manual-check item.
+# https://staroftheseacatholic.com/
+https://drive.google.com/file/d/1cF4BuBrZCRrSwMQeTT8mJrGNpr5aFGpD/view
+
+# --- Errigal ---
+# Pattern A: DDMMYY
+https://www.errigalparish.com/pdf/120426.pdf
+https://www.errigalparish.com/pdf/290326.pdf
+
+# --- Greenlough ---
+# Pattern E: [YYYY-M-D] bracketed ISO in filename
+http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf
+http://www.greenlough.com/publications/newsletter/Easter_Sunday_2026[2026-4-5].pdf
+http://www.greenlough.com/publications/newsletter/Palm_Sunday[2026-3-29].pdf
+http://www.greenlough.com/publications/newsletter/Third_Sunday_of_Lent[2026-3-8].pdf
+
+# --- Iskaheen ---
+# NOTE: Bulletin is a JPEG IMAGE, not a PDF.
+# The harvester cannot convert a JPEG bulletin to a useful PDF.
+# Leave the reader a link to the bulletin page: https://www.iskaheenparish.com/bulletin
+# Known image URL (for reference only — do not attempt PDF download):
+# https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1
+
+# --- Cappagh (& Killyclogher amalgamated) ---
+# Pattern A: DDMMYY
+# WARNING: cappaghparish.com/pdf/120426.pdf URL looks current but bulletin content
+# is from 2025 — the parish secretary used a wrong date in the filename.
+# The harvester should use the AI verifier to check freshness before accepting.
+https://www.cappaghparish.com/pdf/120426.pdf
+https://www.cappaghparish.com/pdf/050426.pdf
+
+# --- Kilrea ---
+# Pattern A: DDMMYY
+https://www.parishofkilrea.com/pdf/120426.pdf
+https://www.parishofkilrea.com/pdf/050426.pdf
+
+# --- Lavey ---
+# Pattern F: STATIC URL — the same PDF link is overwritten each week.
+# Re-download every week and use the AI verifier to check freshness.
+https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf
+
+# --- Leckpatrick ---
+# Pattern A: DDMMYY
+https://www.leckpatrickparish.com/pdf/120426.pdf
+https://www.leckpatrickparish.com/pdf/050426.pdf
+
+# --- Clonleigh (Strabane Pastoral Area) ---
+# Pattern G: WordPress post slug with /YYYY/MM/DD/ date in path
+# If PDF scraping fails, leave the reader a clickable link to the dated page.
+https://clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter-for-easter-sunday-5th-april-2026/
+https://clonleighparish.com/2026/03/28/strabane-pastoral-area-newsletter-for-sunday-29th-march-2026/
+https://clonleighparish.com/2026/03/21/strabane-pastoral-area-newsletter-for-sunday-22nd-march-2026/
+
+# --- Limavady ---
+# Pattern B: D-M-YY (no leading zeros on day or month)
+https://www.limavadyparish.org/onewebmedia/5-4-26.pdf
+https://www.limavadyparish.org/onewebmedia/29-3-26.pdf
+
+# --- Maghera (Derry) ---
+# Pattern A: DDMMYY
+http://www.magheraparishderry.com/pdf/050426.pdf
+http://www.magheraparishderry.com/pdf/290326.pdf
