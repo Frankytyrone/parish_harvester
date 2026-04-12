@@ -11,13 +11,17 @@
 #   • Templemore: St Eugene's + Longtower → use steugenescathedral.com only
 #   • The Three Patrons (Pennyburn/Carnhill/Galliagh) → use threepatrons.org only
 #   • Killyclogher & Cappagh        →  use cappaghparish.com only
+#
+# PREDICTION DATA:
+#   See parishes/derry_diocese_bulletin_urls.txt for the full evidence log
+#   of known bulletin URLs used to seed the mathematical predictor.
 # ============================================================
 
 https://www.parishofaghyaran.com/pdf/050426.pdf
-http://www.ardmoreparish.com/pdf/050426.pdf
+http://www.ardmoreparish.com/pdf/120426.pdf
 # Ballinascreen & Desertmartin share one bulletin — use Ballinascreen
 https://www.parishofballinascreen.com/
-# Desertmartin: AMALGAMATED with Ballinascreen (same bulletin)
+# Desertmartin: AMALGAMATED with Ballinascreen (same bulletin) + site is STALE (last bulletin March 2025)
 # https://www.desertmartinparish.com/?page_id=6
 https://www.holyfamily-parish.com/
 https://www.banagherparish.com/information#47-9-newsletters
@@ -27,20 +31,20 @@ http://www.carndonaghparish.com/parishnews.html
 https://www.castledergparish.com/parishnews.html
 https://www.parishofclaudy.com/welcome/weekly-bulletin.html
 https://clonmanyparish.ie/newsletter/
-https://dmaparish.com/pdf/310825.pdf
+https://dmaparish.com/pdf/120426.pdf
 https://www.stmarysparishcreggan.com/bulletins
-http://www.culdaffparish.com/pdf/310825.pdf
+http://www.culdaffparish.com/pdf/120426.pdf
 http://culmoreparish.com/news.html
 # http://urneyandcastlefinparish.com/?page_id=1227 # DNS dead
-https://drumquinparish.com/
+https://drumquinparish.com/pdf/120426.pdf
 https://parishofdungiven.com/parishnews.html
-http://www.fahanparish.com/pdf/310825.pdf
-# https://staroftheseacatholic.com/ # SSL certificate error
+http://www.fahanparish.com/pdf/120426.pdf
+# https://staroftheseacatholic.com/ # SSL certificate error — bulletin on Google Drive, manual check needed
 https://www.errigalparish.com/news.html
 https://www.greenlough.com/newsletter/
 https://www.iskaheenparish.com/bulletin
 # Killyclogher & Cappagh share one bulletin — use Cappagh
-https://www.cappaghparish.com/pdf/310825.pdf
+https://www.cappaghparish.com/pdf/120426.pdf
 # Killyclogher: AMALGAMATED with Cappagh (same bulletin)
 https://www.parishofkilrea.com/news.html
 https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf
