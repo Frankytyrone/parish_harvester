@@ -229,3 +229,58 @@ parishes that have never been run before.
   so the predictor fires immediately on first run without needing a prior success
 - Switch `MODEL_NAME` from `gpt-4o` to `gpt-4o-mini` in `harvester/config.py`
 - Remove stale duplicate keys (`_310825` variants) from `parish_profiles.json`
+### Session 5 — Evidence File, Profile Fixes & Pattern H (Banagher)
+
+**Date:** 2026-04-12
+
+**User action:** Provided a complete manual survey file (`parishes/derry_diocese_bulletin_urls.txt`)
+containing the real current bulletin URLs for every active Derry Diocese parish as of 12 April 2026.
+This gives the predictive engine a verified starting point.
+
+**Problems identified and fixed:**
+
+1. **Stale `310825` placeholder URLs** — Four entries in `derry_diocese.txt` still had
+   `310825` (= 31 Aug 2025) in their URLs.  Fixed by replacing with real `120426` URLs
+   for dmaparish, culdaffparish, fahanparish, and cappaghparish.
+
+2. **Wrong JSON keys in `parish_profiles.json`** — Three profile keys contained
+   stale date fragments or URL path fragments that meant the predictive engine could
+   never match them:
+   - `dmaparish_310825` → renamed to `dmaparish`
+   - `culdaffparish_310825` → renamed to `culdaffparish`
+   - `banagherparish_information` → renamed to `banagherparish`
+
+3. **Banagher `last_success_url` was a Christmas 2025 bulletin** — The stored URL
+   pointed to newsletter #268 (4th Sunday of Advent).  Corrected to #384
+   (Divine Mercy Sunday, 12 April 2026).
+
+4. **Bellaghy profile showed 8 consecutive failures** — The real current URL
+   `bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf`
+   was confirmed working.  Profile reset to reflect success.
+
+**New pattern discovered — Pattern H (Sequential Newsletter Number):**
+
+Banagher parish does not use a date in its URL.  It uses a sequential issue number
+(`/Newsletters/384/`) followed by a free-form title slug that cannot be predicted.
+Two new helper functions were added to `harvester/utils.py`:
+- `extract_newsletter_number(url)` — extracts the issue number
+- `rewrite_newsletter_number_url(url, increment=1)` — increments the number and
+  strips the unpredictable slug, returning a base URL to crawl from
+
+**Cappagh warning noted:** User confirmed that even though `cappaghparish.com/pdf/120426.pdf`
+returns a file, the content is stale (from 2025).  The fetcher's 50 KB minimum check
+should catch fake PDFs, but the date-in-content check (via OCR/text extraction) is the
+only reliable guard against stale-content PDFs.
+
+**Iskaheen note:** `iskaheenparish.com/bulletin` serves the bulletin as a JPEG image,
+not a PDF.  The fetcher currently cannot handle this.  A future task is to detect
+`<img>` tags on bulletin pages and download+convert JPEG bulletins to PDF.
+
+**Star of the Sea note:** `staroftheseacathedral.com` uses a Google Drive link for the
+bulletin.  The Google Docs Viewer bypass (Rule 1, Session 1) should handle this —
+the real PDF URL is embedded in the Drive viewer query string.  Entry remains commented
+out in `derry_diocese.txt` due to the SSL certificate error on the main site.
+
+**Clonleigh HTML bulletin note:** `clonleighparish.com` publishes an HTML bulletin page
+(not a PDF).  If the fetcher cannot convert it to PDF, the user requests that the
+reader be shown a direct link opening in a new browser tab.  This is a future UI task.

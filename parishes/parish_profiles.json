@@ -47,11 +47,11 @@
     "site_type": null,
     "notes": []
   },
-  "banagherparish_information": {
+  "banagherparish": {
     "url": "https://www.banagherparish.com/information#47-9-newsletters",
     "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
-    "last_success_url": "https://www.banagherparish.com/files/9/Newsletters/268/Bulletin---4th-Sunday-of-Advent",
+    "last_success_url": "https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026",
     "failure_count": 0,
     "consecutive_failures": 0,
     "last_failure_reason": null,
@@ -61,17 +61,15 @@
   },
   "bellaghyparish_current-newsletter": {
     "url": "https://bellaghyparish.com/current-newsletter/",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
-    "failure_count": 8,
-    "consecutive_failures": 8,
-    "last_failure_reason": "Page.goto: net::ERR_ABORTED at https://bellaghyparish.com/current-newsletter/\nCall log:\n  - navigating to \"https://bellaghyparish.com/current-newsletter/\", waiting until \"networkidle\"\n",
+    "last_success_method": "pdf",
+    "last_success_date": "2026-04-12",
+    "last_success_url": "https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf",
+    "failure_count": 0,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
     "url_pattern": null,
     "site_type": null,
-    "notes": [
-      "Consecutive failures >= 3 as of 2026-04-12 \u2014 may need manual review"
-    ]
+    "notes": []
   },
   "buncranaparish_pastnews": {
     "url": "https://www.buncranaparish.com/pastnews.htm",
@@ -133,36 +131,12 @@
     "site_type": null,
     "notes": []
   },
-  "dmaparish_310825": {
-    "url": "https://dmaparish.com/pdf/310825.pdf",
-    "last_success_method": null,
-    "last_success_date": null,
-    "last_success_url": null,
-    "failure_count": 2,
-    "consecutive_failures": 2,
-    "last_failure_reason": "Server returned HTML instead of a PDF for https://dmaparish.com/pdf/060426.pdf (Content-Type: text/html)",
-    "url_pattern": null,
-    "site_type": null,
-    "notes": []
-  },
   "stmarysparishcreggan_bulletins": {
     "url": "https://www.stmarysparishcreggan.com/bulletins",
     "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://assets.cdn.filesafe.space/t4AV7E7OSM542PucNRsH/media/69ccd1f79d9be6ab5fe09a2b.pdf",
     "failure_count": 2,
-    "consecutive_failures": 0,
-    "last_failure_reason": null,
-    "url_pattern": null,
-    "site_type": null,
-    "notes": []
-  },
-  "culdaffparish_310825": {
-    "url": "http://www.culdaffparish.com/pdf/120426.pdf",
-    "last_success_method": "pdf",
-    "last_success_date": "2026-04-12",
-    "last_success_url": "http://www.culdaffparish.com/pdf/120426.pdf",
-    "failure_count": 1,
     "consecutive_failures": 0,
     "last_failure_reason": null,
     "url_pattern": null,
@@ -634,7 +608,7 @@
     "notes": []
   },
   "dmaparish": {
-    "url": "https://dmaparish.com/pdf/310825.pdf",
+    "url": "https://dmaparish.com/pdf/120426.pdf",
     "last_success_method": "pdf",
     "last_success_date": "2026-04-12",
     "last_success_url": "https://dmaparish.com/pdf/120426.pdf",
