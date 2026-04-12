@@ -29,7 +29,7 @@ REPORT_TXT = BULLETINS_DIR / "report.txt"
 # ---------------------------------------------------------------------------
 GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
 GITHUB_MODELS_ENDPOINT: str = "https://models.inference.ai.azure.com"
-MODEL_NAME: str = "gpt-4o"
+MODEL_NAME: str = "gpt-4o-mini"
 
 # ---------------------------------------------------------------------------
 # Timeouts & concurrency

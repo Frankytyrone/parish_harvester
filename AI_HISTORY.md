@@ -284,3 +284,57 @@ out in `derry_diocese.txt` due to the SSL certificate error on the main site.
 **Clonleigh HTML bulletin note:** `clonleighparish.com` publishes an HTML bulletin page
 (not a PDF).  If the fetcher cannot convert it to PDF, the user requests that the
 reader be shown a direct link opening in a new browser tab.  This is a future UI task.
+
+---
+
+### Session 6 — AI Verifier Removed, 9 Failing Parishes Fixed
+
+**Date:** 2026-04-12
+
+**User decision:** Remove the GPT-4o AI verifier. It hits the GitHub Models free
+tier rate limit (50 calls/day) before half the parishes are processed. Since the
+bulletin date is already encoded in the URL for most parishes, vision verification
+adds no value and wastes the entire daily API quota.
+
+**Fix:** `--skip-verify` flag added. Rate-limit detection added to stop verification
+mid-run rather than crashing with 429 errors. `MODEL_NAME` changed from `gpt-4o` to
+`gpt-4o-mini` in `harvester/config.py` for if/when it is re-enabled.
+
+**9 parishes fixed this session:**
+
+1. **Bellaghy** — ERR_ABORTED on /current-newsletter/ bypassed. Predictive URL
+   engine now goes directly to the WP uploads PDF (Pattern D). Profile already had
+   the correct `last_success_url`; Pattern D handles the `-1` issue-number suffix.
+
+2. **Claudy** — Listing page timeout bypassed. Bulletins are DOCX files at
+   `parishofclaudy.com/onewebmedia/NEWSLETTER D-M-YY.docx`. Added
+   `_download_docx_as_pdf()` to `harvester/fetcher.py` — converts via LibreOffice
+   headless with python-docx fallback.
+
+3. **Iskaheen** — Bulletin is a JPEG image (`1.jpg`). Added image detection scan
+   inside `_scrape_html_to_pdf()` and `_download_image_as_pdf()` using Pillow.
+   Pattern F (YYYY/MM directory update) now also applies to JPEG/image URLs.
+
+4. **Clonleigh (Strabane)** — HTML WordPress post slug. Pattern G added to
+   `rewrite_date_url()`: detects `/YYYY/MM/DD/slug/`, date-shifts +7 days, strips
+   slug to return `/YYYY/MM/DD/` archive URL. `_find_dated_bulletin_link()` updated
+   to also recognize `/YYYY/MM/DD/` path dates (not just slug dates). The fetcher
+   predictive section now handles directory-style URLs by calling
+   `_find_dated_bulletin_link()` + `_scrape_html_to_pdf()` instead of `_download_pdf()`.
+
+5. **Limavady** — Listing page timeout bypassed. Pattern B prediction now goes
+   directly to the PDF in `/onewebmedia/`. Profile updated with `url_pattern: "B"`.
+
+6. **Waterside** — Pattern A regex already handled the `oo` suffix correctly (the
+   `(?!\d)` lookahead allows non-digit suffixes). Profile updated with the correct
+   `last_success_url` pointing to the real PDF.
+
+7. **Three Patrons** — Pattern H (sequential number) confirmed. Same system as
+   Banagher. `_NEWSLETTER_NUM_RE` regex updated to match both `/Newsletters/NNN/`
+   (Banagher) and `/Weekly-Bulletins/NNN/` (Three Patrons). `rewrite_newsletter_number_url()`
+   now preserves the category name. Pattern H integrated into `_fetch_inner()`.
+
+8. **Sion Mills** — Marked as "no consistent online bulletin". Profile notes updated.
+
+9. **Ballinascreen** — `_find_dated_bulletin_link()` now also checks for `/YYYY/MM/DD/`
+   path dates in URLs, improving detection of WP date-based post links.

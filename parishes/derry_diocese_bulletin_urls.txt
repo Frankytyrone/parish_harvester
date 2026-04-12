@@ -143,11 +143,10 @@ http://www.greenlough.com/publications/newsletter/Palm_Sunday[2026-3-29].pdf
 http://www.greenlough.com/publications/newsletter/Third_Sunday_of_Lent[2026-3-8].pdf
 
 # --- Iskaheen ---
-# NOTE: Bulletin is a JPEG IMAGE, not a PDF.
-# The harvester cannot convert a JPEG bulletin to a useful PDF.
-# Leave the reader a link to the bulletin page: https://www.iskaheenparish.com/bulletin
-# Known image URL (for reference only — do not attempt PDF download):
-# https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1
+# Bulletin is a JPEG image in wp-content/uploads/YYYY/MM/1.jpg
+# The harvester detects the image in the HTML, downloads it, and converts to PDF using Pillow.
+# The filename is always 1.jpg; only the /YYYY/MM/ directory changes.
+https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1
 
 # --- Cappagh (& Killyclogher amalgamated) ---
 # Pattern A: DDMMYY
@@ -188,3 +187,22 @@ https://www.limavadyparish.org/onewebmedia/29-3-26.pdf
 # Pattern A: DDMMYY
 http://www.magheraparishderry.com/pdf/050426.pdf
 http://www.magheraparishderry.com/pdf/290326.pdf
+
+# --- Claudy ---
+# Pattern B: D-M-YY DOCX (Word document)
+# Base URL: http://parishofclaudy.com/onewebmedia/NEWSLETTER D-M-YY.docx
+# The fetcher downloads the DOCX and converts to PDF via LibreOffice.
+http://parishofclaudy.com/onewebmedia/NEWSLETTER 12-4-26.docx
+http://parishofclaudy.com/onewebmedia/NEWSLETTER 15-3-26.docx
+http://parishofclaudy.com/onewebmedia/NEWSLETTER 8-3-26 -.docx
+
+# --- Waterside (& Strathfoyle amalgamated) ---
+# Pattern A: DDMMYY but with suffix 'oo' before .pdf
+# The regex handles the optional suffix: newsletter_DDMMYY[suffix].pdf
+https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf
+
+# --- Three Patrons ---
+# Pattern H: Sequential number (same system as Banagher)
+# URL format: /files/10/Weekly-Bulletins/NNN/Slug — number increments by 1 each week
+# The slug is unpredictable; strip it and load /Weekly-Bulletins/NNN/ to find the bulletin.
+https://www.threepatrons.org/files/10/Weekly-Bulletins/95/Sunday-12th-April-2026
