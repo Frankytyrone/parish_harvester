@@ -392,6 +392,56 @@ def rewrite_date_url(url: str, target: date) -> str:
     return url
 
 
+# ---------------------------------------------------------------------------
+# Pattern H — Sequential newsletter number (Banagher parish)
+# ---------------------------------------------------------------------------
+
+_NEWSLETTER_NUM_RE = re.compile(r"/Newsletters/(\d+)/")
+
+
+def extract_newsletter_number(url: str) -> "int | None":
+    """
+    Extract the sequential newsletter number from a Banagher-style URL.
+
+    Example::
+
+        https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---...
+        → 384
+
+    Returns ``None`` if the pattern ``/Newsletters/NNN/`` is not found.
+    """
+    m = _NEWSLETTER_NUM_RE.search(url)
+    if m:
+        return int(m.group(1))
+    return None
+
+
+def rewrite_newsletter_number_url(url: str, increment: int = 1) -> str:
+    """
+    Increment the sequential newsletter number in a Banagher-style URL and
+    strip the unpredictable free-form slug that follows it.
+
+    Example::
+
+        https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026
+        → https://www.banagherparish.com/files/9/Newsletters/385/
+
+    The slug after the number (e.g. ``Bulletin---Divine-Mercy-Sunday...``) is
+    removed because the parish secretary writes free-form text each week and it
+    cannot be predicted.
+
+    Returns the original URL unchanged if no ``/Newsletters/NNN/`` segment is
+    found.
+    """
+    m = _NEWSLETTER_NUM_RE.search(url)
+    if not m:
+        return url
+    new_number = int(m.group(1)) + increment
+    # Replace from the start of the URL up to (and including) the number segment,
+    # discarding everything after it (the unpredictable slug).
+    return url[: m.start()] + f"/Newsletters/{new_number}/"
+
+
 def safe_filename(prefix: str, suffix: str) -> str:
     """Combine a sanitized parish prefix with a file suffix."""
     prefix = re.sub(r"[^a-z0-9_-]", "_", prefix.lower())
