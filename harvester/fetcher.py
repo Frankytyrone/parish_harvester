@@ -788,6 +788,17 @@ async def fetch_parish(
     """
     parish = parish_name_from_url(url)
 
+    # Facebook-only parishes: never attempt to scrape — always return error
+    # so the fallback page (with the Facebook link) is generated instead.
+    _parsed_url = urlparse(url)
+    if _parsed_url.netloc.lower() in ("www.facebook.com", "facebook.com", "m.facebook.com"):
+        return FetchResult(
+            url=url,
+            parish=parish,
+            status="error",
+            error="Facebook-only parish — no PDF available",
+        )
+
     last_error: str = ""
     for attempt in range(_MAX_ATTEMPTS):
         try:

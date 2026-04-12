@@ -110,9 +110,19 @@ def _stitch_mega_pdf(
         from reportlab.lib import colors
         from reportlab.platypus.flowables import HRFlowable
         import io
+        import json
     except ImportError as exc:
         print(f"  ⚠️  Skipping mega PDF — missing library: {exc}")
         return
+
+    # Load parish contacts for improved fallback pages
+    contacts_path = Path("parishes/parish_contacts.json")
+    contacts: dict = {}
+    if contacts_path.exists():
+        try:
+            contacts = json.loads(contacts_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"  ⚠️  Could not load parish_contacts.json: {exc}")
 
     # Build a mapping: parish_key → (pdf_path | None, parish_url)
     parish_map: dict[str, tuple[Path | None, str]] = {}
@@ -151,26 +161,39 @@ def _stitch_mega_pdf(
             doc = SimpleDocTemplate(buf, pagesize=A4,
                                     topMargin=3*cm, bottomMargin=3*cm,
                                     leftMargin=2.5*cm, rightMargin=2.5*cm)
-            parish_display = parish_key.replace("_", " ").title()
-            link_para = (
-                f'<link href="{parish_url}" color="blue">'
-                f'{parish_url}'
-                f'</link>'
-            )
+            info = contacts.get(parish_key, {})
+            display_name = info.get("display_name") or parish_key.replace("_", " ").title()
+            website = info.get("website")
+            facebook = info.get("facebook")
+
+            link_items = []
+            if website:
+                link_items.append(
+                    f'🌐 Parish Website: <link href="{website}" color="blue">{website}</link>'
+                )
+            if facebook:
+                link_items.append(
+                    f'📘 Facebook Page: <link href="{facebook}" color="blue">{facebook}</link>'
+                )
+            if not link_items:
+                link_items.append("Please contact the parish directly.")
+
             story = [
-                Paragraph(parish_display, styles["Title"]),
+                Paragraph(display_name, styles["Title"]),
                 Spacer(1, 0.5*cm),
                 HRFlowable(width="100%", thickness=1, color=colors.grey),
                 Spacer(1, 0.5*cm),
-                Paragraph("Bulletin not available this week", styles["Heading2"]),
-                Spacer(1, 0.5*cm),
                 Paragraph(
-                    "Please visit the parish website to find the bulletin:",
-                    styles["Normal"],
+                    f"This week's bulletin for <b>{display_name}</b> is not available as a PDF.",
+                    styles["Heading2"]
                 ),
+                Spacer(1, 0.4*cm),
+                Paragraph("To find the bulletin, please visit:", styles["Normal"]),
                 Spacer(1, 0.3*cm),
-                Paragraph(link_para, styles["Normal"]),
             ]
+            for item in link_items:
+                story.append(Paragraph(item, styles["Normal"]))
+                story.append(Spacer(1, 0.2*cm))
             try:
                 doc.build(story)
                 buf.seek(0)

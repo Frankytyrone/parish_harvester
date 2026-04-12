@@ -670,5 +670,17 @@
     "url_pattern": null,
     "site_type": null,
     "notes": []
+  },
+  "donagheadyparish": {
+    "url": "https://www.facebook.com/p/Donagheady-Parish-100070798662659/",
+    "last_success_method": null,
+    "last_success_date": null,
+    "last_success_url": null,
+    "failure_count": 0,
+    "consecutive_failures": 0,
+    "last_failure_reason": null,
+    "url_pattern": "facebook_only",
+    "site_type": "facebook",
+    "notes": ["Facebook-only parish — no PDF bulletin website. Always use fallback page with Facebook link."]
   }
 }
