@@ -1,12 +1,8 @@
 """
-fetcher.py — Stage 1: Download PDFs using Playwright.
+fetcher.py — Evidence-driven bulletin downloader for the Parish Bulletin Harvester.
 
-Supports two modes:
-  - PDF bulletin  : find a PDF link on (or linked from) the parish homepage and
-                    download it.
-  - HTML bulletin : for sites like Ballinascreen/Wix where the bulletin is
-                    published as an HTML page, scrape the text and convert it to
-                    a PDF with reportlab.
+Reads parishes/{diocese}_bulletin_urls.txt, calculates this week's URL using
+date math, and downloads each bulletin directly.  No crawling, no guessing.
 """
 from __future__ import annotations
 
@@ -18,12 +14,10 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urljoin, urlparse, parse_qs
+from urllib.parse import urlparse
 
 from playwright.async_api import (
     Browser,
-    Page,
-    Response,
     async_playwright,
     TimeoutError as PlaywrightTimeout,
 )
@@ -33,205 +27,288 @@ except Exception:
     _TargetClosedError = Exception  # type: ignore[assignment,misc]
 
 from .config import (
-    BULLETIN_IMAGE_KEYWORDS,
-    BULLETIN_KEYWORDS,
     CONCURRENCY,
-    JUNK_KEYWORDS,
+    MIN_PDF_BYTES,
     PAGE_LOAD_TIMEOUT_MS,
-    SUB_PAGE_KEYWORDS,
+    PARISHES_DIR,
     TOTAL_TIMEOUT_S,
-    WIX_SELECTORS,
 )
-
-# Seconds to wait after all tasks finish before closing the browser, to allow
-# any lingering Playwright background futures to settle gracefully.
-_PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
 from .utils import (
-    date_variants,
-    extract_date_from_slug,
-    extract_date_from_string,
     extract_newsletter_number,
     is_valid_pdf,
-    parish_name_from_url,
+    rewrite_clonleigh_url,
     rewrite_date_url,
     rewrite_greenlough_url,
     rewrite_newsletter_number_url,
-    rewrite_slug_url,
     safe_filename,
-    _WP_DATE_PATH_RE,
 )
 
-# Seconds to wait between retry attempts
-_RETRY_DELAY_S: float = 3.0
+# Seconds to wait after all tasks finish before closing the browser
+_PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
 # Number of attempts (1 original + 1 retry)
 _MAX_ATTEMPTS: int = 2
+# Seconds to wait between retry attempts
+_RETRY_DELAY_S: float = 3.0
 
-# Minimum PDF size (bytes). Files smaller than this are almost always HTML
-# error pages disguised as PDFs (e.g. a "404 Not Found" page returned with
-# a .pdf Content-Disposition header).  50 KB is well below the size of even
-# the smallest single-page church bulletin.
-_MIN_PDF_BYTES: int = 50_000
 
-# Minimum visible-text characters required before converting an HTML page to
-# a PDF using reportlab.  Bot-protection / Cloudflare challenge pages rarely
-# have more than a handful of sentences of visible text, while a real parish
-# bulletin will have mass times, notices, etc. — typically 500+ characters.
-_MIN_HTML_TEXT_CHARS: int = 300
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
 
-# Minimum PDF size (bytes) for a reportlab-generated HTML-to-PDF file.
-# Must match _MIN_PDF_BYTES: any file under 50 KB is rejected, whether it is
-# a direct download or a reportlab-generated HTML-to-PDF.
-_MIN_HTML_PDF_BYTES: int = 50_000
-
-# Wix page-source signatures used to identify Wix sites
-_WIX_SIGNATURES: tuple[str, ...] = (
-    "wix-site",
-    'data-testid="site-root"',
-    "WixSite",
-    "_wix_",
-)
+@dataclass
+class ParishEntry:
+    """One parish extracted from the evidence file."""
+    key: str            # e.g. "ardmoreparish"
+    display_name: str   # e.g. "Ardmore Parish"
+    pattern: str        # "A"-"H", "greenlough", "clonleigh", "html_link", "F"
+    content_type: str   # "pdf" | "docx" | "image" | "html_link"
+    example_url: str    # Most recent confirmed URL (used for date math)
+    all_urls: list[str] = field(default_factory=list)
 
 
 @dataclass
 class FetchResult:
-    url: str
-    parish: str
-    status: str          # "ok" | "error"
+    """Result of fetching one parish bulletin."""
+    key: str
+    display_name: str
+    status: str             # "ok" | "error" | "html_link"
+    url: str = ""           # URL fetched (or html link URL)
     file_path: Optional[Path] = None
-    file_type: str = ""  # "pdf" | "html_to_pdf"
+    file_type: str = ""     # "pdf" | "docx_to_pdf" | "image_to_pdf" | "html_link"
     error: str = ""
-    candidate_urls: list[str] = field(default_factory=list)
-    site_type: Optional[str] = None  # "wix" | None
-    source_url: str = ""             # URL where the content was actually found
+
+    # Legacy compat — old code used .parish
+    @property
+    def parish(self) -> str:
+        return self.key
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Evidence file parser
 # ---------------------------------------------------------------------------
 
-def _url_ends_in_pdf(url: str) -> bool:
-    path = urlparse(url).path.lower()
-    return path.endswith(".pdf")
+def _url_to_key(url: str, header_name: str = "") -> str:
+    """Derive a stable parish key from a URL (domain-based)."""
+    parsed = urlparse(url)
+    hostname = re.sub(r"^www\d*\.", "", parsed.netloc.lower())
+
+    # WordPress CDN (i0.wp.com, i1.wp.com, …): real domain is first path segment
+    if re.search(r"\bi\d+\.wp\.com\b", hostname):
+        path_parts = parsed.path.strip("/").split("/")
+        if path_parts:
+            real_domain = re.sub(r"^www\d*\.", "", path_parts[0].lower())
+            parts = real_domain.split(".")
+            if len(parts) >= 2:
+                return parts[0]
+
+    # Other CDN / Google Drive: use header name
+    if any(cdn in hostname for cdn in ("filesafe.space", "google.com")):
+        if header_name:
+            return re.sub(r"[^a-z0-9]", "", header_name.lower().split("(")[0].strip())
+        return re.sub(r"[^a-z0-9]", "", hostname.split(".")[0])
+
+    parts = hostname.split(".")
+    return parts[0] if parts else hostname
 
 
-def _is_real_pdf(path: Path, parish: str = "", url: str = "") -> bool:
+def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[ParishEntry]:
     """
-    Return True if *path* is a valid PDF **and** is at least 50 KB in size.
+    Parse parishes/{diocese}_bulletin_urls.txt into a list of ParishEntry objects.
 
-    Files that are valid PDF magic-bytes but smaller than 50 KB are almost
-    always HTML error pages (e.g. "404 Not Found") returned by the server and
-    saved with a ``.pdf`` extension.  Rule 1 of AI_HISTORY.md: never accept a
-    PDF smaller than 50 KB.
+    The file groups entries by parish with ``# --- Name ---`` headers.
+    Pattern comments (``# Pattern A:``, ``# html_link:``, etc.) drive the
+    URL rewrite strategy.  The first non-comment URL is used as example_url.
     """
+    if parishes_dir is None:
+        parishes_dir = PARISHES_DIR
+    path = parishes_dir / f"{diocese}_bulletin_urls.txt"
+    if not path.exists():
+        raise FileNotFoundError(f"Evidence file not found: {path}")
+
+    entries: list[ParishEntry] = []
+
+    # Current parish state
+    cur_name: Optional[str] = None
+    cur_key_override: Optional[str] = None
+    cur_pattern: Optional[str] = None
+    cur_is_html_link: bool = False
+    cur_is_image: bool = False
+    cur_is_docx: bool = False
+    cur_urls: list[str] = []
+
+    def _flush() -> None:
+        nonlocal cur_name, cur_key_override, cur_pattern, cur_is_html_link
+        nonlocal cur_is_image, cur_is_docx, cur_urls
+
+        if not cur_urls:
+            cur_name = cur_key_override = cur_pattern = None
+            cur_is_html_link = cur_is_image = cur_is_docx = False
+            return
+
+        example_url = cur_urls[0]
+
+        # Key derivation
+        key = cur_key_override or _url_to_key(example_url, cur_name or "")
+
+        # Determine content type
+        url_lower = example_url.lower().split("?")[0]
+        if cur_pattern == "clonleigh":
+            # Clonleigh: calculate URL via clonleigh pattern but treat as html_link
+            # (the HTML bulletin page URL is returned as a clickable link)
+            content_type = "html_link"
+            pattern = "clonleigh"
+        elif cur_is_html_link or cur_pattern == "html_link":
+            content_type = "html_link"
+            pattern = "html_link"
+        elif cur_is_image or url_lower.endswith((".jpg", ".jpeg", ".png")):
+            content_type = "image"
+            pattern = cur_pattern or "F"
+        elif cur_is_docx or url_lower.endswith(".docx"):
+            content_type = "docx"
+            pattern = cur_pattern or "B"
+        else:
+            content_type = "pdf"
+            pattern = cur_pattern or "A"
+
+        entries.append(ParishEntry(
+            key=key,
+            display_name=cur_name or key,
+            pattern=pattern,
+            content_type=content_type,
+            example_url=example_url,
+            all_urls=cur_urls[:],
+        ))
+
+        cur_name = cur_key_override = cur_pattern = None
+        cur_is_html_link = cur_is_image = cur_is_docx = False
+        cur_urls = []
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        if line.startswith("# ---"):
+            _flush()
+            m = re.match(r"#\s*---\s*(.+?)\s*---", line)
+            if m:
+                cur_name = m.group(1)
+            continue
+
+        if line.startswith("#"):
+            ll = line.lower()
+            if "# key:" in ll:
+                cur_key_override = line.split(":", 1)[1].strip()
+            # Check multi-word patterns BEFORE single-letter patterns to avoid
+            # substring collisions (e.g. "pattern clonleigh" contains "pattern c")
+            elif "pattern greenlough" in ll:
+                cur_pattern = "greenlough"
+            elif "pattern clonleigh" in ll:
+                cur_pattern = "clonleigh"
+            elif re.search(r"pattern\s+a\b", ll):
+                cur_pattern = "A"
+            elif re.search(r"pattern\s+b\b", ll):
+                cur_pattern = "B"
+            elif re.search(r"pattern\s+c\b", ll):
+                cur_pattern = "C"
+            elif re.search(r"pattern\s+d\b", ll):
+                cur_pattern = "D"
+            elif re.search(r"pattern\s+e\b", ll):
+                cur_pattern = "E"
+            elif re.search(r"pattern\s+f\b", ll) or ("static" in ll and "pattern" in ll):
+                cur_pattern = "F"
+            elif re.search(r"pattern\s+h\b", ll):
+                cur_pattern = "H"
+            elif "html_link" in ll or ("html only" in ll and "pattern" not in ll):
+                # Only set html_link pattern if no explicit pattern was set
+                if cur_pattern is None:
+                    cur_is_html_link = True
+                    cur_pattern = "html_link"
+                else:
+                    cur_is_html_link = True
+            elif "jpeg" in ll or ("image" in ll and "bulletin" in ll):
+                cur_is_image = True
+            elif "docx" in ll or "word document" in ll:
+                cur_is_docx = True
+            continue
+
+        if line.startswith("http"):
+            cur_urls.append(line)
+
+    _flush()
+    return entries
+
+
+# ---------------------------------------------------------------------------
+# URL calculation
+# ---------------------------------------------------------------------------
+
+def calculate_url(entry: ParishEntry, target: date) -> str:
+    """Calculate this week's bulletin URL for the given parish entry."""
+    url = entry.example_url
+    pattern = entry.pattern
+
+    if pattern == "html_link":
+        return url
+    if pattern == "F":
+        # Static URL — download as-is each week
+        return url
+    if pattern == "greenlough":
+        result = rewrite_greenlough_url(url, target)
+        return result if result else url
+    if pattern == "clonleigh":
+        return rewrite_clonleigh_url(target)
+    if pattern == "H":
+        return rewrite_newsletter_number_url(url)
+    # Patterns A, B, C, D, E (and G) — generic date rewrite
+    return rewrite_date_url(url, target)
+
+
+# ---------------------------------------------------------------------------
+# Download helpers
+# ---------------------------------------------------------------------------
+
+def _is_real_pdf(path: Path, tag: str = "") -> bool:
+    """Return True only if path is a valid PDF of at least MIN_PDF_BYTES."""
     if not is_valid_pdf(path):
         return False
     try:
         size = path.stat().st_size
     except OSError:
         return False
-    if size < _MIN_PDF_BYTES:
-        tag = f" for {parish}" if parish else ""
-        src = f" ({url})" if url else ""
+    if size < MIN_PDF_BYTES:
         print(
-            f"  🗑️  Discarding tiny PDF{tag}{src}: "
-            f"{size:,} bytes < 50 KB — likely a fake PDF / HTML error page"
+            f"  🗑️  Discarding tiny PDF{(' for ' + tag) if tag else ''}: "
+            f"{size:,} bytes < {MIN_PDF_BYTES // 1000} KB"
         )
         return False
     return True
 
 
-def _score_link(href: str, text: str, target: date) -> int:
-    """
-    Score a candidate PDF link.  Higher is better.
-    Returns -1 if the link should be completely ignored.
-    """
-    combined = (href + " " + text).lower()
-
-    # Reject links that contain junk keywords
-    if any(kw in combined for kw in JUNK_KEYWORDS):
-        return -1
-
-    score = 0
-
-    has_pdf_in_url = ".pdf" in href.lower()
-    has_bulletin_text = any(kw in text.lower() for kw in BULLETIN_KEYWORDS)
-
-    if not has_pdf_in_url and not has_bulletin_text:
-        return -1
-
-    if has_pdf_in_url:
-        score += 20
-
-    for kw in BULLETIN_KEYWORDS:
-        if kw in combined:
-            score += 10
-
-    for variant in date_variants(target):
-        if variant in href or variant in text:
-            score += 50
-
-    if extract_date_from_string(href) is not None:
-        score += 5
-
-    return score
-
-
-def _pick_best_pdf(links: list[tuple[str, str]], target: date) -> Optional[str]:
-    """Return the href of the best PDF link, or None."""
-    scored = []
-    for href, text in links:
-        s = _score_link(href, text, target)
-        if s >= 0:
-            scored.append((s, href))
-    if not scored:
-        return None
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return scored[0][1]
-
-
-def _pick_top_pdfs(links: list[tuple[str, str]], target: date, n: int = 5) -> list[str]:
-    """Return the top-*n* PDF link hrefs sorted best-first.
-
-    Tries up to *n* candidates so that the caller can fall back to the next
-    best link when the highest-scoring one turns out to be a junk/tiny file.
-
-    Returns fewer than *n* items if there are not enough viable candidates,
-    or an empty list if no links score >= 0.
-    """
-    scored = []
-    for href, text in links:
-        s = _score_link(href, text, target)
-        if s >= 0:
-            scored.append((s, href))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [href for _, href in scored[:n]]
-
-
 async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
-    """Download a PDF via a headless page (handles JS redirects, cookies, etc.)."""
+    """Download a PDF via a headless page."""
     context = await browser.new_context()
     try:
-        async with context.expect_download(timeout=PAGE_LOAD_TIMEOUT_MS) as dl_info:
-            page = await context.new_page()
-            await page.goto(url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="commit")
-        download = await dl_info.value
-        await download.save_as(dest)
-    except Exception:
         try:
+            async with context.expect_download(timeout=PAGE_LOAD_TIMEOUT_MS) as dl_info:
+                page = await context.new_page()
+                await page.goto(url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="commit")
+            download = await dl_info.value
+            await download.save_as(dest)
+        except Exception:
             page = await context.new_page()
             response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
             if response.ok:
                 content_type = response.headers.get("content-type", "")
                 if "text/html" in content_type:
                     raise RuntimeError(
-                        f"Server returned HTML instead of a PDF for {url} "
-                        f"(Content-Type: {content_type})"
+                        f"Server returned HTML instead of a PDF for {url}"
                     )
                 dest.write_bytes(await response.body())
             else:
                 raise RuntimeError(f"HTTP {response.status} for {url}")
-        except _TargetClosedError:
-            raise
+    except _TargetClosedError:
+        raise
     finally:
         try:
             await context.close()
@@ -239,16 +316,8 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
             pass
 
 
-async def _download_docx_as_pdf(url: str, dest: Path, browser) -> None:
-    """
-    Download a .docx file and convert it to PDF.
-
-    Conversion is attempted via LibreOffice (headless).  Falls back to a
-    reportlab placeholder if LibreOffice is not installed.
-
-    :raises RuntimeError: if both download and conversion fail.
-    """
-    # Download the raw .docx bytes using Playwright's request API
+async def _download_docx_as_pdf(url: str, dest: Path, browser: Browser) -> None:
+    """Download a .docx file and convert it to PDF via LibreOffice or python-docx."""
     context = await browser.new_context()
     try:
         page = await context.new_page()
@@ -267,18 +336,12 @@ async def _download_docx_as_pdf(url: str, dest: Path, browser) -> None:
         docx_file = tmp_path / "bulletin.docx"
         docx_file.write_bytes(docx_bytes)
 
-        # Try LibreOffice conversion
+        # Try LibreOffice conversion first
         try:
             result = subprocess.run(
-                [
-                    "libreoffice",
-                    "--headless",
-                    "--convert-to", "pdf",
-                    "--outdir", str(tmp_path),
-                    str(docx_file),
-                ],
-                capture_output=True,
-                timeout=60,
+                ["libreoffice", "--headless", "--convert-to", "pdf",
+                 "--outdir", str(tmp_path), str(docx_file)],
+                capture_output=True, timeout=60,
             )
             pdf_out = tmp_path / "bulletin.pdf"
             if result.returncode == 0 and pdf_out.exists():
@@ -287,19 +350,40 @@ async def _download_docx_as_pdf(url: str, dest: Path, browser) -> None:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
-        # Fallback: if LibreOffice not available, try python-docx for text extraction
-        # and convert to PDF via reportlab
+        # Fallback: python-docx + reportlab
         try:
-            import docx  # type: ignore[import]
-            doc = docx.Document(str(docx_file))
-            text_lines = [para.text for para in doc.paragraphs if para.text.strip()]
+            import docx as _docx  # type: ignore[import]
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.units import cm
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+            doc = _docx.Document(str(docx_file))
+            text_lines = [p.text for p in doc.paragraphs if p.text.strip()]
             text = "\n".join(text_lines)
-            if text.strip():
-                _text_to_pdf(text, dest, source_url=url)
-                return
+            if not text.strip():
+                raise RuntimeError("DOCX has no text content")
+
+            styles = getSampleStyleSheet()
+            pdf_doc = SimpleDocTemplate(
+                str(dest), pagesize=A4,
+                topMargin=2 * cm, bottomMargin=2 * cm,
+                leftMargin=2.5 * cm, rightMargin=2.5 * cm,
+            )
+            story = []
+            for line in text.split("\n"):
+                line = line.strip()
+                if not line:
+                    story.append(Spacer(1, 0.2 * cm))
+                    continue
+                safe = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                try:
+                    story.append(Paragraph(safe, styles["Normal"]))
+                except Exception:
+                    pass
+            pdf_doc.build(story)
+            return
         except ImportError:
-            pass
-        except Exception:
             pass
 
         raise RuntimeError(
@@ -308,12 +392,8 @@ async def _download_docx_as_pdf(url: str, dest: Path, browser) -> None:
         )
 
 
-async def _download_image_as_pdf(url: str, dest: Path, browser) -> None:
-    """
-    Download a JPEG/PNG image and convert it to a single-page PDF using Pillow.
-
-    :raises RuntimeError: if download or conversion fails.
-    """
+async def _download_image_as_pdf(url: str, dest: Path, browser: Browser) -> None:
+    """Download a JPEG/PNG image and convert it to a single-page PDF."""
     from PIL import Image  # type: ignore[import]
     import io
 
@@ -333,478 +413,125 @@ async def _download_image_as_pdf(url: str, dest: Path, browser) -> None:
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     img.save(str(dest), "PDF", resolution=150)
 
-def _text_to_pdf(text: str, dest: Path, title: str = "", source_url: str = "") -> None:
-    """
-    Convert plain text to a single PDF file at *dest* using reportlab.
 
-    :param text: The raw text content to render (newlines become paragraph breaks).
-    :param dest: Output path for the generated PDF file.
-    :param title: Optional title displayed at the top of the first page.
-    :param source_url: Optional source URL printed below the title for reference.
-    """
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.units import cm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+# ---------------------------------------------------------------------------
+# Core fetch logic
+# ---------------------------------------------------------------------------
 
-    styles = getSampleStyleSheet()
-    doc = SimpleDocTemplate(
-        str(dest),
-        pagesize=A4,
-        topMargin=2 * cm,
-        bottomMargin=2 * cm,
-        leftMargin=2.5 * cm,
-        rightMargin=2.5 * cm,
-    )
-
-    story = []
-    if title:
-        story.append(Paragraph(title, styles["Title"]))
-        story.append(Spacer(1, 0.5 * cm))
-    if source_url:
-        safe_url = (
-            source_url
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
-        story.append(Paragraph(f"Source: {safe_url}", styles["Normal"]))
-        story.append(Spacer(1, 0.5 * cm))
-
-    for line in text.split("\n"):
-        line = line.strip()
-        if not line:
-            story.append(Spacer(1, 0.2 * cm))
-            continue
-        line = (
-            line.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
-        try:
-            story.append(Paragraph(line, styles["Normal"]))
-        except Exception:
-            try:
-                plain = re.sub(r"<[^>]+>", "", line)
-                story.append(Paragraph(plain, styles["Normal"]))
-            except Exception:
-                pass
-
-    doc.build(story)
-
-
-async def _is_wix_page(page: Page, response: Response | None = None) -> bool:
-    """Return True if the current page appears to be built with Wix."""
-    if response:
-        for header_name in response.headers:
-            if header_name.lower().startswith("x-wix-"):
-                return True
-    try:
-        content = await page.content()
-        if any(sig in content for sig in _WIX_SIGNATURES):
-            return True
-    except Exception:
-        pass
-    return False
-
-
-async def _find_bulletin_image_link(page: Page, page_url: str) -> Optional[str]:
-    """
-    Look for a link to an HTML bulletin page by checking anchor text AND the
-    ``alt`` attribute of any ``<img>`` elements nested inside the anchor.
-
-    Returns the absolute URL of the first matching same-domain, non-PDF link.
-    """
-    try:
-        anchor_data = await page.eval_on_selector_all(
-            "a[href]",
-            """els => els.map(el => {
-                const imgs = el.querySelectorAll('img');
-                const imgAlts = Array.from(imgs).map(i => i.alt || '').join(' ');
-                return [el.href, el.innerText.trim(), imgAlts.trim()];
-            })""",
-        )
-    except Exception:
-        return None
-
-    base_domain = urlparse(page_url).netloc
-
-    for href, text, img_alts in anchor_data:
-        if not href:
-            continue
-        combined = (text + " " + img_alts).lower()
-        if any(kw in combined for kw in BULLETIN_IMAGE_KEYWORDS):
-            abs_href = urljoin(page_url, href)
-            if (
-                ".pdf" not in abs_href.lower()
-                and abs_href.rstrip("/") != page_url.rstrip("/")
-                and urlparse(abs_href).netloc == base_domain
-            ):
-                return abs_href
-
-    return None
-
-
-async def _scrape_html_to_pdf(
-    url: str,
-    parish: str,
+async def _fetch_entry(
+    entry: ParishEntry,
     output_dir: Path,
-    browser: Browser,
-    context,
-    site_type: Optional[str] = None,
-    target: Optional[date] = None,
-) -> Optional[Path]:
-    """
-    Navigate to *url*, wait for JS rendering (Wix-aware), extract text, and
-    write a PDF via reportlab.  Returns the saved Path or None.
-
-    Before falling back to text extraction, the function scans the rendered
-    HTML for any linked PDF files (e.g. bulletin listing pages that embed
-    direct PDF download links) and tries to download the best match first.
-    *target* is the target bulletin date used for link scoring; if omitted,
-    today's date is used as a best-effort fallback.
-    """
-    html_page = None
-    try:
-        html_page = await context.new_page()
-        response = None
-        try:
-            response = await html_page.goto(
-                url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="domcontentloaded"
-            )
-        except PlaywrightTimeout:
-            pass
-
-        # If the destination turned out to be a PDF, download it directly
-        if response:
-            ct = response.headers.get("content-type", "")
-            final_url = html_page.url
-            if ct.startswith("application/pdf") or _url_ends_in_pdf(final_url):
-                dest = output_dir / safe_filename(parish, ".pdf")
-                await _download_pdf(final_url, dest, browser)
-                if _is_real_pdf(dest, parish, final_url):
-                    return dest
-                dest.unlink(missing_ok=True)
-                return None
-
-        # Auto-detect Wix if not already known
-        if not site_type:
-            if await _is_wix_page(html_page, response):
-                site_type = "wix"
-
-        # Wait for page to finish rendering
-        if site_type == "wix":
-            try:
-                await html_page.wait_for_selector(
-                    'div[data-testid="site-root"]', timeout=10_000
-                )
-            except Exception:
-                try:
-                    await html_page.wait_for_load_state("networkidle", timeout=15_000)
-                except Exception:
-                    pass
-        else:
-            try:
-                await html_page.wait_for_load_state("networkidle", timeout=15_000)
-            except Exception:
-                pass
-
-        # --- Scan the HTML page for direct PDF links before text extraction ---
-        # This handles sites like stmarysparishcreggan.com/bulletins where the
-        # bulletins listing page embeds links to actual PDF bulletin files.
-        try:
-            page_anchors = await html_page.eval_on_selector_all(
-                "a[href]",
-                "els => els.map(el => [el.href, el.innerText.trim()])",
-            )
-            pdf_links: list[tuple[str, str]] = []
-            for href, link_text in page_anchors:
-                if not href or ".pdf" not in href.lower():
-                    continue
-                abs_href = urljoin(url, href)
-                pdf_links.append((abs_href, link_text))
-
-            # Also collect <embed> and <object data> PDF sources on this page
-            try:
-                embed_srcs = await html_page.eval_on_selector_all(
-                    "embed[src]", "els => els.map(el => [el.src, ''])"
-                )
-                object_srcs = await html_page.eval_on_selector_all(
-                    "object[data]", "els => els.map(el => [el.data, ''])"
-                )
-                for src, _ in embed_srcs + object_srcs:
-                    if src and ".pdf" in src.lower():
-                        pdf_links.append((urljoin(url, src), "embed/object"))
-            except Exception:
-                pass
-
-            if pdf_links:
-                # Use the scoring function to pick the best candidates
-                scoring_date = target if target is not None else date.today()
-                if target is None:
-                    print(f"  ⚠️  No target date provided to _scrape_html_to_pdf for {parish}; using today as fallback for PDF link scoring")
-                top_candidates = _pick_top_pdfs(pdf_links, scoring_date, n=5)
-                if not top_candidates:
-                    # Fall back to any PDF link if scoring finds none
-                    top_candidates = [href for href, _ in pdf_links[:5]]
-
-                for pdf_url in top_candidates:
-                    pdf_dest = output_dir / safe_filename(parish, ".pdf")
-                    try:
-                        await _download_pdf(pdf_url, pdf_dest, browser)
-                        if _is_real_pdf(pdf_dest, parish, pdf_url):
-                            print(f"  📎 Found PDF link in HTML page for {parish}: {pdf_url}")
-                            return pdf_dest
-                        pdf_dest.unlink(missing_ok=True)
-                    except Exception as exc:
-                        pdf_dest.unlink(missing_ok=True)
-                        print(f"  ⚠️  PDF link in HTML page failed for {parish} ({pdf_url}): {exc}")
-        except Exception:
-            pass
-
-        # --- Scan for WordPress bulletin images (e.g. Iskaheen: 1.jpg) ---
-        # After PDF link scan fails, look for <img> tags in wp-content/uploads
-        # that are large enough (width >= 800px from query params or width attr)
-        # to be a bulletin image rather than a thumbnail.
-        try:
-            img_data = await html_page.eval_on_selector_all(
-                "img[src]",
-                """els => els.map(el => ({
-                    src: el.src,
-                    width: el.getAttribute('width'),
-                }))""",
-            )
-            bulletin_img_url: Optional[str] = None
-            for img in img_data:
-                src = img.get("src", "") or ""
-                if not src:
-                    continue
-                src_lower = src.lower()
-                if "wp-content/uploads" not in src_lower:
-                    continue
-                path_part = src_lower.split("?")[0]
-                if not (path_part.endswith(".jpg") or path_part.endswith(".jpeg")):
-                    continue
-                # Check apparent width from query params (?w=NNN or ?fit=WxH)
-                from urllib.parse import parse_qs as _parse_qs, urlparse as _urlparse
-                img_qs = _parse_qs(_urlparse(src).query)
-                apparent_w = 0
-                if "w" in img_qs:
-                    try:
-                        apparent_w = int(img_qs["w"][0])
-                    except (ValueError, IndexError):
-                        pass
-                if apparent_w == 0 and "fit" in img_qs:
-                    try:
-                        apparent_w = int(img_qs["fit"][0].split("%2C")[0].split(",")[0])
-                    except (ValueError, IndexError):
-                        pass
-                if apparent_w == 0:
-                    try:
-                        apparent_w = int(img.get("width") or 0)
-                    except (ValueError, TypeError):
-                        pass
-                if apparent_w >= 800 or apparent_w == 0:
-                    # Accept: wide image or no width info (give benefit of doubt)
-                    bulletin_img_url = src
-                    break
-
-            if bulletin_img_url:
-                print(f"  🖼️  Found bulletin image for {parish}: {bulletin_img_url}")
-                img_dest = output_dir / safe_filename(parish, ".pdf")
-                try:
-                    await _download_image_as_pdf(bulletin_img_url, img_dest, browser)
-                    if _is_real_pdf(img_dest, parish, bulletin_img_url):
-                        print(f"  ✅ Image-to-PDF succeeded for {parish}")
-                        return img_dest
-                    img_dest.unlink(missing_ok=True)
-                except Exception as exc:
-                    img_dest.unlink(missing_ok=True)
-                    print(f"  ⚠️  Image-to-PDF failed for {parish}: {exc}")
-        except Exception:
-            pass
-
-
-        text_content = ""
-        for selector in WIX_SELECTORS:
-            try:
-                element = await html_page.query_selector(selector)
-                if element:
-                    t = await element.inner_text()
-                    if len(t.strip()) > 100:
-                        text_content = t
-                        break
-            except Exception:
-                continue
-
-        if not text_content.strip():
-            try:
-                text_content = await html_page.inner_text("body")
-            except Exception:
-                pass
-
-        if not text_content.strip():
-            return None
-
-        # Guard: reject pages whose visible text is too short to be a real
-        # bulletin.  Bot-protection / Cloudflare challenge pages typically
-        # expose only a few sentences of text; a genuine parish bulletin has
-        # hundreds of words.
-        text_stripped = text_content.strip()
-        if len(text_stripped) < _MIN_HTML_TEXT_CHARS:
-            print(
-                f"  🗑️  {parish}: page text only "
-                f"{len(text_stripped)} chars — too short to be a "
-                f"real bulletin (likely bot-protection page), skipping HTML-to-PDF"
-            )
-            return None
-
-        dest = output_dir / safe_filename(parish, ".pdf")
-        try:
-            _text_to_pdf(
-                text_content,
-                dest,
-                title=parish.replace("_", " ").title(),
-                source_url=url,
-            )
-        except Exception as exc:
-            print(f"  ⚠️  PDF build failed for {parish}: {exc}")
-            dest.unlink(missing_ok=True)
-            return None
-
-        if dest.exists() and dest.stat().st_size > 0:
-            pdf_size = dest.stat().st_size
-            if pdf_size < _MIN_HTML_PDF_BYTES:
-                print(
-                    f"  🗑️  Discarding tiny HTML-to-PDF for {parish}: "
-                    f"{pdf_size:,} bytes < {_MIN_HTML_PDF_BYTES // 1_000} KB "
-                    f"— likely a bot-protection page"
-                )
-                dest.unlink(missing_ok=True)
-                return None
-            return dest
-
-        return None
-
-    except Exception as exc:
-        print(f"  ⚠️  HTML-to-PDF failed for {parish} ({url}): {exc}")
-        return None
-    finally:
-        if html_page is not None:
-            try:
-                await html_page.close()
-            except Exception:
-                pass
-
-
-async def _find_dated_bulletin_link(
-    listing_url: str,
     target: date,
-    context,
-    base_domain: str,
-) -> Optional[str]:
-    """
-    Load a bulletin listing page and return the link to the actual bulletin
-    page whose URL slug date is closest to (and within 10 days of) *target*.
+    browser: Browser,
+) -> FetchResult:
+    """Fetch one parish bulletin — no retries, called by fetch_parish."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    key = entry.key
 
-    Handles sites like Ballinascreen where clicking the bulletin image
-    leads to a /latest-news listing page rather than the bulletin itself,
-    and the actual bulletin is at a dated slug like
-    ``ballinascreen-desertmartin-parishes-5_april_2026``.
-
-    Also handles WordPress date-post URLs like
-    ``/2026/04/03/strabane-pastoral-area-newsletter.../`` where the date is
-    embedded in the path as ``/YYYY/MM/DD/``.
-    """
-    page = None
-    try:
-        page = await context.new_page()
-        try:
-            await page.goto(
-                listing_url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="domcontentloaded"
-            )
-        except PlaywrightTimeout:
-            pass
-
-        anchors = await page.eval_on_selector_all(
-            "a[href]",
-            "els => els.map(el => [el.href, el.innerText.trim()])",
+    # html_link parishes: return URL (possibly calculated) without downloading
+    if entry.content_type == "html_link":
+        # For clonleigh, calculate the predicted URL for this week
+        url = calculate_url(entry, target) if entry.pattern == "clonleigh" else entry.example_url
+        return FetchResult(
+            key=key,
+            display_name=entry.display_name,
+            status="html_link",
+            url=url,
+            file_type="html_link",
         )
 
-        best_url: Optional[str] = None
-        best_delta: Optional[int] = None
+    # Calculate the predicted URL for this week
+    target_url = calculate_url(entry, target)
 
-        for href, _ in anchors:
-            if not href:
-                continue
-            abs_href = urljoin(listing_url, href)
-            if urlparse(abs_href).netloc != base_domain:
-                continue
-            # Try slug-based date first (e.g. 5_april_2026)
-            link_date = extract_date_from_slug(abs_href)
-            # Also try WordPress /YYYY/MM/DD/ path date
-            if link_date is None:
-                wp_m = _WP_DATE_PATH_RE.search(abs_href)
-                if wp_m:
-                    try:
-                        link_date = date(
-                            int(wp_m.group(1)),
-                            int(wp_m.group(2)),
-                            int(wp_m.group(3)),
-                        )
-                    except ValueError:
-                        pass
-            if link_date is None:
-                continue
-            delta = (target - link_date).days
-            if 0 <= delta <= 10:
-                if best_delta is None or delta < best_delta:
-                    best_delta = delta
-                    best_url = abs_href
+    # Build fallback candidates:
+    # - predicted target URL
+    # - last Sunday's URL (target - 7 days)
+    fallback_candidates: list[str] = [target_url]
+    if entry.pattern not in ("F", "H", "clonleigh", "html_link"):
+        last_sunday_url = rewrite_date_url(entry.example_url, target - timedelta(days=7))
+        if last_sunday_url != target_url and last_sunday_url != entry.example_url:
+            fallback_candidates.append(last_sunday_url)
+        # For greenlough, also try the last-Sunday liturgical URL
+        if entry.pattern == "greenlough":
+            gs = rewrite_greenlough_url(entry.example_url, target - timedelta(days=7))
+            if gs and gs not in fallback_candidates:
+                fallback_candidates.append(gs)
+        # Also try the literal example_url as last resort
+        if entry.example_url not in fallback_candidates:
+            fallback_candidates.append(entry.example_url)
+    elif entry.pattern == "clonleigh":
+        # Also try last week's clonleigh URL
+        last_week = rewrite_clonleigh_url(target - timedelta(days=7))
+        if last_week != target_url:
+            fallback_candidates.append(last_week)
 
-        return best_url
-    except Exception:
-        return None
-    finally:
-        if page is not None:
-            try:
-                await page.close()
-            except Exception:
-                pass
+    dest = output_dir / safe_filename(key, ".pdf")
+    last_err = "No valid content found"
 
+    for candidate in fallback_candidates:
+        try:
+            if entry.content_type == "image":
+                await _download_image_as_pdf(candidate, dest, browser)
+                if _is_real_pdf(dest, key):
+                    return FetchResult(
+                        key=key, display_name=entry.display_name,
+                        status="ok", url=candidate,
+                        file_path=dest, file_type="image_to_pdf",
+                    )
+            elif entry.content_type == "docx":
+                await _download_docx_as_pdf(candidate, dest, browser)
+                if _is_real_pdf(dest, key):
+                    return FetchResult(
+                        key=key, display_name=entry.display_name,
+                        status="ok", url=candidate,
+                        file_path=dest, file_type="docx_to_pdf",
+                    )
+            else:
+                await _download_pdf(candidate, dest, browser)
+                if _is_real_pdf(dest, key):
+                    if candidate != target_url:
+                        print(f"  📅 Used fallback URL for {key}: {candidate}")
+                    return FetchResult(
+                        key=key, display_name=entry.display_name,
+                        status="ok", url=candidate,
+                        file_path=dest, file_type="pdf",
+                    )
+        except Exception as exc:
+            last_err = str(exc)
+            print(f"  ↩️  {key}: {candidate} failed: {last_err}")
+        finally:
+            if dest.exists() and not _is_real_pdf(dest):
+                dest.unlink(missing_ok=True)
+
+    return FetchResult(
+        key=key, display_name=entry.display_name,
+        status="error", url=target_url, error=last_err,
+    )
 
 
 async def fetch_parish(
-    url: str,
+    entry: ParishEntry,
     output_dir: Path,
     target: date,
     browser: Browser,
-    hint: Optional[dict] = None,
 ) -> FetchResult:
-    """
-    Fetch bulletin for a single parish URL.  Retries once on failure.
-
-    *hint* is an optional dict from ``profiles.get_hint()`` that may contain
-    ``last_success_method``, ``site_type``, etc.
-    """
-    parish = parish_name_from_url(url)
-
-    # Facebook-only parishes: never attempt to scrape — always return error
-    # so the fallback page (with the Facebook link) is generated instead.
-    _parsed_url = urlparse(url)
-    if _parsed_url.netloc.lower() in ("www.facebook.com", "facebook.com", "m.facebook.com"):
+    """Fetch one parish bulletin with retries and a total timeout."""
+    # html_link: instant, no timeout needed
+    if entry.content_type == "html_link":
+        url = calculate_url(entry, target) if entry.pattern == "clonleigh" else entry.example_url
         return FetchResult(
+            key=entry.key,
+            display_name=entry.display_name,
+            status="html_link",
             url=url,
-            parish=parish,
-            status="error",
-            error="Facebook-only parish — no PDF available",
+            file_type="html_link",
         )
 
-    last_error: str = ""
+    last_error = ""
     for attempt in range(_MAX_ATTEMPTS):
         try:
             async with asyncio.timeout(TOTAL_TIMEOUT_S):
-                result = await _fetch_inner(url, parish, output_dir, target, browser, hint=hint)
+                result = await _fetch_entry(entry, output_dir, target, browser)
             if result.status == "ok":
                 return result
             last_error = result.error
@@ -814,537 +541,53 @@ async def fetch_parish(
             last_error = str(exc)
 
         if attempt < _MAX_ATTEMPTS - 1:
-            print(f"  ↩️  Retrying {parish} (attempt {attempt + 2}/{_MAX_ATTEMPTS}): {last_error}")
+            print(
+                f"  ↩️  Retrying {entry.key} "
+                f"(attempt {attempt + 2}/{_MAX_ATTEMPTS}): {last_error}"
+            )
             await asyncio.sleep(_RETRY_DELAY_S)
 
-    return FetchResult(url=url, parish=parish, status="error", error=last_error)
-
-
-async def _fetch_inner(
-    url: str,
-    parish: str,
-    output_dir: Path,
-    target: date,
-    browser: Browser,
-    hint: Optional[dict] = None,
-) -> FetchResult:
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    hint = hint or {}
-    hint_site_type: Optional[str] = hint.get("site_type")
-    fast_html_path: bool = hint.get("last_success_method") == "html_to_pdf"
-
-    # --- Predictive URL Generator (Rule 2 / Rule 3 from AI_HISTORY.md) -------
-    # If a previous successful download URL is stored, try to predict this
-    # week's bulletin URL by date-shifting the stored URL before doing a full
-    # site crawl.  rewrite_date_url() handles all known patterns:
-    #   • Pattern A: DDMMYY / DDMMYYYY  (e.g. carndonaghparish.com/pdf/050426.pdf)
-    #   • Pattern B: D-M-YY             (e.g. limavadyparish.org/onewebmedia/5-4-26.pdf)
-    #   • Pattern C: ISO YYYY-MM-DD     (e.g. clonmanyparish.ie/2026/04/2026-04-12.pdf)
-    #   • Pattern D: DD-Month-YYYY slug (e.g. bellaghyparish.com/wp-content/.../12-April-2026.pdf)
-    #   • Pattern E: [YYYY-M-D]         (e.g. greenlough.com/newsletter/[2026-4-12].pdf)
-    #   • Pattern F: /YYYY/MM/ dir only (e.g. iskaheenparish.com/wp-content/.../1.jpg)
-    #   • Pattern G: WP post /YYYY/MM/DD/slug/ (e.g. clonleighparish.com/2026/04/03/slug/)
-    #   • Pattern H: sequential number  (e.g. banagherparish.com/Newsletters/384/)
-    # -------------------------------------------------------------------------
-    last_success_url: Optional[str] = hint.get("last_success_url")
-    if last_success_url and last_success_url != url:
-        predicted_candidates: list[str] = []
-        # Special case: Greenlough parish embeds a liturgical name in the URL.
-        # Use rewrite_greenlough_url() first; fall back to generic rewrite_date_url().
-        greenlough_predicted = rewrite_greenlough_url(last_success_url, target)
-        if greenlough_predicted:
-            predicted_candidates.append(greenlough_predicted)
-        else:
-            predicted = rewrite_date_url(last_success_url, target)
-            if predicted != last_success_url:
-                predicted_candidates.append(predicted)
-        # If no date pattern was found in the stored URL (e.g. /current-newsletter/)
-        # try it directly — it may be a stable weekly URL.
-        if not predicted_candidates:
-            predicted_candidates.append(last_success_url)
-
-        dest = output_dir / safe_filename(parish, ".pdf")
-        for candidate in predicted_candidates:
-            print(f"  🔮 Predicting bulletin URL for {parish}: {candidate}")
-            candidate_path_str = urlparse(candidate).path.lower().split("?")[0]
-            # Determine the type of candidate and fetch accordingly
-            try:
-                if candidate_path_str.endswith(".docx"):
-                    # DOCX bulletin (e.g. Claudy parish)
-                    await _download_docx_as_pdf(candidate, dest, browser)
-                    if _is_real_pdf(dest, parish, candidate):
-                        print(f"  ✅ Predicted DOCX URL succeeded for {parish}")
-                        return FetchResult(
-                            url=url, parish=parish, status="ok",
-                            file_path=dest, file_type="pdf",
-                            source_url=candidate,
-                        )
-                elif candidate_path_str.endswith((".jpg", ".jpeg", ".png")):
-                    # Image bulletin (e.g. Iskaheen parish)
-                    await _download_image_as_pdf(candidate, dest, browser)
-                    if _is_real_pdf(dest, parish, candidate):
-                        print(f"  ✅ Predicted image URL succeeded for {parish}")
-                        return FetchResult(
-                            url=url, parish=parish, status="ok",
-                            file_path=dest, file_type="image_to_pdf",
-                            source_url=candidate,
-                        )
-                elif candidate_path_str.endswith("/") or not Path(candidate_path_str).suffix:
-                    # Directory/archive URL — Pattern G (WP date archive) or similar
-                    # Try to find a dated bulletin post link on this page, then scrape it.
-                    tmp_ctx = await browser.new_context(
-                        user_agent=(
-                            "Mozilla/5.0 (X11; Linux x86_64) "
-                            "AppleWebKit/537.36 (KHTML, like Gecko) "
-                            "Chrome/120.0.0.0 Safari/537.36"
-                        )
-                    )
-                    try:
-                        base_domain = urlparse(candidate).netloc
-                        dated_link = await _find_dated_bulletin_link(
-                            candidate, target, tmp_ctx, base_domain
-                        )
-                        scrape_url = dated_link or candidate
-                        if dated_link:
-                            print(f"  📅 Found dated post for {parish}: {dated_link}")
-                        g_pdf = await _scrape_html_to_pdf(
-                            scrape_url, parish, output_dir, browser, tmp_ctx,
-                            site_type=hint.get("site_type"),
-                            target=target,
-                        )
-                        if g_pdf and _is_real_pdf(g_pdf, parish, scrape_url):
-                            print(f"  ✅ Pattern G HTML scrape succeeded for {parish}")
-                            return FetchResult(
-                                url=url, parish=parish, status="ok",
-                                file_path=g_pdf, file_type="html_to_pdf",
-                                source_url=scrape_url,
-                            )
-                    except Exception as exc:
-                        print(f"  ⚠️  Pattern G scrape failed for {parish}: {exc}")
-                    finally:
-                        try:
-                            await tmp_ctx.close()
-                        except Exception:
-                            pass
-                else:
-                    await _download_pdf(candidate, dest, browser)
-                    if _is_real_pdf(dest, parish, candidate):
-                        print(f"  ✅ Predicted URL succeeded for {parish}")
-                        return FetchResult(
-                            url=url, parish=parish, status="ok",
-                            file_path=dest, file_type="pdf",
-                            source_url=candidate,
-                        )
-            except Exception as exc:
-                print(f"  ⚠️  Predicted URL {candidate} failed for {parish}: {exc}")
-            # Clean up any partial/invalid download before trying the next candidate
-            dest.unlink(missing_ok=True)
-        if predicted_candidates:
-            print(f"  ↩️  Predicted URL(s) failed for {parish}, falling back to full site crawl")
-
-    # --- Pattern H: Sequential newsletter number (Banagher / Three Patrons) ---
-    # When last_success_url contains /Newsletters/NNN/ or /Weekly-Bulletins/NNN/,
-    # increment the number by 1 and try loading the resulting URL as an HTML page.
-    if last_success_url and extract_newsletter_number(last_success_url) is not None:
-        current_num = extract_newsletter_number(last_success_url)
-        predicted_h = rewrite_newsletter_number_url(last_success_url)
-        if predicted_h != last_success_url:
-            print(
-                f"  🔢 Pattern H: predicting {parish} "
-                f"newsletter #{(current_num or 0) + 1}: {predicted_h}"
-            )
-            tmp_ctx = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (X11; Linux x86_64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/120.0.0.0 Safari/537.36"
-                )
-            )
-            try:
-                h_pdf = await _scrape_html_to_pdf(
-                    predicted_h, parish, output_dir, browser, tmp_ctx,
-                    site_type=hint.get("site_type"),
-                    target=target,
-                )
-                if h_pdf and _is_real_pdf(h_pdf, parish, predicted_h):
-                    return FetchResult(
-                        url=url, parish=parish, status="ok",
-                        file_path=h_pdf, file_type="html_to_pdf",
-                        source_url=predicted_h,
-                    )
-            except Exception as exc:
-                print(f"  ⚠️  Pattern H scrape failed for {parish}: {exc}")
-            finally:
-                try:
-                    await tmp_ctx.close()
-                except Exception:
-                    pass
-            print(f"  ↩️  Pattern H failed for {parish}, falling back to full site crawl")
-
-    # --- Direct PDF URL ---
-    if _url_ends_in_pdf(url):
-        rewritten = rewrite_date_url(url, target)
-        if rewritten != url:
-            print(f"  🔗 Rewrote URL for {parish}: {url} → {rewritten}")
-
-        # Build a list of candidate URLs: target date first, then last Sunday
-        # (the most likely bulletin date), then the remaining days up to 10 days
-        # back.  This ensures we try the most probable dates first.
-        candidates = [rewritten]
-        # Last Sunday is almost always the bulletin date — try it second
-        last_sunday = rewrite_date_url(url, target - timedelta(days=7))
-        if last_sunday not in candidates:
-            candidates.append(last_sunday)
-        for delta in range(1, 11):
-            if delta == 7:
-                continue  # already added above
-            earlier = rewrite_date_url(url, target - timedelta(days=delta))
-            if earlier not in candidates:
-                candidates.append(earlier)
-
-        dest = output_dir / safe_filename(parish, ".pdf")
-        last_err = "No valid PDF found for any date candidate"
-        for candidate in candidates:
-            try:
-                await _download_pdf(candidate, dest, browser)
-            except Exception as exc:
-                dest.unlink(missing_ok=True)
-                last_err = str(exc)
-                print(f"  ↩️  {parish}: {candidate} failed ({last_err}), trying next date...")
-                continue
-            if _is_real_pdf(dest, parish, candidate):
-                if candidate != rewritten:
-                    print(f"  📅 Used fallback date URL for {parish}: {candidate}")
-                return FetchResult(url=candidate, parish=parish, status="ok",
-                                   file_path=dest, file_type="pdf",
-                                   source_url=candidate)
-            dest.unlink(missing_ok=True)
-            print(f"  ↩️  {parish}: {candidate} not a valid PDF, trying next date...")
-
-        return FetchResult(url=rewritten, parish=parish, status="error",
-                           error=last_err)
-
-    # --- Load page ---
-    context = await browser.new_context(
-        user_agent=(
-            "Mozilla/5.0 (X11; Linux x86_64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        )
+    return FetchResult(
+        key=entry.key, display_name=entry.display_name,
+        status="error",
+        url=calculate_url(entry, target),
+        error=last_error,
     )
-    try:
-        page = await context.new_page()
-        main_response = None
-        try:
-            main_response = await page.goto(
-                url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="networkidle"
-            )
-        except PlaywrightTimeout:
-            pass
 
-        page_url = page.url
-
-        # Detect Wix from response headers / page source
-        site_type: Optional[str] = hint_site_type
-        if not site_type and await _is_wix_page(page, main_response):
-            site_type = "wix"
-
-        # Fast-path: if history says this is an HTML-bulletin site, try that first
-        if fast_html_path:
-            bulletin_link = await _find_bulletin_image_link(page, page_url)
-            if bulletin_link:
-                print(f"  ⚡ Fast-path HTML bulletin for {parish}: {bulletin_link}")
-                html_pdf = await _scrape_html_to_pdf(
-                    bulletin_link, parish, output_dir, browser, context, site_type,
-                    target=target,
-                )
-                if html_pdf and _is_real_pdf(html_pdf, parish, bulletin_link):
-                    return FetchResult(
-                        url=url, parish=parish, status="ok",
-                        file_path=html_pdf, file_type="html_to_pdf",
-                        site_type=site_type, source_url=bulletin_link,
-                    )
-
-        # Collect all <a> links
-        anchors = await page.eval_on_selector_all(
-            "a[href]",
-            "els => els.map(el => [el.href, el.innerText.trim()])",
-        )
-
-        # Collect <iframe src> attributes
-        iframes = await page.eval_on_selector_all(
-            "iframe[src]",
-            "els => els.map(el => [el.src, ''])",
-        )
-
-        # Collect <embed src> and <object data> attributes (PDF viewers)
-        try:
-            embeds = await page.eval_on_selector_all(
-                "embed[src]", "els => els.map(el => [el.src, ''])"
-            )
-            objects = await page.eval_on_selector_all(
-                "object[data]", "els => els.map(el => [el.data, ''])"
-            )
-        except Exception:
-            embeds, objects = [], []
-
-        links: list[tuple[str, str]] = []
-        for href, text in anchors:
-            if not href:
-                continue
-            abs_href = urljoin(page_url, href)
-            if ".pdf" in abs_href.lower() or any(
-                kw in text.lower() for kw in BULLETIN_KEYWORDS
-            ):
-                links.append((abs_href, text))
-
-        for src, _ in iframes:
-            if not src:
-                continue
-            abs_src = urljoin(page_url, src)
-            # Google Docs Viewer bypass: extract the real PDF URL from the viewer
-            if "docs.google.com/viewer" in abs_src:
-                qs = parse_qs(urlparse(abs_src).query)
-                extracted_urls = qs.get("url", [])
-                if extracted_urls and extracted_urls[0].startswith("http"):
-                    links.append((extracted_urls[0], "google-docs-viewer"))
-                continue
-            if ".pdf" in abs_src.lower() or any(
-                kw in abs_src.lower() for kw in BULLETIN_KEYWORDS
-            ):
-                links.append((abs_src, "iframe"))
-
-        for src, _ in embeds + objects:
-            if not src:
-                continue
-            abs_src = urljoin(page_url, src)
-            if ".pdf" in abs_src.lower():
-                links.append((abs_src, "embed/object"))
-
-        top_pdfs = _pick_top_pdfs(links, target)
-        best_pdf = top_pdfs[0] if top_pdfs else None
-
-        # --- Sub-page crawling when no direct PDF found ---
-        if not top_pdfs:
-            sub_page_links: list[tuple[str, str]] = []
-            for href, text in anchors:
-                if not href:
-                    continue
-                text_lower = text.lower()
-                if any(kw in text_lower for kw in SUB_PAGE_KEYWORDS):
-                    abs_href = urljoin(page_url, href)
-                    if abs_href.startswith("http") and abs_href != page_url:
-                        sub_page_links.append((abs_href, text))
-
-            for sub_url, sub_text in sub_page_links[:3]:
-                sub_page = None
-                try:
-                    sub_page = await context.new_page()
-                    sub_response = None
-                    try:
-                        sub_response = await sub_page.goto(
-                            sub_url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="networkidle"
-                        )
-                    except PlaywrightTimeout:
-                        pass
-
-                    content_type = ""
-                    if sub_response:
-                        content_type = sub_response.headers.get("content-type", "")
-                    final_sub_url = sub_page.url
-                    if content_type.startswith("application/pdf") or _url_ends_in_pdf(final_sub_url):
-                        dest = output_dir / safe_filename(parish, ".pdf")
-                        await _download_pdf(final_sub_url, dest, browser)
-                        if _is_real_pdf(dest, parish, final_sub_url):
-                            print(f"  🔍 Found PDF via sub-page for {parish}: {final_sub_url}")
-                            best_pdf = final_sub_url
-                            top_pdfs = [final_sub_url]
-                            break
-                        else:
-                            dest.unlink(missing_ok=True)
-                        continue
-
-                    sub_anchors = await sub_page.eval_on_selector_all(
-                        "a[href]",
-                        "els => els.map(el => [el.href, el.innerText.trim()])",
-                    )
-                    sub_links: list[tuple[str, str]] = []
-                    sub_page_url = sub_page.url
-                    for sh, st in sub_anchors:
-                        if not sh:
-                            continue
-                        abs_sh = urljoin(sub_page_url, sh)
-                        if ".pdf" in abs_sh.lower() or any(
-                            kw in st.lower() for kw in BULLETIN_KEYWORDS
-                        ):
-                            sub_links.append((abs_sh, st))
-
-                    sub_top = _pick_top_pdfs(sub_links, target)
-                    if sub_top:
-                        print(f"  🔍 Found PDF(s) via sub-page for {parish}: {sub_top[0]}")
-                        top_pdfs = sub_top
-                        best_pdf = sub_top[0]
-                        break
-                except Exception as sub_exc:
-                    print(f"  ⚠️  Sub-page error for {parish} ({sub_url}): {sub_exc}")
-                finally:
-                    if sub_page is not None:
-                        try:
-                            await sub_page.close()
-                        except Exception:
-                            pass
-
-        # --- Try each PDF candidate in ranked order ---
-        # Attempt download + validation for all top candidates before giving up.
-        # Tiny files (< 50 KB) and invalid PDFs are skipped so we always try
-        # the next-best link rather than returning an error immediately.
-        html_fallback_url: Optional[str] = None  # first candidate that returned HTML instead of a PDF
-
-        for pdf_candidate in top_pdfs:
-            dest = output_dir / safe_filename(parish, ".pdf")
-            try:
-                await _download_pdf(pdf_candidate, dest, browser)
-            except RuntimeError as exc:
-                if "returned HTML" in str(exc):
-                    dest.unlink(missing_ok=True)
-                    if html_fallback_url is None:
-                        html_fallback_url = pdf_candidate
-                    print(
-                        f"  ⚠️  {parish}: {pdf_candidate} returned HTML — "
-                        f"trying next PDF candidate"
-                    )
-                else:
-                    dest.unlink(missing_ok=True)
-                    print(f"  ↩️  {parish}: {pdf_candidate} download error: {exc}")
-                continue
-            except Exception as exc:
-                dest.unlink(missing_ok=True)
-                print(f"  ↩️  {parish}: {pdf_candidate} download error: {exc}")
-                continue
-
-            if _is_real_pdf(dest, parish, pdf_candidate):
-                return FetchResult(
-                    url=url, parish=parish, status="ok",
-                    file_path=dest, file_type="pdf",
-                    candidate_urls=[h for h, _ in links],
-                    site_type=site_type,
-                    source_url=pdf_candidate,
-                )
-            dest.unlink(missing_ok=True)
-            print(
-                f"  ↩️  {parish}: {pdf_candidate} is not a valid/sufficient PDF "
-                f"(< 50 KB or corrupt), trying next candidate..."
-            )
-
-        # All PDF candidates exhausted — update best_pdf for the HTML fallback path
-        if html_fallback_url:
-            best_pdf = html_fallback_url
-        elif not top_pdfs:
-            best_pdf = None  # no candidates were found
-
-        # --- HTML bulletin fallback ---
-        # When no PDF is found anywhere, look for a bulletin image/text link
-        # pointing to an HTML page and scrape+convert it.
-        bulletin_link = await _find_bulletin_image_link(page, page_url)
-        # Also consider the HTML-returning link found above as a candidate
-        if not bulletin_link and best_pdf:
-            bulletin_link = best_pdf
-        if bulletin_link:
-            print(f"  🌐 Trying HTML bulletin fallback for {parish}: {bulletin_link}")
-            base_domain = urlparse(page_url).netloc
-            # First: look for a dated bulletin link within the landing page.
-            # Handles listing pages (e.g. /latest-news) that link to dated bulletin pages.
-            dated_link = await _find_dated_bulletin_link(
-                bulletin_link, target, context, base_domain
-            )
-            if dated_link:
-                print(f"  📅 Found dated bulletin link for {parish}: {dated_link}")
-                html_pdf = await _scrape_html_to_pdf(
-                    dated_link, parish, output_dir, browser, context, site_type,
-                    target=target,
-                )
-                if html_pdf and _is_real_pdf(html_pdf, parish, dated_link):
-                    return FetchResult(
-                        url=url, parish=parish, status="ok",
-                        file_path=html_pdf, file_type="html_to_pdf",
-                        candidate_urls=[h for h, _ in links],
-                        site_type=site_type,
-                        source_url=dated_link,
-                    )
-            # Fallback: scrape the bulletin landing page directly
-            html_pdf = await _scrape_html_to_pdf(
-                bulletin_link, parish, output_dir, browser, context, site_type,
-                target=target,
-            )
-            if html_pdf and _is_real_pdf(html_pdf, parish, bulletin_link):
-                return FetchResult(
-                    url=url, parish=parish, status="ok",
-                    file_path=html_pdf, file_type="html_to_pdf",
-                    candidate_urls=[h for h, _ in links],
-                    site_type=site_type,
-                    source_url=bulletin_link,
-                )
-
-        # --- Nothing found ---
-        return FetchResult(
-            url=url, parish=parish, status="error",
-            error="No PDF found",
-            candidate_urls=[h for h, _ in links],
-            site_type=site_type,
-        )
-
-    finally:
-        await context.close()
-
-
-# ---------------------------------------------------------------------------
-# Batch runner
-# ---------------------------------------------------------------------------
 
 async def fetch_all(
-    urls: list[str],
+    entries: list[ParishEntry],
     output_dir: Path,
     target: date,
-    hints: Optional[dict[str, dict]] = None,
 ) -> list[FetchResult]:
-    """Fetch all parishes concurrently, bounded by CONCURRENCY.
-
-    *hints* maps ``parish_name_from_url(url)`` → hint dict from
-    ``profiles.get_hint()``.  Pass ``None`` to disable profile-guided hints.
-    """
+    """Fetch all parishes concurrently, bounded by CONCURRENCY."""
     sem = asyncio.Semaphore(CONCURRENCY)
-    hints = hints or {}
 
-    async def _bounded(url: str, browser: Browser) -> FetchResult:
-        parish_key = parish_name_from_url(url)
-        hint = hints.get(parish_key)
+    async def _bounded(e: ParishEntry, browser: Browser) -> FetchResult:
         async with sem:
-            return await fetch_parish(url, output_dir, target, browser, hint=hint)
+            return await fetch_parish(e, output_dir, target, browser)
 
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)
-        tasks = [_bounded(url, browser) for url in urls]
+        tasks = [_bounded(e, browser) for e in entries]
         results = list(await asyncio.gather(*tasks, return_exceptions=True))
 
         await asyncio.sleep(_PLAYWRIGHT_SHUTDOWN_DELAY_S)
-
         try:
             await browser.close()
         except Exception:
             pass
 
-    final_results: list[FetchResult] = []
-    for i, r in enumerate(results):
-        if isinstance(r, Exception):
-            parish = parish_name_from_url(urls[i]) if i < len(urls) else "unknown"
-            final_results.append(FetchResult(
-                url=urls[i] if i < len(urls) else "",
-                parish=parish,
+    final: list[FetchResult] = []
+    for entry, result in zip(entries, results):
+        if isinstance(result, Exception):
+            final.append(FetchResult(
+                key=entry.key, display_name=entry.display_name,
                 status="error",
-                error=str(r),
+                url=calculate_url(entry, target),
+                error=str(result),
             ))
         else:
-            final_results.append(r)
+            final.append(result)
 
-    return final_results
+    return final

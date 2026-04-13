@@ -10,48 +10,6 @@ from urllib.parse import urlparse
 
 
 # ---------------------------------------------------------------------------
-# Parish name extraction
-# ---------------------------------------------------------------------------
-
-def parish_name_from_url(url: str) -> str:
-    """
-    Derive a sanitized, human-readable parish name from a URL.
-
-    Examples:
-        https://www.parishofaghyaran.com/news.html  →  parishofaghyaran
-        https://www.derrydiocese.org/parishes/gortin →  derrydiocese_gortin
-    """
-    parsed = urlparse(url)
-    hostname = parsed.netloc.lower()
-    # strip leading www. / www2. etc.
-    hostname = re.sub(r"^www\d*\.", "", hostname)
-    # take the base domain without TLD
-    parts = hostname.split(".")
-    base = parts[0] if parts else hostname
-
-    # Include the last path segment if it adds meaningful info
-    path_parts = [p for p in parsed.path.strip("/").split("/") if p]
-    if path_parts:
-        last = path_parts[-1]
-        # Strip file extension
-        if "." in last:
-            last = last.rsplit(".", 1)[0]
-        # e.g. /parishes/gortin  →  append "gortin"
-        # Skip generic page names that add no information
-        _SKIP = {"news", "parishnews", "html", "htm", "php", "pdf", "aspx", "index"}
-        # Also skip dated filenames (e.g. Bulletin-5th-April-2026) — those change
-        # every week and would make the key unstable.
-        _has_year = bool(re.search(r"\b20[0-9]{2}\b", last))
-        if last and last.lower() not in _SKIP and not last.isdigit() and not _has_year:
-            base = f"{base}_{last}"
-
-    # Remove any URL-encoded characters and reduce to safe chars
-    base = re.sub(r"[^a-z0-9_-]", "_", base)
-    base = re.sub(r"_+", "_", base).strip("_")
-    return base
-
-
-# ---------------------------------------------------------------------------
 # Date-pattern helpers
 # ---------------------------------------------------------------------------
 
@@ -568,6 +526,44 @@ def rewrite_greenlough_url(url: str, target: date) -> str | None:
     # Extract the base and rebuild
     base = url.split("/newsletter/")[0] + "/newsletter/"
     return f"{base}{name}_[{target.year}-{target.month}-{target.day}].pdf"
+
+
+# ---------------------------------------------------------------------------
+# Clonleigh parish — WordPress post URL prediction
+# ---------------------------------------------------------------------------
+
+_ORDINAL_SUFFIXES = {1: "st", 2: "nd", 3: "rd"}
+
+
+def _ordinal(n: int) -> str:
+    """Return ordinal string for *n* (e.g. 12 → '12th', 1 → '1st')."""
+    if 11 <= n % 100 <= 13:
+        return f"{n}th"
+    return f"{n}{_ORDINAL_SUFFIXES.get(n % 10, 'th')}"
+
+
+def rewrite_clonleigh_url(target: date) -> str:
+    """
+    Predict the Clonleigh (Strabane Pastoral Area) newsletter WordPress post URL.
+
+    The newsletter is published on the Saturday before the target Sunday.
+    Slug format: strabane-pastoral-area-newsletter-for-sunday-DDth-month-YYYY
+
+    Example for target 2026-04-19 (Sunday):
+        published: 2026-04-18 (Saturday)
+        → https://clonleighparish.com/2026/04/18/strabane-pastoral-area-newsletter-for-sunday-19th-april-2026/
+    """
+    post_date = target - timedelta(days=1)  # Saturday
+    day_ord = _ordinal(target.day)
+    month_lower = _MONTH_NAMES[target.month]
+    slug = (
+        f"strabane-pastoral-area-newsletter-for-sunday-"
+        f"{day_ord}-{month_lower}-{target.year}"
+    )
+    return (
+        f"https://clonleighparish.com"
+        f"/{post_date.year}/{post_date.month:02d}/{post_date.day:02d}/{slug}/"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -1,81 +1,43 @@
-# Parish Bulletin Harvester
+# Parish Bulletin Harvester v2
 
-A fully automated tool that collects the current weekly newsletter/bulletin
-from 50+ Derry Diocese parishes every weekend.
+Downloads weekly Catholic parish bulletins by calculating URLs from known patterns,
+then stitches them into one A–Z mega PDF.
 
-## Features
+## How it works
 
-- **Headless browser fetching** (Playwright/Chromium) — handles JS-rendered pages
-- **Intelligent PDF detection** — finds bulletin PDFs by keyword + date heuristics
-- **Screenshot fallback** — captures full-page PNG when no PDF is found
-- **AI verification** (GitHub Models GPT-4o Vision, free) — reads each file and checks it's for the current week
-- **Self-cleaning** — moves fresh files to `Bulletins/current/`, discards stale ones
-- **GitHub Actions** — runs automatically every Saturday at 06:00 UTC
+1. **Evidence file** (`parishes/{diocese}_bulletin_urls.txt`) records real, manually
+   verified bulletin URLs for every parish.
+2. The harvester **reads the evidence file**, uses date maths to predict this week's
+   URL for each parish, and downloads it directly.
+3. All PDFs are **stitched into one mega PDF** (A–Z). HTML-only parishes get a
+   clickable link page instead.
+
+**No crawling. No guessing. No AI verifier.**  
+The user already knows where every bulletin is — the code just does the maths.
 
 ---
 
 ## Quick Start
 
-### 1. Clone and install
+### 1. Install dependencies
 
 ```bash
-git clone https://github.com/Frankytyrone/parish_harvester.git
-cd parish_harvester
 pip install -r requirements.txt
-python -m playwright install --with-deps chromium
-# Ubuntu/Debian only — required by pdf2image:
-sudo apt-get install -y poppler-utils
+python -m playwright install chromium
 ```
 
-### 2. Configure for local development
-
-For **GitHub Actions**, no configuration is needed — `GITHUB_TOKEN` is provided automatically.
-
-For **local development**, create a [GitHub Personal Access Token](https://github.com/settings/tokens) and set it:
+### 2. Run
 
 ```bash
-cp .env.example .env
-# Edit .env and set your GitHub PAT:
-# GITHUB_TOKEN=your-github-pat-here
-```
-
-### 3. Run
-
-```bash
-# Full run (fetch → verify → clean)
+# Full run for Derry Diocese (auto-calculates this week's Sunday)
 python main.py
 
-# Specify a diocese / date
-python main.py --diocese derry_diocese --target-date 2026-04-05
+# Specify a diocese or date
+python main.py --diocese derry_diocese --target-date 2026-04-19
 
-# Skip AI verification
-python main.py --skip-verify
-
-# Fetch only (no cleanup)
+# Fetch only (no report or mega PDF)
 python main.py --dry-run
 ```
-
----
-
-## Output
-
-```
-Bulletins/
-├── current/                      # ✅ Verified fresh bulletins for the current week
-├── raw/                          # Intermediate files (cleared after each run)
-├── history/                      # 📚 Dated report archive (report_YYYY-MM-DD.json)
-├── all_bulletins_YYYY-MM-DD.pdf  # 📖 A–Z mega PDF (real bulletins + placeholder pages)
-├── copilot_review.md             # 🤖 Auto-generated review file for Copilot
-├── report.json                   # Machine-readable summary
-└── report.txt                    # Human-readable summary
-```
-
-### Exit codes
-
-| Code | Meaning |
-|------|---------|
-| 0    | Success (run completed; individual parish errors are logged in the report) |
-| 1    | Catastrophic failure (unhandled exception; the run did not complete) |
 
 ---
 
@@ -85,42 +47,102 @@ Bulletins/
 parish_harvester/
 ├── README.md
 ├── requirements.txt
-├── .env.example
 ├── .gitignore
 ├── parishes/
-│   └── derry_diocese.txt     # One URL per line (50 deduplicated parishes)
+│   ├── derry_diocese_bulletin_urls.txt   # Evidence file — master list of bulletin URLs
+│   ├── derry_diocese_contacts.json       # Parish display names, websites, Facebook
+│   └── NEW_DIOCESE_TEMPLATE.md           # Guide: how to add a new diocese
 ├── harvester/
 │   ├── __init__.py
-│   ├── config.py             # Settings: target date, timeouts, paths
-│   ├── fetcher.py            # Stage 1 — Playwright fetch logic
-│   ├── verifier.py           # Stage 2 — GitHub Models Vision date verification
-│   ├── cleaner.py            # Stage 3 — File sorting + report generation
-│   └── utils.py              # Helpers: URL parsing, date formats
-├── main.py                   # CLI entry point
+│   ├── config.py       # Paths, timeouts, target_sunday()
+│   ├── fetcher.py      # Parse evidence file, calculate URLs, download
+│   ├── liturgical.py   # Catholic liturgical calendar 2026 (for Greenlough)
+│   ├── report.py       # Generate report.json and report.txt
+│   ├── stitcher.py     # Stitch A–Z mega PDF
+│   └── utils.py        # Date maths: rewrite_date_url, rewrite_greenlough_url, etc.
+├── main.py             # CLI entry point
 └── .github/
     └── workflows/
-        └── harvest.yml       # Scheduled GitHub Actions workflow
+        └── harvest.yml   # Scheduled GitHub Actions workflow (every Sunday 12:00 UTC)
 ```
 
 ---
 
-## GitHub Actions Setup
+## URL Patterns
 
-**No configuration needed!** The workflow uses `GITHUB_TOKEN` which is automatically provided by GitHub Actions — no secrets to add.
-
-The workflow runs automatically every **Saturday at 06:00 UTC**, or you can trigger it manually from the **Actions** tab.
-
-Bulletins are uploaded as a workflow artifact (retained for 30 days).
-
-### AI Verification
-
-The harvester uses the **GitHub Models API** (free) with GPT-4o vision to read each bulletin and confirm it's for the current week. This uses your existing GitHub account — no OpenAI API key, no billing, no setup.
+| Pattern | Format | Example |
+|---------|--------|---------|
+| A | `DDMMYY` | `.../pdf/120426.pdf` |
+| B | `D-M-YY` | `.../onewebmedia/5-4-26.pdf` |
+| C | `YYYY-MM-DD` | `.../uploads/2026/04/2026-04-12.pdf` |
+| D | `DD-Month-YYYY` | `.../Newsletter-12-April-2026-1.pdf` |
+| E | `[YYYY-M-D]` | `...[2026-4-12].pdf` |
+| F | Static URL | same URL overwritten every week |
+| H | Sequential number | `.../Newsletters/384/Bulletin-...` |
+| clonleigh | WP post (Saturday before Sunday) | `.../2026/04/11/strabane-...-12th-april-2026/` |
+| greenlough | Liturgical name + `[YYYY-M-D]` | `...Palm_Sunday[2026-3-29].pdf` |
+| html\_link | No PDF — link only in mega PDF | `melmountparish.com/parishnews.html` |
+| image | JPEG/PNG → PDF (via Pillow) | `iskaheenparish.com/.../1.jpg` |
+| docx | Word doc → PDF (via LibreOffice) | `parishofclaudy.com/NEWSLETTER 12-4-26.docx` |
 
 ---
 
-## Design Principles
+## Target Date Logic
 
-- **No per-site config** — generic heuristics only; no JSON mapping per parish
-- **Graceful degradation** — a site being down logs an error and moves on; the run never crashes entirely
-- **Idempotent** — running twice overwrites previous output with the same result
-- **Facebook excluded** — requires authentication; not scrape-friendly
+The harvester calculates the target Sunday automatically:
+
+| Day run | Target |
+|---------|--------|
+| Sunday | Today |
+| Monday–Thursday | Last Sunday |
+| Friday–Saturday | Next Sunday |
+
+Override with `--target-date YYYY-MM-DD`.
+
+---
+
+## Adding a New Diocese
+
+See `parishes/NEW_DIOCESE_TEMPLATE.md` for a complete guide.
+
+Short version:
+1. Create `parishes/{name}_bulletin_urls.txt` with real bulletin URLs
+2. Create `parishes/{name}_contacts.json` with display names (optional)
+3. Run `python main.py --diocese {name}`
+
+---
+
+## Output
+
+After each run:
+
+- `Bulletins/current/` — downloaded bulletin PDFs
+- `Bulletins/all_bulletins_{date}.pdf` — merged A–Z mega PDF
+- `Bulletins/report.json` — machine-readable report
+- `Bulletins/report.txt` — human-readable report
+
+### report.json structure
+
+```json
+{
+  "target_date": "2026-04-19",
+  "summary": {
+    "downloaded": 25,
+    "html_links": 4,
+    "failed": 2
+  },
+  "downloaded": [...],
+  "html_links": [...],
+  "failed": [...]
+}
+```
+
+---
+
+## GitHub Actions
+
+The workflow runs every Sunday at 12:00 UTC and:
+1. Downloads all bulletins
+2. Creates the mega PDF
+3. Posts a summary issue to the repository
+4. Uploads the Bulletins folder as an artifact

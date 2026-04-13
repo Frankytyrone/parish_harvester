@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
   issues: write
-  models: read
 
 jobs:
   harvest:
@@ -30,12 +29,7 @@ jobs:
       - name: Install Playwright browsers
         run: python -m playwright install --with-deps chromium
 
-      - name: Install poppler (required by pdf2image)
-        run: sudo apt-get install -y poppler-utils
-
       - name: Run Bulletin Harvester
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: python main.py --diocese derry_diocese
 
       - name: Post GitHub Issue summary
@@ -45,63 +39,46 @@ jobs:
         run: |
           if [ -f Bulletins/report.json ]; then
             REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
-            FRESH=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['fresh'])")
-            STALE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['stale'])")
-            UNKNOWN=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['unknown'])")
-            ERRORS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['errors'])")
-            FAILED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary'].get('failed_fetches',0))")
-            ERROR_LIST=$(python -c "
-          import json
-          d = json.load(open('Bulletins/report.json'))
-          errs = d.get('errors', [])
-          if errs:
-              print('\n'.join(f\"- **{e['parish']}**: {e['verdict']}\" for e in errs))
-          else:
-              print('_No verification errors this run_ 🎉')
-          ")
+            DOWNLOADED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['downloaded'])")
+            HTML_LINKS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['html_links'])")
+            FAILED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['failed'])")
             FAILED_LIST=$(python -c "
           import json
           d = json.load(open('Bulletins/report.json'))
-          ffs = d.get('failed_fetches', [])
+          ffs = d.get('failed', [])
           if ffs:
               lines = []
               for f in ffs:
-                  lines.append(f\"- **{f['parish']}** ({f.get('url','')})  \")
+                  lines.append(f\"- **{f['display_name']}** ({f.get('url','')})  \")
                   lines.append(f\"  _Reason: {f.get('error','unknown')}_\")
               print('\n'.join(lines))
           else:
               print('_None_ 🎉')
           ")
-            STALE_LIST=$(python -c "
+            HTML_LIST=$(python -c "
           import json
           d = json.load(open('Bulletins/report.json'))
-          stale = d.get('stale', [])
-          if stale:
-              print('\n'.join(f\"- **{s['parish']}**: \`{s['file']}\`\" for s in stale))
+          hls = d.get('html_links', [])
+          if hls:
+              print('\n'.join(f\"- **{h['display_name']}**: [{h['url']}]({h['url']})\" for h in hls))
           else:
-              print('_None_ 🎉')
+              print('_None_')
           ")
             BODY="## 📋 Bulletin Harvest Report — ${REPORT_DATE}
 
           | Category | Count |
           |----------|-------|
-          | ✅ Fresh   | ${FRESH} |
-          | ❌ Stale   | ${STALE} |
-          | ⚠️ Unknown | ${UNKNOWN} |
-          | 💥 Errors  | ${ERRORS} |
-          | 🚫 Failed  | ${FAILED} |
+          | ✅ Downloaded | ${DOWNLOADED} |
+          | 🔗 HTML links | ${HTML_LINKS} |
+          | 💥 Failed     | ${FAILED} |
 
           ### Failed Parishes
 
           ${FAILED_LIST}
 
-          ### Stale Bulletins
+          ### HTML-Only Parishes (links in mega PDF)
 
-          ${STALE_LIST}
-
-          ### Verification Errors
-
-          ${ERROR_LIST}
+          ${HTML_LIST}
 
           [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             ISSUE_TITLE="📋 Bulletin Harvest Report — ${REPORT_DATE}"
@@ -127,14 +104,13 @@ jobs:
             fi
           fi
 
-      - name: Commit history and review files back to repo
+      - name: Commit bulletins back to repo
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Bulletins/history/ Bulletins/copilot_review.md parishes/parish_profiles.json || true
-          # Only commit if there are staged changes
-          git diff --cached --quiet || git commit -m "chore: update harvest history, profiles and copilot review [skip ci]"
+          git add Bulletins/ || true
+          git diff --cached --quiet || git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
           git push || true
 
       - name: Upload Bulletins artifact
