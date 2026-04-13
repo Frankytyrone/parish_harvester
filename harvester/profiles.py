@@ -10,9 +10,61 @@ version of the last successful URL before doing a full page scan).
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+
+# ---------------------------------------------------------------------------
+# Junk URL detection
+# ---------------------------------------------------------------------------
+
+# Year patterns that are clearly not current bulletins (pre-2025)
+_OLD_YEAR_RE = re.compile(r"\b(19\d{2}|200\d|201\d|202[0-4])\b")
+
+# Filename fragments that are not current weekly bulletins
+_JUNK_FILENAMES: tuple[str, ...] = (
+    "40hrs",
+    "prayingforoneanother",
+    "sharing-the-good-news",
+    "thenet",
+    "pastoralletterVocations",
+    "pastoralletter",
+    "goodfriday",
+    "holyweek",
+    "advent",
+    "christmas",
+    "lent",
+    "easter2021",
+    "easter2022",
+    "easter2023",
+    "easter2024",
+)
+
+
+def _is_junk_url(url: str) -> bool:
+    """
+    Return True if *url* looks like a non-bulletin or outdated file that
+    should not be saved as ``last_success_url``.
+
+    Rejects URLs containing:
+    - Years before 2025 in the path
+    - Known non-bulletin filename fragments
+    """
+    url_lower = url.lower()
+
+    # Check for known junk filename patterns
+    for fragment in _JUNK_FILENAMES:
+        if fragment.lower() in url_lower:
+            return True
+
+    # Check for old years embedded in the URL path (e.g. /2021/05/ or MAY-2021)
+    m = _OLD_YEAR_RE.search(url)
+    if m:
+        return True
+
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +137,9 @@ def update_profile(
         profile["last_success_date"] = str(target)
         # Prefer source_url (the page where content was actually found)
         source_url = getattr(fetch_result, "source_url", "") or getattr(fetch_result, "url", "")
-        profile["last_success_url"] = source_url
+        # Only save last_success_url if the URL is not obviously junk
+        if source_url and not _is_junk_url(source_url):
+            profile["last_success_url"] = source_url
         profile["consecutive_failures"] = 0
         profile["last_failure_reason"] = None
     else:

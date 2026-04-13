@@ -54,6 +54,7 @@ from .utils import (
     is_valid_pdf,
     parish_name_from_url,
     rewrite_date_url,
+    rewrite_greenlough_url,
     rewrite_newsletter_number_url,
     rewrite_slug_url,
     safe_filename,
@@ -849,9 +850,15 @@ async def _fetch_inner(
     last_success_url: Optional[str] = hint.get("last_success_url")
     if last_success_url and last_success_url != url:
         predicted_candidates: list[str] = []
-        predicted = rewrite_date_url(last_success_url, target)
-        if predicted != last_success_url:
-            predicted_candidates.append(predicted)
+        # Special case: Greenlough parish embeds a liturgical name in the URL.
+        # Use rewrite_greenlough_url() first; fall back to generic rewrite_date_url().
+        greenlough_predicted = rewrite_greenlough_url(last_success_url, target)
+        if greenlough_predicted:
+            predicted_candidates.append(greenlough_predicted)
+        else:
+            predicted = rewrite_date_url(last_success_url, target)
+            if predicted != last_success_url:
+                predicted_candidates.append(predicted)
         # If no date pattern was found in the stored URL (e.g. /current-newsletter/)
         # try it directly — it may be a stable weekly URL.
         if not predicted_candidates:

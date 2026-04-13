@@ -3,7 +3,7 @@ main.py — CLI entry point for the Parish Bulletin Harvester.
 
 Usage:
     python main.py [--diocese DIOCESE] [--target-date YYYY-MM-DD]
-                   [--skip-verify] [--dry-run]
+                   [--dry-run]
 """
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ import argparse
 import asyncio
 import logging
 import sys
-import time
 from datetime import date, datetime
 from pathlib import Path
 
@@ -22,14 +21,12 @@ from harvester.config import (
     RAW_DIR,
     REPORT_JSON,
     REPORT_TXT,
-    is_fresh,
     next_sunday,
 )
 from harvester.fetcher import fetch_all
-from harvester.verifier import verify_file, RATE_LIMITED
 from harvester.cleaner import clean
 from harvester.profiles import get_hint, load_profiles, save_profiles, update_profile
-from harvester.utils import parish_name_from_url, extract_date_from_string
+from harvester.utils import parish_name_from_url
 
 PROFILES_PATH = PARISHES_DIR / "parish_profiles.json"
 
@@ -75,11 +72,6 @@ def parse_args() -> argparse.Namespace:
         help="Target Sunday date (default: auto-calculate next Sunday)",
     )
     parser.add_argument(
-        "--skip-verify",
-        action="store_true",
-        help="Skip AI verification (Stage 2)",
-    )
-    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Fetch only; do not clean or move files",
@@ -88,7 +80,7 @@ def parse_args() -> argparse.Namespace:
 
 
 # ---------------------------------------------------------------------------
-# Stage 4: Stitch A–Z mega PDF
+# Stage 3: Stitch A–Z mega PDF
 # ---------------------------------------------------------------------------
 
 def _stitch_mega_pdf(
@@ -166,7 +158,34 @@ def _stitch_mega_pdf(
             website = info.get("website")
             facebook = info.get("facebook")
 
+            # Known HTML-only parishes: add a prominent clickable link
+            # to the live bulletin page, styled to open in a new tab.
+            HTML_ONLY_PARISHES: dict[str, str] = {
+                "melmountparish": "https://www.melmountparish.com/parishnews.html",
+                "parishofsionmills": "http://www.parishofsionmills.com/news.html",
+            }
+
             link_items = []
+
+            # For HTML-only parishes, surface the bulletin link prominently
+            if parish_key in HTML_ONLY_PARISHES:
+                html_url = HTML_ONLY_PARISHES[parish_key]
+                link_items.append(
+                    f'📋 <b>Click here to view the bulletin online</b>: '
+                    f'<link href="{html_url}" color="blue">{html_url}</link>'
+                )
+
+            # For Clonleigh, predict the WordPress date archive URL
+            if parish_key == "clonleighparish":
+                wp_url = (
+                    f"https://clonleighparish.com/"
+                    f"{target.year}/{target.month:02d}/{target.day:02d}/"
+                )
+                link_items.append(
+                    f'📋 <b>Click here to view the bulletin online</b>: '
+                    f'<link href="{wp_url}" color="blue">{wp_url}</link>'
+                )
+
             if website:
                 link_items.append(
                     f'🌐 Parish Website: <link href="{website}" color="blue">{website}</link>'
@@ -215,7 +234,7 @@ def _stitch_mega_pdf(
 
 
 # ---------------------------------------------------------------------------
-# Stage 5: Write Copilot review file
+# Stage 4: Write Copilot review file
 # ---------------------------------------------------------------------------
 
 def _write_copilot_review(
@@ -413,62 +432,14 @@ def main() -> int:
         return 0
 
     # ------------------------------------------------------------------
-    # Stage 2: Verify
+    # Stage 2: Clean
     # ------------------------------------------------------------------
     verdicts: dict[str, str] = {}
+    for r in fetch_results:
+        if r.status == "ok" and r.file_path:
+            verdicts[r.file_path.name] = "FRESH"
 
-    if args.skip_verify:
-        print("\n── Stage 2: Verify (skipped) ───────────────────────────────")
-        for r in fetch_results:
-            if r.status == "ok" and r.file_path:
-                verdicts[r.file_path.name] = "UNKNOWN"
-    else:
-        print("\n── Stage 2: Verify ─────────────────────────────────────────")
-        verify_queue = [
-            r for r in fetch_results
-            if r.status == "ok" and r.file_path and r.file_path.exists()
-        ]
-        total_verify = len(verify_queue)
-        api_call_count = 0
-        rate_limit_reached = False
-        for i, r in enumerate(verify_queue):
-            # Short-circuit: if the bulletin URL contains an embedded date (e.g.
-            # /pdf/050426.pdf), use that date directly and skip the AI verifier.
-            # This avoids false STALE verdicts caused by AI misreading dates.
-            url_date = extract_date_from_string(r.url)
-            if url_date is not None and is_fresh(url_date, target):
-                verdict = "FRESH"
-                verdicts[r.file_path.name] = verdict
-                print(f"  ✅ {r.parish}: FRESH (date from URL: {url_date})")
-                continue
-            # Once quota is known exhausted, skip remaining AI calls.
-            if rate_limit_reached:
-                verdicts[r.file_path.name] = "FRESH"
-                print(f"  ✅ {r.parish}: FRESH (AI quota exhausted — skipping)")
-                continue
-            # Rate-limit: stay under 10 requests per 60 s
-            if api_call_count > 0 and api_call_count < total_verify:
-                print(f"  ⏳ Rate limit pause ({api_call_count}/{total_verify})...")
-                time.sleep(7)
-            verdict = verify_file(r.file_path, target)
-            api_call_count += 1
-            # RATE_LIMITED means the daily AI quota ran out — the file was
-            # successfully downloaded, so count it as FRESH.
-            if verdict == RATE_LIMITED:
-                rate_limit_reached = True
-                verdict = "FRESH"
-                print(f"  ✅ {r.parish}: FRESH (AI quota exhausted — treated as fresh)")
-            else:
-                icon = {"FRESH": "✅", "STALE": "❌", "UNKNOWN": "⚠️ "}.get(
-                    verdict.split(":")[0], "💥"
-                )
-                print(f"  {icon} {r.parish}: {verdict}")
-            verdicts[r.file_path.name] = verdict
-
-    # ------------------------------------------------------------------
-    # Stage 3: Clean
-    # ------------------------------------------------------------------
-    print("\n── Stage 3: Clean ──────────────────────────────────────────")
+    print("\n── Stage 2: Clean ──────────────────────────────────────────")
     failed_fetches = [
         {"parish": r.parish, "url": r.url, "error": r.error}
         for r in fetch_results
@@ -493,18 +464,18 @@ def main() -> int:
     print(f"📄 Report  : {REPORT_TXT}")
 
     # ------------------------------------------------------------------
-    # Stage 4: Stitch A–Z mega PDF
+    # Stage 3: Stitch A–Z mega PDF
     # ------------------------------------------------------------------
-    print("\n── Stage 4: Stitch Mega PDF ────────────────────────────────")
+    print("\n── Stage 3: Stitch Mega PDF ────────────────────────────────")
     try:
         _stitch_mega_pdf(urls, fetch_results, CURRENT_DIR, target)
     except Exception as exc:
         print(f"  ⚠️  Mega PDF generation failed (non-fatal): {exc}")
 
     # ------------------------------------------------------------------
-    # Stage 5: Write Copilot review
+    # Stage 4: Write Copilot review
     # ------------------------------------------------------------------
-    print("\n── Stage 5: Copilot Review ─────────────────────────────────")
+    print("\n── Stage 4: Copilot Review ─────────────────────────────────")
     try:
         from harvester.cleaner import HISTORY_DIR
         _write_copilot_review(fetch_results, result, target, HISTORY_DIR)

@@ -59,23 +59,24 @@ https://www.derrydiocese.org/parishes/garvagh
 https://www.derrydiocese.org/parishes/gortin
 https://greencastleparish.com/
 https://www.derrydiocese.org/parishes/killygordon
-http://malinparish.ie/
+http://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf
 # Melmount & Camus (Strabane) share one bulletin — use Melmount
 https://www.melmountparish.com/
 # Camus: AMALGAMATED with Melmount (same bulletin, same priest)
 # https://camusparish.com/
-https://www.movilleparish.com/
+https://www.movilleparish.com/pdf/120426.pdf
 http://parishofardstraweast.com/parishnews.html
 https://www.drumraghparish.com/
 https://www.derrydiocese.org/parishes/plumbridge
-http://www.parishofsionmills.com/
+http://www.parishofsionmills.com/news.html
+# HTML-only bulletin — link in mega PDF
 http://www.steelstownparish.com/
 # Waterside & Strathfoyle share one bulletin — use Waterside
 https://watersideparish.net/
 # Strathfoyle: AMALGAMATED with Waterside (same bulletin)
 https://granaghanparish.com/
 # Templemore: St Eugene's Cathedral + Longtower are one parish — use St Eugene's
-https://steugenescathedral.com/
+https://steugenescathedral.com/pdf/120426.pdf
 # Longtower: AMALGAMATED with St Eugene's Cathedral (Templemore parish)
 # https://longtowerchurch.org/
 # The Three Patrons (Pennyburn, Carnhill, Galliagh) — one bulletin
