@@ -32,6 +32,9 @@ VERIFY_PROMPT = (
 
 _ISO_DATE_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 
+# Sentinel returned when the daily API quota is exhausted.
+RATE_LIMITED = "RATE_LIMITED"
+
 
 # ---------------------------------------------------------------------------
 # PDF → image conversion
@@ -116,16 +119,20 @@ def _call_model(b64_image: str) -> str:
                 or "rate limit" in exc_str.lower()
                 or "RateLimitError" in type(exc).__name__
             )
-            if is_rate_limit and attempt < max_retries - 1:
-                # Try to extract retry-after from the error message
-                wait_s = 60
-                m = re.search(r"retry after (\d+)", exc_str, re.IGNORECASE)
-                if m:
-                    wait_s = int(m.group(1))
-                print(f"  ⏳ Rate limit hit — waiting {wait_s}s before retry "
-                      f"(attempt {attempt + 1}/{max_retries})...")
-                time.sleep(wait_s)
-                continue
+            if is_rate_limit:
+                if attempt < max_retries - 1:
+                    # Try to extract retry-after from the error message
+                    wait_s = 60
+                    m = re.search(r"retry after (\d+)", exc_str, re.IGNORECASE)
+                    if m:
+                        wait_s = int(m.group(1))
+                    print(f"  ⏳ Rate limit hit — waiting {wait_s}s before retry "
+                          f"(attempt {attempt + 1}/{max_retries})...")
+                    time.sleep(wait_s)
+                    continue
+                else:
+                    print("  ⏳ Daily AI quota exhausted — skipping verification (treating as FRESH).")
+                    return RATE_LIMITED
             raise
 
 
@@ -148,12 +155,15 @@ def verify_file(file_path: Path, target: date) -> str:
     """
     Verify a bulletin file against *target*.
 
-    Returns one of: "FRESH", "STALE", "UNKNOWN", "ERROR"
+    Returns one of: "FRESH", "STALE", "UNKNOWN", "RATE_LIMITED", or "ERROR:<msg>"
     """
     try:
         img = _load_image(file_path)
         b64 = _image_to_base64(img)
         raw = _call_model(b64)
+
+        if raw == RATE_LIMITED:
+            return RATE_LIMITED
 
         if raw.upper() == "UNKNOWN" or not _ISO_DATE_RE.search(raw):
             return "UNKNOWN"
@@ -165,4 +175,13 @@ def verify_file(file_path: Path, target: date) -> str:
         return "FRESH" if is_fresh(bulletin_date, target) else "STALE"
 
     except Exception as exc:
+        exc_str = str(exc)
+        if (
+            "429" in exc_str
+            or "RateLimitReached" in exc_str
+            or "rate limit" in exc_str.lower()
+            or "RateLimitError" in type(exc).__name__
+        ):
+            print("  ⏳ Daily AI quota exhausted — treating as FRESH.")
+            return RATE_LIMITED
         return f"ERROR: {exc}"

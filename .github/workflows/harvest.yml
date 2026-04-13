@@ -104,13 +104,27 @@ jobs:
           ${ERROR_LIST}
 
           [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-            gh issue create \
-              --title "📋 Bulletin Harvest Report — ${REPORT_DATE}" \
-              --body "${BODY}" \
-              --label "harvest-report" 2>/dev/null || \
-            gh issue create \
-              --title "📋 Bulletin Harvest Report — ${REPORT_DATE}" \
-              --body "${BODY}" || true
+            ISSUE_TITLE="📋 Bulletin Harvest Report — ${REPORT_DATE}"
+            EXISTING_ISSUE=$(gh issue list \
+              --state open \
+              --search "${ISSUE_TITLE}" \
+              --json number,title \
+              --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" \
+              | head -n 1)
+
+            if [ -n "${EXISTING_ISSUE}" ]; then
+              echo "Updating existing issue #${EXISTING_ISSUE}"
+              gh issue edit "${EXISTING_ISSUE}" --body "${BODY}"
+            else
+              echo "Creating new issue"
+              gh issue create \
+                --title "${ISSUE_TITLE}" \
+                --body "${BODY}" \
+                --label "harvest-report" 2>/dev/null || \
+              gh issue create \
+                --title "${ISSUE_TITLE}" \
+                --body "${BODY}" || true
+            fi
           fi
 
       - name: Commit history and review files back to repo

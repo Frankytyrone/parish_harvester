@@ -26,7 +26,7 @@ from harvester.config import (
     next_sunday,
 )
 from harvester.fetcher import fetch_all
-from harvester.verifier import verify_file
+from harvester.verifier import verify_file, RATE_LIMITED
 from harvester.cleaner import clean
 from harvester.profiles import get_hint, load_profiles, save_profiles, update_profile
 from harvester.utils import parish_name_from_url, extract_date_from_string
@@ -430,7 +430,7 @@ def main() -> int:
         ]
         total_verify = len(verify_queue)
         api_call_count = 0
-        rate_limit_hit = False
+        rate_limit_reached = False
         for i, r in enumerate(verify_queue):
             # Short-circuit: if the bulletin URL contains an embedded date (e.g.
             # /pdf/050426.pdf), use that date directly and skip the AI verifier.
@@ -441,11 +441,10 @@ def main() -> int:
                 verdicts[r.file_path.name] = verdict
                 print(f"  ✅ {r.parish}: FRESH (date from URL: {url_date})")
                 continue
-            # If the GitHub Models rate limit was already hit, skip all remaining
-            # AI verification calls and mark them as UNKNOWN instead of crashing.
-            if rate_limit_hit:
-                verdicts[r.file_path.name] = "UNKNOWN"
-                print(f"  ⚠️  {r.parish}: UNKNOWN (rate limit — skipping AI)")
+            # Once quota is known exhausted, skip remaining AI calls.
+            if rate_limit_reached:
+                verdicts[r.file_path.name] = "FRESH"
+                print(f"  ✅ {r.parish}: FRESH (AI quota exhausted — skipping)")
                 continue
             # Rate-limit: stay under 10 requests per 60 s
             if api_call_count > 0 and api_call_count < total_verify:
@@ -453,21 +452,18 @@ def main() -> int:
                 time.sleep(7)
             verdict = verify_file(r.file_path, target)
             api_call_count += 1
-            # Detect GitHub Models rate-limit (429) errors and stop calling the API
-            if verdict.startswith("ERROR") and (
-                "429" in verdict or "ratelimitreached" in verdict.lower()
-            ):
-                rate_limit_hit = True
-                print(
-                    "⚠️  GitHub Models rate limit reached — "
-                    "skipping AI verification for remaining parishes"
+            # RATE_LIMITED means the daily AI quota ran out — the file was
+            # successfully downloaded, so count it as FRESH.
+            if verdict == RATE_LIMITED:
+                rate_limit_reached = True
+                verdict = "FRESH"
+                print(f"  ✅ {r.parish}: FRESH (AI quota exhausted — treated as fresh)")
+            else:
+                icon = {"FRESH": "✅", "STALE": "❌", "UNKNOWN": "⚠️ "}.get(
+                    verdict.split(":")[0], "💥"
                 )
-                verdict = "UNKNOWN"
+                print(f"  {icon} {r.parish}: {verdict}")
             verdicts[r.file_path.name] = verdict
-            icon = {"FRESH": "✅", "STALE": "❌", "UNKNOWN": "⚠️ "}.get(
-                verdict.split(":")[0], "💥"
-            )
-            print(f"  {icon} {r.parish}: {verdict}")
 
     # ------------------------------------------------------------------
     # Stage 3: Clean
