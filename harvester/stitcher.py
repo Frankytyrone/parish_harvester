@@ -2,7 +2,7 @@
 stitcher.py — Mega PDF stitcher for the Parish Bulletin Harvester.
 
 Merges all downloaded PDFs (A–Z) into one mega PDF.
-Creates clickable link pages for HTML-only and failed parishes.
+Appends a compact summary section for HTML-only and failed parishes.
 """
 from __future__ import annotations
 
@@ -34,8 +34,8 @@ def stitch_mega_pdf(
     contacts_path: Path | None = None,
 ) -> None:
     """
-    Merge all downloaded PDFs and create placeholder pages for HTML-only
-    and failed parishes, then write a single A–Z mega PDF.
+    Merge all downloaded PDFs (A–Z) into one mega PDF, then append a single
+    compact summary page listing all HTML-only and unavailable parishes.
     """
     try:
         import PyPDF2
@@ -80,16 +80,16 @@ def stitch_mega_pdf(
     output_path = bulletins_dir / f"all_bulletins_{target}.pdf"
     merger = PyPDF2.PdfWriter()
     real_count = 0
-    placeholder_count = 0
     styles = getSampleStyleSheet()
 
+    # Collect parishes without a PDF for the compact summary section
+    missing_entries: list[tuple[str, str, str | None]] = []
+
     for parish_key, (pdf_path, parish_url, display_name) in sorted_entries:
-        # Try to look up contacts info
         info = contacts.get(parish_key, {})
         if not display_name:
             display_name = info.get("display_name") or parish_key.replace("_", " ").title()
-        website = info.get("website")
-        facebook = info.get("facebook")
+        website: str | None = info.get("website")
 
         if pdf_path and pdf_path.exists():
             try:
@@ -97,75 +97,66 @@ def stitch_mega_pdf(
                 for page in reader.pages:
                     merger.add_page(page)
                 real_count += 1
-                continue
             except Exception as exc:
                 print(f"    ⚠️  Could not merge {parish_key}: {exc}")
+                missing_entries.append((display_name, parish_url, website))
+        else:
+            missing_entries.append((display_name, parish_url, website))
 
-        # Placeholder page for missing/failed bulletins
+    # Build a single compact summary page for all missing/HTML parishes
+    summary_page_count = 0
+    if missing_entries:
         buf = io.BytesIO()
         doc = SimpleDocTemplate(
             buf, pagesize=A4,
-            topMargin=3 * cm, bottomMargin=3 * cm,
-            leftMargin=2.5 * cm, rightMargin=2.5 * cm,
+            topMargin=1.5 * cm, bottomMargin=1.5 * cm,
+            leftMargin=2 * cm, rightMargin=2 * cm,
         )
-
-        link_items: list[str] = []
-
-        # If parish_url is an HTML link (html_link status or no PDF found)
-        if parish_url and parish_url.startswith("http"):
-            safe_url = _xml_escape(parish_url)
-            link_items.append(
-                f'📋 <b>Click here to view the bulletin online</b>: '
-                f'<link href="{parish_url}" color="blue">{safe_url}</link>'
-            )
-
-        if website and website != parish_url:
-            link_items.append(
-                f'🌐 Parish Website: <link href="{website}" color="blue">'
-                f'{_xml_escape(website)}</link>'
-            )
-        if facebook:
-            link_items.append(
-                f'📘 Facebook: <link href="{facebook}" color="blue">'
-                f'{_xml_escape(facebook)}</link>'
-            )
-        if not link_items:
-            link_items.append("Please contact the parish directly.")
-
-        story = [
-            Paragraph(display_name, styles["Title"]),
-            Spacer(1, 0.5 * cm),
+        story: list = [
+            Paragraph("Missing &amp; Online-Only Bulletins", styles["Title"]),
+            Spacer(1, 0.25 * cm),
             HRFlowable(width="100%", thickness=1, color=colors.grey),
-            Spacer(1, 0.5 * cm),
+            Spacer(1, 0.2 * cm),
             Paragraph(
-                f"This week's bulletin for <b>{display_name}</b> "
-                "is not available as a PDF.",
-                styles["Heading2"],
+                "The following parishes do not have a downloadable PDF bulletin. "
+                "Click a link to view the bulletin online.",
+                styles["Normal"],
             ),
-            Spacer(1, 0.4 * cm),
-            Paragraph("To find the bulletin, please visit:", styles["Normal"]),
             Spacer(1, 0.3 * cm),
         ]
-        for item in link_items:
-            story.append(Paragraph(item, styles["Normal"]))
-            story.append(Spacer(1, 0.2 * cm))
+        small_style = styles["Normal"].clone("Small")
+        small_style.fontSize = 9
+        small_style.leading = 13
+        for display_name, parish_url, website in missing_entries:
+            name_esc = _xml_escape(display_name)
+            link_url = parish_url if (parish_url and parish_url.startswith("http")) else website
+            if link_url:
+                safe_link = _xml_escape(link_url)
+                line = (
+                    f'<b>{name_esc}</b>: '
+                    f'<link href="{link_url}" color="blue">{safe_link}</link>'
+                )
+            else:
+                line = f'<b>{name_esc}</b>: contact parish directly'
+            story.append(Paragraph(line, small_style))
+            story.append(Spacer(1, 0.1 * cm))
 
         try:
             doc.build(story)
             buf.seek(0)
-            placeholder_reader = PyPDF2.PdfReader(buf)
-            for page in placeholder_reader.pages:
+            summary_reader = PyPDF2.PdfReader(buf)
+            for page in summary_reader.pages:
                 merger.add_page(page)
-            placeholder_count += 1
+            summary_page_count = len(summary_reader.pages)
         except Exception as exc:
-            print(f"    ⚠️  Could not create placeholder for {parish_key}: {exc}")
+            print(f"    ⚠️  Could not create summary page: {exc}")
 
-    if real_count + placeholder_count > 0:
+    if real_count + summary_page_count > 0:
         bulletins_dir.mkdir(parents=True, exist_ok=True)
         with output_path.open("wb") as fh:
             merger.write(fh)
         print(f"  📖 Mega PDF      : {output_path}")
         print(f"     Real PDFs      : {real_count}")
-        print(f"     Placeholders   : {placeholder_count}")
+        print(f"     Online-only    : {len(missing_entries)} (condensed to {summary_page_count} summary page(s))")
     else:
         print("  ⚠️  No pages to include in mega PDF — skipping.")

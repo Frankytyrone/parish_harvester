@@ -1,37 +1,168 @@
-Aghagallon and Ballinderry, https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026-Easter-Sunday2-.pdf
-Antrim, https://www-static.antrimparish.com/wp-content/uploads/2026/04/12th-April-2026-Divine-Mercy.pdf
-Ballycastle, https://www.ballycastleparish.com/s/5th-April-2026.pdf
-Ballyclare, https://ballyclareballygowan.com/notice%20board.htm
-Ballymena, https://ballymenaparish.org/wp-content/uploads/2026/04/5.4.26-Easter-Sunday-r.pdf
-Ballymoney, https://www.ballymoneyparish.com/media/other/31871/26-04-12pdf.pdf
-Bangor, https://www.bangorparish.com/wp-content/uploads/12-APR-2026-NEWSLETTER.pdf
-Bright, https://parishofbright.net/wp-content/uploads/2026/04/Bulletin-5-04-2026.pdf
-Carrickfergus, https://www.carrickparish.org/_files/ugd/15976c_23fe5352b24b415e9a7f1c53bbcf9aed.pdf
-Derriaghy, https://derriaghycatholicparish.com/wp-content/uploads/2026/04/Second-Sunday-of-Easter.png
-Dunsford and Ardglass, https://www.dunsfordandardglassparish.com/?page_id=623
-Glenariffe, https://glenariffeparish.org/whats-on
-Glenavy and Killead, https://www.glenavyandkilleadparish.com/app/uploads/2026/04/2026-April-12-Second-Sunday-of-Easter-Divine-Mercy-Sunday.pdf
-Loughshore, https://www.loughshoreparishes.org/sunday-bulletin/2nd-sunday-of-easter-3/
-Hannahstown, https://www.parishofhannahstown.com/weekly-bulletins
-Holy Cross, http://www.holycrossparishbelfast.com/pdf/120426.pdf
-Holy Rosary, https://www.holyrosaryparishbelfast.net/weekly-bulletin
-Kilmore and Killyleagh, https://www.kilmoreandkillyleagh.com/uploads/8/7/4/5/8745725/easter_5th_april_2026.pdf
-Lisburn, https://parishoflisburn.org/wp-content/uploads/2026/04/12-04-26-Blaris-Bulletin_Small.pdf
-Maghera, https://www.parishofmaghera.com/copy-of-sunday-missalette
-Our Lady Queen of Peace, https://www.ourladyqueenofpeacekilwee.com/bulletins
-Portaferry, https://portaferryparish.com/bulletin
-Portstewart, https://portstewartparish.website/mdocs-posts/divine-mercy-sunday-12th-april-2026/
-Randalstown, https://www.stmacnissirandalstown.com/bulletin
-Sacred Heart, https://www.sacredheartparishbelfast.com/gallery/Parish%20Bulletin%2012th%20April%202026.pdf
-Saul and Ballee, https://www.saulandballeeparish.com/app/uploads/2026/04/Bulletin-12-04-2026.pdf
-St Agnes, https://www.stagnesbelfast.com/
-St Annes, https://www.saintannesparish.net/wp-content/uploads/2026/04/120426_Bulletin-2ndSunday-Easter_Divine-Mercy.pdf
-St Anthony, http://www.saintanthony.co.uk/ParishNews/Apr%202026/Bulletin120426DivineMercySunday.pdf
-St Bernadettes, https://www.stbernadettesparish.org/bulletin/uploaded/Parish%20Bulletin%2012th%20April%202026.pdf
-St Brigids, https://stbrigidsparishbelfast.org/assets/documents/Parish-Bulletin-12.04.26-FOR-PRINTING.pdf
-St Colmcilles, https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/
-St Gerards, https://stgerardsparish.org/parish-news-events/
-St Michael, https://saintmichaelthearchangel.godaddysites.com/
-St Oliver Plunkett, https://stoliverplunkettparish.ie/wp-content/uploads/2026/04/Sun-5th-April-26.pdf
-St Patricks, https://www.stpatricksbelfast.org/category/weekly-bulletins/
-St Teresas, https://stteresasparish.church/parish-news/
+# ============================================================
+# Down and Connor Diocese — Known Bulletin URL Evidence Log
+# ============================================================
+# Purpose: This file records REAL, manually verified bulletin URLs
+# found on each parish website.  The harvester code reads this file
+# to make mathematical predictions about where THIS WEEK's bulletin
+# will be located — by detecting the date pattern and shifting it.
+#
+# HOW IT WORKS (The "Safe Cracker"):
+#   Each parish uses one of these URL date patterns:
+#     Pattern A  →  DDMMYY       e.g. holycrossparishbelfast.com/pdf/120426.pdf
+#     Pattern F  →  Static URL   e.g. carrickparish.org/_files/ugd/... (never changes)
+#     html_link  →  HTML page, no PDF available — link shown in mega PDF
+#     image      →  Bulletin is a JPEG/PNG image, converted to PDF
+#
+# FORMAT:
+#   One URL per line.  Blank lines and lines starting with # are ignored.
+#   Group entries by parish name.  Most recent bulletin first.
+# ============================================================
+
+# --- Aghagallon and Ballinderry ---
+# html_link: ordinal date in filename; link to parish website instead
+https://www.aghagallonandballinderryparish.ie
+
+# --- Antrim ---
+# html_link: ordinal date in filename; link to parish website instead
+https://www.antrimparish.com
+
+# --- Ballycastle ---
+# html_link: ordinal date in filename; link to parish website instead
+https://www.ballycastleparish.com
+
+# --- Ballyclare and Ballygowan ---
+# html_link: notice board page
+https://ballyclareballygowan.com/notice%20board.htm
+
+# --- Ballymena ---
+# html_link: non-standard date format (D.M.YY) in filename
+https://ballymenaparish.org
+
+# --- Ballymoney ---
+# html_link: non-standard date format (YY-MM-DD) in filename
+https://www.ballymoneyparish.com
+
+# --- Bangor ---
+# html_link: non-standard date format (DD-MON-YYYY) in filename
+https://www.bangorparish.com
+
+# --- Bright ---
+# html_link: non-standard date format in filename
+https://parishofbright.net
+
+# --- Carrickfergus ---
+# Pattern F: static Wix-hosted PDF URL (does not change week to week)
+https://www.carrickparish.org/_files/ugd/15976c_23fe5352b24b415e9a7f1c53bbcf9aed.pdf
+
+# --- Derriaghy ---
+# image: bulletin is published as a PNG image
+https://derriaghycatholicparish.com/wp-content/uploads/2026/04/Second-Sunday-of-Easter.png
+
+# --- Dunsford and Ardglass ---
+# html_link: bulletin listing page
+https://www.dunsfordandardglassparish.com/?page_id=623
+
+# --- Glenariffe ---
+# html_link: what's-on page
+https://glenariffeparish.org/whats-on
+
+# --- Glenavy and Killead ---
+# html_link: non-standard date format (YYYY-Month-DD) in filename
+https://www.glenavyandkilleadparish.com
+
+# --- Hannahstown ---
+# html_link: weekly bulletins page
+https://www.parishofhannahstown.com/weekly-bulletins
+
+# --- Holy Cross Belfast ---
+# Pattern A: DDMMYY filename — e.g. 120426.pdf
+http://www.holycrossparishbelfast.com/pdf/120426.pdf
+http://www.holycrossparishbelfast.com/pdf/050426.pdf
+
+# --- Holy Rosary Belfast ---
+# html_link: weekly bulletin page
+https://www.holyrosaryparishbelfast.net/weekly-bulletin
+
+# --- Kilmore and Killyleagh ---
+# html_link: ordinal date in filename
+https://www.kilmoreandkillyleagh.com
+
+# --- Lisburn ---
+# html_link: non-standard date format (DD-MM-YY with suffix) in filename
+https://parishoflisburn.org
+
+# --- Loughshore ---
+# html_link: WordPress bulletin post page
+https://www.loughshoreparishes.org/sunday-bulletin/
+
+# --- Maghera ---
+# html_link: missalette page
+https://www.parishofmaghera.com/copy-of-sunday-missalette
+
+# --- Our Lady Queen of Peace ---
+# html_link: bulletins listing page
+https://www.ourladyqueenofpeacekilwee.com/bulletins
+
+# --- Portaferry ---
+# html_link: bulletin page
+https://portaferryparish.com/bulletin
+
+# --- Portstewart ---
+# html_link: WordPress bulletin post
+https://portstewartparish.website
+
+# --- Sacred Heart Belfast ---
+# html_link: ordinal date in filename
+https://www.sacredheartparishbelfast.com
+
+# --- Saul and Ballee ---
+# html_link: non-standard date format (Bulletin-DD-MM-YYYY) in filename
+https://www.saulandballeeparish.com
+
+# --- St Agnes Belfast ---
+# html_link: parish homepage
+https://www.stagnesbelfast.com/
+
+# --- St Anne's ---
+# html_link: DDMMYY prefix but month directory also changes; link is safer
+https://www.saintannesparish.net
+
+# --- St Anthony's ---
+# html_link: DDMMYY buried in mid-path with changing month directory
+https://www.saintanthony.co.uk
+
+# --- St Bernadette's ---
+# html_link: ordinal date in filename
+https://www.stbernadettesparish.org
+
+# --- St Brigid's Belfast ---
+# html_link: non-standard DD.MM.YY format in filename
+https://stbrigidsparishbelfast.org
+
+# --- St Colmcille's ---
+# html_link: past-weeks bulletins archive page
+https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/
+
+# --- St Gerard's ---
+# html_link: parish news & events page
+https://stgerardsparish.org/parish-news-events/
+
+# --- St MacNissi Randalstown ---
+# html_link: bulletin page
+https://www.stmacnissirandalstown.com/bulletin
+
+# --- St Michael the Archangel ---
+# html_link: GoDaddy parish site
+https://saintmichaelthearchangel.godaddysites.com/
+
+# --- St Oliver Plunkett ---
+# html_link: ordinal date in filename
+https://stoliverplunkettparish.ie
+
+# --- St Patrick's Belfast ---
+# html_link: weekly bulletins category page
+https://www.stpatricksbelfast.org/category/weekly-bulletins/
+
+# --- St Teresa's ---
+# html_link: parish news page
+https://stteresasparish.church/parish-news/
