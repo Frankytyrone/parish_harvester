@@ -284,28 +284,79 @@ def _is_real_pdf(path: Path, tag: str = "") -> bool:
     return True
 
 
+def _rewrite_gdrive_url(url: str) -> str:
+    """Convert a Google Drive viewer URL to a direct-download URL.
+
+    Transforms ``https://drive.google.com/file/d/FILE_ID/view[?...]``
+    into ``https://drive.usercontent.google.com/download?id=FILE_ID&export=download``
+    so that Playwright can download the file directly without hitting the
+    HTML preview page.
+    """
+    m = re.search(r"drive\.google\.com/file/d/([^/?#]+)", url)
+    if m:
+        file_id = m.group(1)
+        return (
+            f"https://drive.usercontent.google.com/download"
+            f"?id={file_id}&export=download"
+        )
+    return url
+
+
+def _is_pdf_content(data: bytes) -> bool:
+    """Return True if *data* starts with the PDF magic bytes ``%PDF``."""
+    return data[:4] == b"%PDF"
+
+
 async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
     """Download a PDF via a headless page."""
+    # Convert Google Drive viewer links to direct-download URLs
+    url = _rewrite_gdrive_url(url)
+
     context = await browser.new_context()
     try:
+        # Attempt 1: navigate and expect a file download (Content-Disposition: attachment)
+        _nav_response = None
         try:
             async with context.expect_download(timeout=PAGE_LOAD_TIMEOUT_MS) as dl_info:
                 page = await context.new_page()
-                await page.goto(url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="commit")
+                _nav_response = await page.goto(
+                    url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="commit"
+                )
             download = await dl_info.value
             await download.save_as(dest)
+            return
         except Exception:
-            page = await context.new_page()
-            response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
-            if response.ok:
-                content_type = response.headers.get("content-type", "")
-                if "text/html" in content_type:
-                    raise RuntimeError(
-                        f"Server returned HTML instead of a PDF for {url}"
-                    )
-                dest.write_bytes(await response.body())
-            else:
-                raise RuntimeError(f"HTTP {response.status} for {url}")
+            pass
+
+        # Attempt 2: capture PDF bytes from the navigation response body.
+        # Handles servers (e.g. Three Patrons) that serve the PDF inline
+        # rather than as an attachment download.
+        if _nav_response is not None:
+            try:
+                body = await _nav_response.body()
+                if _is_pdf_content(body):
+                    dest.write_bytes(body)
+                    return
+            except Exception:
+                pass
+
+        # Attempt 3: direct HTTP request fallback
+        page = await context.new_page()
+        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+        if response.ok:
+            body = await response.body()
+            # Accept the body if it is a valid PDF regardless of reported content-type
+            if _is_pdf_content(body):
+                dest.write_bytes(body)
+                return
+            content_type = response.headers.get("content-type", "")
+            if "text/html" in content_type:
+                raise RuntimeError(
+                    f"Server returned HTML instead of a PDF for {url}"
+                )
+            dest.write_bytes(body)
+        else:
+            raise RuntimeError(f"HTTP {response.status} for {url}")
     except _TargetClosedError:
         raise
     finally:
