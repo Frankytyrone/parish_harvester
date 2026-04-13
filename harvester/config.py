@@ -42,14 +42,18 @@ def target_sunday(from_date: date | None = None) -> date:
     the earliest, so jumping ahead to next Sunday on Friday/Saturday would
     produce URLs that do not yet exist.
 
-    * Sunday (weekday 6)      → today
-    * Monday–Saturday (0–5)   → last Sunday
+    * Sunday (weekday 6)       → today (current bulletin is already live)
+    * Monday–Saturday (0–5)    → last Sunday (bulletins for next Sunday are
+                                  not uploaded until at least Wednesday/Thursday
+                                  of the following week, so never jump forward)
     """
     d = from_date or date.today()
     wd = d.weekday()  # Monday=0 … Sunday=6
     if wd == 6:
-        return d  # Today is Sunday
-    return d - timedelta(days=wd + 1)  # Always go back to last Sunday
+        # Today is Sunday — use today
+        return d
+    # Monday through Saturday — use last Sunday
+    return d - timedelta(days=wd + 1)
 
 
 # Backwards compatibility alias
