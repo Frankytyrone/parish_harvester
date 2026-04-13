@@ -37,7 +37,10 @@ MIN_PDF_BYTES: int = 20_000          # 20 KB minimum PDF size
 def target_sunday(from_date: date | None = None) -> date:
     """Return the bulletin target Sunday based on which day of the week it is.
 
-    The logic reflects when parish websites actually publish their bulletins:
+    Always returns the most recent past Sunday (or today if today is Sunday).
+    Parishes do not upload next week's bulletin until Wednesday/Thursday at
+    the earliest, so jumping ahead to next Sunday on Friday/Saturday would
+    produce URLs that do not yet exist.
 
     * Sunday (weekday 6)       → today (current bulletin is already live)
     * Monday–Saturday (0–5)    → last Sunday (bulletins for next Sunday are
