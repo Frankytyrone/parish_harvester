@@ -159,7 +159,9 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
             pattern = "clonleigh"
         elif cur_is_html_link or cur_pattern == "html_link":
             content_type = "html_link"
-            pattern = "html_link"
+            # Preserve any explicitly-set date pattern (e.g. "D") so date math
+            # can still be applied when building the html_link URL.
+            pattern = cur_pattern or "html_link"
         elif cur_is_image or url_lower.endswith((".jpg", ".jpeg", ".png")):
             content_type = "image"
             pattern = cur_pattern or "F"
@@ -427,8 +429,9 @@ async def _fetch_entry(
 
     # html_link parishes: return URL (possibly calculated) without downloading
     if entry.content_type == "html_link":
-        # For clonleigh, calculate the predicted URL for this week
-        url = calculate_url(entry, target) if entry.pattern == "clonleigh" else entry.example_url
+        # Apply date math for any parish with a real date pattern (A–H, greenlough, etc.).
+        # Only static patterns ("html_link", "F") return the example URL as-is.
+        url = calculate_url(entry, target) if entry.pattern not in ("html_link", "F") else entry.example_url
         return FetchResult(
             key=key,
             display_name=entry.display_name,
@@ -444,7 +447,12 @@ async def _fetch_entry(
     # - predicted target URL
     # - last Sunday's URL (target - 7 days)
     fallback_candidates: list[str] = [target_url]
-    if entry.pattern not in ("F", "H", "clonleigh", "html_link"):
+    if entry.pattern == "H":
+        # Pattern H (Three Patrons, Banagher): the server requires the slug that
+        # follows the number.  Try the current example_url (correct number + slug)
+        # FIRST, then fall back to the incremented number URL (no slug).
+        fallback_candidates.insert(0, entry.example_url)
+    elif entry.pattern not in ("F", "clonleigh", "html_link"):
         last_sunday_url = rewrite_date_url(entry.example_url, target - timedelta(days=7))
         if last_sunday_url != target_url and last_sunday_url != entry.example_url:
             fallback_candidates.append(last_sunday_url)
@@ -467,8 +475,11 @@ async def _fetch_entry(
 
     for candidate in fallback_candidates:
         try:
+            # Encode any spaces in the URL (e.g. "NEWSLETTER 12-4-26.docx") so the
+            # HTTP request succeeds.  Keep the original for display/logging.
+            candidate_encoded = candidate.replace(" ", "%20")
             if entry.content_type == "image":
-                await _download_image_as_pdf(candidate, dest, browser)
+                await _download_image_as_pdf(candidate_encoded, dest, browser)
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
@@ -476,7 +487,7 @@ async def _fetch_entry(
                         file_path=dest, file_type="image_to_pdf",
                     )
             elif entry.content_type == "docx":
-                await _download_docx_as_pdf(candidate, dest, browser)
+                await _download_docx_as_pdf(candidate_encoded, dest, browser)
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
@@ -484,7 +495,7 @@ async def _fetch_entry(
                         file_path=dest, file_type="docx_to_pdf",
                     )
             else:
-                await _download_pdf(candidate, dest, browser)
+                await _download_pdf(candidate_encoded, dest, browser)
                 if _is_real_pdf(dest, key):
                     if candidate != target_url:
                         print(f"  📅 Used fallback URL for {key}: {candidate}")
@@ -515,7 +526,7 @@ async def fetch_parish(
     """Fetch one parish bulletin with retries and a total timeout."""
     # html_link: instant, no timeout needed
     if entry.content_type == "html_link":
-        url = calculate_url(entry, target) if entry.pattern == "clonleigh" else entry.example_url
+        url = calculate_url(entry, target) if entry.pattern not in ("html_link", "F") else entry.example_url
         return FetchResult(
             key=entry.key,
             display_name=entry.display_name,
