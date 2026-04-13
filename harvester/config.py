@@ -39,20 +39,18 @@ def target_sunday(from_date: date | None = None) -> date:
 
     The logic reflects when parish websites actually publish their bulletins:
 
-    * Sunday (weekday 6)      → today (current bulletin is already live)
-    * Monday–Thursday (0–3)   → last Sunday (bulletin has been live all week)
-    * Friday–Saturday (4–5)   → next Sunday (parishes upload a day or two early)
+    * Sunday (weekday 6)       → today (current bulletin is already live)
+    * Monday–Saturday (0–5)    → last Sunday (bulletins for next Sunday are
+                                  not uploaded until at least Wednesday/Thursday
+                                  of the following week, so never jump forward)
     """
     d = from_date or date.today()
     wd = d.weekday()  # Monday=0 … Sunday=6
     if wd == 6:
         # Today is Sunday — use today
         return d
-    if wd <= 3:
-        # Monday through Thursday — use last Sunday
-        return d - timedelta(days=wd + 1)
-    # Friday or Saturday — use next Sunday
-    return d + timedelta(days=6 - wd)
+    # Monday through Saturday — use last Sunday
+    return d - timedelta(days=wd + 1)
 
 
 # Backwards compatibility alias
