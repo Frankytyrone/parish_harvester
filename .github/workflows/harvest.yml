@@ -2,8 +2,17 @@ name: Harvest Parish Bulletins
 
 on:
   schedule:
-    - cron: '0 12 * * 0'   # Every Sunday at 12:00 UTC (12:00/13:00 UK time)
-  workflow_dispatch:        # Manual trigger
+    - cron: '0 13 * * 0'   # Every Sunday at 13:00 UTC
+  workflow_dispatch:
+    inputs:
+      diocese:
+        description: 'Diocese to harvest'
+        required: true
+        default: 'derry_diocese'
+        type: choice
+        options:
+          - derry_diocese
+          - down_and_connor
 
 permissions:
   contents: write
@@ -30,7 +39,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
 
       - name: Run Bulletin Harvester
-        run: python main.py --diocese derry_diocese
+        run: python main.py --diocese ${{ github.event.inputs.diocese || 'derry_diocese' }}
 
       - name: Post GitHub Issue summary
         if: always()
