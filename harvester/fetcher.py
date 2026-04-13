@@ -159,8 +159,8 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
             pattern = "clonleigh"
         elif cur_is_html_link or cur_pattern == "html_link":
             content_type = "html_link"
-            # Preserve any explicitly-set date pattern (e.g. "D") so date math
-            # can still be applied when building the html_link URL.
+            # Preserve any explicitly-set date pattern (e.g. Pattern D, clonleigh) so
+            # date math can still be applied when building the html_link URL.
             pattern = cur_pattern or "html_link"
         elif cur_is_image or url_lower.endswith((".jpg", ".jpeg", ".png")):
             content_type = "image"
@@ -448,8 +448,8 @@ async def _fetch_entry(
     # - last Sunday's URL (target - 7 days)
     fallback_candidates: list[str] = [target_url]
     if entry.pattern == "H":
-        # Pattern H (Three Patrons, Banagher): the server requires the slug that
-        # follows the number.  Try the current example_url (correct number + slug)
+        # Pattern H requires the slug after the bulletin number — the server
+        # returns 403 without it.  Try the current example_url (with slug)
         # FIRST, then fall back to the incremented number URL (no slug).
         fallback_candidates.insert(0, entry.example_url)
     elif entry.pattern not in ("F", "clonleigh", "html_link"):
