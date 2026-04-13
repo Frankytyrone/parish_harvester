@@ -39,7 +39,10 @@ def parish_name_from_url(url: str) -> str:
         # e.g. /parishes/gortin  →  append "gortin"
         # Skip generic page names that add no information
         _SKIP = {"news", "parishnews", "html", "htm", "php", "pdf", "aspx", "index"}
-        if last and last.lower() not in _SKIP and not last.isdigit():
+        # Also skip dated filenames (e.g. Bulletin-5th-April-2026) — those change
+        # every week and would make the key unstable.
+        _has_year = bool(re.search(r"\b20[0-9]{2}\b", last))
+        if last and last.lower() not in _SKIP and not last.isdigit() and not _has_year:
             base = f"{base}_{last}"
 
     # Remove any URL-encoded characters and reduce to safe chars
@@ -90,9 +93,10 @@ _MONTH_MAP: dict[str, int] = {
     "december": 12, "dec": 12,
 }
 
-# Matches date slugs like "5_april_2026", "15-february-2026", "2-february-2025"
+# Matches date slugs like "5_april_2026", "15-february-2026", "5th-April-2026"
+# The optional ordinal suffix (?:st|nd|rd|th)? handles formats like "5th" or "12th".
 _SLUG_DATE_RE = re.compile(
-    r"(\d{1,2})[_\-]([a-z]+)[_\-](\d{4})",
+    r"(\d{1,2})(?:st|nd|rd|th)?[_\-]([a-z]+)[_\-](\d{4})",
     re.IGNORECASE,
 )
 
@@ -179,9 +183,11 @@ def rewrite_slug_url(url: str, target: date) -> str:
     except ValueError:
         return url
 
-    # Determine the separator used in the original slug
-    sep_pos = m.start() + len(m.group(1))
-    sep = url[sep_pos] if sep_pos < len(url) else "_"
+    # Determine the separator used in the original slug.
+    # Use the character just before the month group (group 2) to correctly
+    # handle ordinal suffixes like "5th-April-2026" where group 1 is "5".
+    sep_pos = m.start(2) - 1
+    sep = url[sep_pos] if 0 <= sep_pos < len(url) else "_"
 
     new_slug = f"{target.day}{sep}{_MONTH_NAMES[target.month]}{sep}{target.year}"
     return url[: m.start()] + new_slug + url[m.end() :]
@@ -365,8 +371,10 @@ def rewrite_date_url(url: str, target: date) -> str:
                     return m.group(0)
                 d = date(int(m.group(3)), old_month_num, int(m.group(1)))
                 if abs((d - target).days) < 365:
-                    sep_pos = m.start() + len(m.group(1))
-                    sep = path[sep_pos] if sep_pos < len(path) else "-"
+                    # Use the character just before group 2 as separator to
+                    # correctly handle ordinals like "5th-April" where group 1="5"
+                    sep_pos = m.start(2) - 1
+                    sep = path[sep_pos] if 0 <= sep_pos < len(path) else "-"
                     month_str = _MONTH_NAMES[target.month].capitalize()
                     return f"{target.day:02d}{sep}{month_str}{sep}{target.year}"
             except ValueError:
@@ -536,6 +544,30 @@ def safe_filename(prefix: str, suffix: str) -> str:
     """Combine a sanitized parish prefix with a file suffix."""
     prefix = re.sub(r"[^a-z0-9_-]", "_", prefix.lower())
     return f"{prefix}{suffix}"
+
+
+# ---------------------------------------------------------------------------
+# Greenlough parish — liturgical name + date rewrite
+# ---------------------------------------------------------------------------
+
+def rewrite_greenlough_url(url: str, target: date) -> str | None:
+    """
+    Rewrite a Greenlough parish URL by replacing both the liturgical
+    Sunday name and the [YYYY-M-D] date bracket.
+
+    Returns the new URL, or None if this isn't a Greenlough URL or
+    no liturgical name is available for the target date.
+    """
+    if "greenlough.com/publications/newsletter/" not in url:
+        return None
+    from .liturgical import get_liturgical_name
+    name = get_liturgical_name(target)
+    if not name:
+        return None
+    # The URL pattern is: .../newsletter/LITURGICAL_NAME_[YYYY-M-D].pdf
+    # Extract the base and rebuild
+    base = url.split("/newsletter/")[0] + "/newsletter/"
+    return f"{base}{name}_[{target.year}-{target.month}-{target.day}].pdf"
 
 
 # ---------------------------------------------------------------------------

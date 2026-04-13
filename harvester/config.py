@@ -3,7 +3,6 @@ config.py — Central configuration for the Parish Bulletin Harvester.
 """
 from __future__ import annotations
 
-import os
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -23,13 +22,6 @@ RAW_DIR = BULLETINS_DIR / "raw"
 CURRENT_DIR = BULLETINS_DIR / "current"
 REPORT_JSON = BULLETINS_DIR / "report.json"
 REPORT_TXT = BULLETINS_DIR / "report.txt"
-
-# ---------------------------------------------------------------------------
-# GitHub Models
-# ---------------------------------------------------------------------------
-GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
-GITHUB_MODELS_ENDPOINT: str = "https://models.inference.ai.azure.com"
-MODEL_NAME: str = "gpt-4o-mini"
 
 # ---------------------------------------------------------------------------
 # Timeouts & concurrency
