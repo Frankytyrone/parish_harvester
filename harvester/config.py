@@ -115,12 +115,24 @@ WIX_SELECTORS: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 
 def next_sunday(from_date: date | None = None) -> date:
-    """Return the date of the next Sunday on or after *from_date*."""
+    """Return the bulletin target Sunday based on which day of the week it is.
+
+    The logic reflects when parish websites actually publish their bulletins:
+
+    * Sunday (weekday 6)      → today (current bulletin is already live)
+    * Monday–Thursday (0–3)   → last Sunday (new bulletin not yet uploaded)
+    * Friday–Saturday (4–5)   → next Sunday (parishes upload a day or two early)
+    """
     d = from_date or date.today()
-    days_ahead = 6 - d.weekday()  # weekday(): Monday=0, Sunday=6
-    if days_ahead < 0:
-        days_ahead += 7
-    return d + timedelta(days=days_ahead)
+    wd = d.weekday()  # Monday=0 … Sunday=6
+    if wd == 6:
+        # Today is Sunday — use today
+        return d
+    if wd <= 3:
+        # Monday through Thursday — use last Sunday
+        return d - timedelta(days=wd + 1)
+    # Friday or Saturday — use next Sunday
+    return d + timedelta(days=6 - wd)
 
 
 def week_range(target: date) -> tuple[date, date]:
