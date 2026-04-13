@@ -10,7 +10,7 @@ import argparse
 import asyncio
 import logging
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from harvester.config import (
@@ -67,8 +67,7 @@ def main() -> int:
     # Resolve target date
     if args.target_date:
         try:
-            from datetime import date as _date, datetime as _dt
-            target = _dt.strptime(args.target_date, "%Y-%m-%d").date()
+            target = datetime.strptime(args.target_date, "%Y-%m-%d").date()
         except ValueError:
             print(f"💥 Invalid --target-date format: {args.target_date}", file=sys.stderr)
             return 1

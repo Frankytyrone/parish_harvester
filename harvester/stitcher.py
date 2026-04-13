@@ -16,6 +16,16 @@ if TYPE_CHECKING:
     from .fetcher import FetchResult
 
 
+def _xml_escape(text: str) -> str:
+    """Escape XML/HTML special characters for use in ReportLab markup."""
+    return (
+        text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
 def stitch_mega_pdf(
     results: list["FetchResult"],
     current_dir: Path,
@@ -103,26 +113,21 @@ def stitch_mega_pdf(
 
         # If parish_url is an HTML link (html_link status or no PDF found)
         if parish_url and parish_url.startswith("http"):
-            safe_url = (
-                parish_url
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-            )
+            safe_url = _xml_escape(parish_url)
             link_items.append(
                 f'📋 <b>Click here to view the bulletin online</b>: '
                 f'<link href="{parish_url}" color="blue">{safe_url}</link>'
             )
 
         if website and website != parish_url:
-            safe_ws = website.replace("&", "&amp;")
             link_items.append(
-                f'🌐 Parish Website: <link href="{website}" color="blue">{safe_ws}</link>'
+                f'🌐 Parish Website: <link href="{website}" color="blue">'
+                f'{_xml_escape(website)}</link>'
             )
         if facebook:
-            safe_fb = facebook.replace("&", "&amp;")
             link_items.append(
-                f'📘 Facebook: <link href="{facebook}" color="blue">{safe_fb}</link>'
+                f'📘 Facebook: <link href="{facebook}" color="blue">'
+                f'{_xml_escape(facebook)}</link>'
             )
         if not link_items:
             link_items.append("Please contact the parish directly.")

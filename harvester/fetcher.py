@@ -197,7 +197,7 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
 
         if line.startswith("#"):
             ll = line.lower()
-            if "# key:" in ll:
+            if ll.startswith("# key:"):
                 cur_key_override = line.split(":", 1)[1].strip()
             # Check multi-word patterns BEFORE single-letter patterns to avoid
             # substring collisions (e.g. "pattern clonleigh" contains "pattern c")
@@ -220,12 +220,9 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
             elif re.search(r"pattern\s+h\b", ll):
                 cur_pattern = "H"
             elif "html_link" in ll or ("html only" in ll and "pattern" not in ll):
-                # Only set html_link pattern if no explicit pattern was set
+                cur_is_html_link = True
                 if cur_pattern is None:
-                    cur_is_html_link = True
                     cur_pattern = "html_link"
-                else:
-                    cur_is_html_link = True
             elif "jpeg" in ll or ("image" in ll and "bulletin" in ll):
                 cur_is_image = True
             elif "docx" in ll or "word document" in ll:
@@ -348,7 +345,7 @@ async def _download_docx_as_pdf(url: str, dest: Path, browser: Browser) -> None:
                 dest.write_bytes(pdf_out.read_bytes())
                 return
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
+            print("  ℹ️  LibreOffice not available or timed out; falling back to python-docx converter")
 
         # Fallback: python-docx + reportlab
         try:
