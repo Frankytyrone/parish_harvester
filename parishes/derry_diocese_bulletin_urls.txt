@@ -25,14 +25,13 @@
 #   Group entries by parish name.  Most recent bulletin first.
 #
 # SPECIAL NOTES:
-#   - cappaghparish.com/pdf/120426.pdf — URL looks current but content is
-#     from 2025 (secretary used wrong date).  Download and use as-is.
+#   - cappaghparish.com — DISABLED: secretary used wrong dates; content was
+#     from 2025.  Entry commented out to avoid stale bulletins.
 # ============================================================
 
 # --- Ardmore ---
-# Pattern A: DDMMYY
-http://www.ardmoreparish.com/pdf/120426.pdf
-http://www.ardmoreparish.com/pdf/050426.pdf
+# html_link: bulletin page is consistently out of date; just provide a link.
+http://www.ardmoreparish.com/news.html
 
 # --- Ballinascreen (& Desertmartin amalgamated) ---
 # Pattern D: slug date DD_Month_YYYY (Wix site — HTML page, not PDF)
@@ -57,10 +56,10 @@ https://www.buncranaparish.com/pdf/050426.pdf
 https://www.buncranaparish.com/pdf/220326.pdf
 
 # --- Cappagh (& Killyclogher amalgamated) ---
-# Pattern A: DDMMYY
-# Note: the secretary sometimes uses wrong dates in filenames; content may lag.
-https://www.cappaghparish.com/pdf/120426.pdf
-https://www.cappaghparish.com/pdf/050426.pdf
+# DISABLED: secretary uses wrong dates in filenames; bulletin content is stale (2025).
+# Removed to avoid including outdated bulletins.
+# https://www.cappaghparish.com/pdf/120426.pdf
+# https://www.cappaghparish.com/pdf/050426.pdf
 
 # --- Carndonagh ---
 # Pattern A: DDMMYY
@@ -182,9 +181,9 @@ http://www.parishofsionmills.com/news.html
 
 # --- Star of the Sea (Magilligan) ---
 # key: staroftheseacatholic
-# html_link: SSL error on main site; bulletin hosted on Google Drive.
-# Direct link below is a static Google Drive link (no date math possible).
-https://drive.google.com/file/d/1cF4BuBrZCRrSwMQeTT8mJrGNpr5aFGpD/view
+# Pattern F: STATIC URL — Google Drive direct download (file ID never changes).
+# Converted from /file/d/ID/view to drive.usercontent.google.com direct download.
+https://drive.usercontent.google.com/download?id=1cF4BuBrZCRrSwMQeTT8mJrGNpr5aFGpD&export=download
 
 # --- St Eugene's Cathedral (Templemore) ---
 # Pattern A: DDMMYY
