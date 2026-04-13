@@ -95,7 +95,7 @@ The harvester calculates the target Sunday automatically:
 |---------|--------|
 | Sunday | Today |
 | Monday–Thursday | Last Sunday |
-| Friday–Saturday | Next Sunday |
+| Friday–Saturday | Last Sunday |
 
 Override with `--target-date YYYY-MM-DD`.
 
