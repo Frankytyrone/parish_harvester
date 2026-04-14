@@ -207,6 +207,8 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
                 cur_pattern = "greenlough"
             elif "pattern clonleigh" in ll:
                 cur_pattern = "clonleigh"
+            elif "pattern ballycastle" in ll:
+                cur_pattern = "ballycastle"
             elif re.search(r"pattern\s+a\b", ll):
                 cur_pattern = "A"
             elif re.search(r"pattern\s+b\b", ll):
@@ -252,6 +254,8 @@ def calculate_url(entry: ParishEntry, target: date) -> str:
     if pattern == "F":
         # Static URL — download as-is each week
         return url
+    if pattern == "ballycastle":
+        return url  # bulletins page — actual PDF URL found at runtime by scraper
     if pattern == "greenlough":
         result = rewrite_greenlough_url(url, target)
         return result if result else url
@@ -464,6 +468,37 @@ async def _download_image_as_pdf(url: str, dest: Path, browser: Browser) -> None
     img.save(str(dest), "PDF", resolution=150)
 
 
+async def _fetch_ballycastle(dest: Path, browser: Browser) -> str:
+    """Scrape the Ballycastle parish bulletins page and download the current PDF.
+
+    Navigates to https://www.ballycastleparish.com/bulletins, finds the first
+    ``<a>`` element with CSS class ``sqs-button-element--primary``, reads its
+    ``href`` attribute, constructs the full PDF URL, downloads it to *dest*,
+    and returns the full URL string.
+    """
+    bulletins_page = "https://www.ballycastleparish.com/bulletins"
+    base_url = "https://www.ballycastleparish.com"
+
+    context = await browser.new_context()
+    try:
+        page = await context.new_page()
+        await page.goto(bulletins_page, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="domcontentloaded")
+        # Find the first primary button link — this is always the current week's bulletin
+        link = page.locator("a.sqs-button-element--primary").first
+        href = await link.get_attribute("href", timeout=PAGE_LOAD_TIMEOUT_MS)
+        if not href:
+            raise RuntimeError("Could not find bulletin link on Ballycastle bulletins page")
+        pdf_url = base_url + href if href.startswith("/") else href
+    finally:
+        try:
+            await context.close()
+        except Exception:
+            pass
+
+    await _download_pdf(pdf_url, dest, browser)
+    return pdf_url
+
+
 # ---------------------------------------------------------------------------
 # Core fetch logic
 # ---------------------------------------------------------------------------
@@ -489,6 +524,38 @@ async def _fetch_entry(
             status="html_link",
             url=url,
             file_type="html_link",
+        )
+
+    # Ballycastle: scrape the bulletins page to find this week's PDF URL
+    if entry.pattern == "ballycastle":
+        dest = output_dir / safe_filename(key, ".pdf")
+        try:
+            pdf_url = await _fetch_ballycastle(dest, browser)
+            if _is_real_pdf(dest, key):
+                return FetchResult(
+                    key=key, display_name=entry.display_name,
+                    status="ok", url=pdf_url,
+                    file_path=dest, file_type="pdf",
+                )
+        except Exception as exc:
+            print(f"  ↩️  {key}: ballycastle scrape failed: {exc}, falling back to date rewrite")
+            dest.unlink(missing_ok=True)
+        # Fall back to date-rewrite approach using the example URL
+        fallback_url = rewrite_date_url(entry.example_url, target)
+        try:
+            await _download_pdf(fallback_url, dest, browser)
+            if _is_real_pdf(dest, key):
+                return FetchResult(
+                    key=key, display_name=entry.display_name,
+                    status="ok", url=fallback_url,
+                    file_path=dest, file_type="pdf",
+                )
+        except Exception as exc:
+            print(f"  ↩️  {key}: ballycastle date-rewrite fallback failed: {exc}")
+        return FetchResult(
+            key=key, display_name=entry.display_name,
+            status="error", url=entry.example_url,
+            error="Ballycastle scrape failed and date-rewrite fallback also failed",
         )
 
     # Calculate the predicted URL for this week
