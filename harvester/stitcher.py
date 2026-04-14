@@ -17,15 +17,18 @@ if TYPE_CHECKING:
     from .fetcher import FetchResult
 
 
-# Characters that are considered "filler" and should not count as real content
-# when deciding whether a PDF page is blank/near-blank.
-# The `.` inside the character class matches a literal period (not any char).
-_FILLER_PATTERN = re.compile(r'[\s\u2022\u00b7\u2019\u2018\u2026.\u2013\u2014|-]+')
-# Minimum number of meaningful characters for a page to be kept.
-# Real bulletin pages always contain hundreds of characters; this threshold
-# catches truly blank pages (0 chars), dot-separator pages (e.g. "• • • •"),
-# and near-blank pages with only a page number or single word.
-_MIN_MEANINGFUL_CHARS = 20
+# Characters considered filler — stripped before counting meaningful content.
+# Covers whitespace, ASCII control chars (incl. form feed \x0c), invisible
+# Unicode (NBSP, soft-hyphen, zero-width chars, BOM), bullets, dashes,
+# smart-quotes, ellipsis, and standalone punctuation.
+_FILLER_PATTERN = re.compile(
+    r'[\s\x00-\x1f\x7f\xa0\xad'
+    r'\u200b\u200c\u200d\ufeff'
+    r'\u2022\u00b7\u2019\u2018\u2026\u2013\u2014'
+    r'.,:;!?\-_|]+'
+)
+# Minimum meaningful characters to keep a page (real pages have hundreds).
+_MIN_MEANINGFUL_CHARS = 30
 
 
 def _xml_escape(text: str) -> str:
