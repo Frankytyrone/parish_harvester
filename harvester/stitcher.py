@@ -8,12 +8,24 @@ from __future__ import annotations
 
 import io
 import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .fetcher import FetchResult
+
+
+# Characters that are considered "filler" and should not count as real content
+# when deciding whether a PDF page is blank/near-blank.
+# The `.` inside the character class matches a literal period (not any char).
+_FILLER_PATTERN = re.compile(r'[\s\u2022\u00b7\u2019\u2018\u2026.\u2013\u2014|-]+')
+# Minimum number of meaningful characters for a page to be kept.
+# Real bulletin pages always contain hundreds of characters; this threshold
+# catches truly blank pages (0 chars), dot-separator pages (e.g. "• • • •"),
+# and near-blank pages with only a page number or single word.
+_MIN_MEANINGFUL_CHARS = 20
 
 
 def _xml_escape(text: str) -> str:
@@ -95,10 +107,12 @@ def stitch_mega_pdf(
             try:
                 reader = PyPDF2.PdfReader(str(pdf_path))
                 for page in reader.pages:
-                    # Skip blank pages (no extractable text content)
+                    # Skip blank or near-blank pages (no real text content)
                     try:
                         text = page.extract_text() or ""
-                        if not text.strip():
+                        # Strip whitespace and filler characters (dots, bullets, ellipses, dashes)
+                        meaningful = _FILLER_PATTERN.sub('', text)
+                        if len(meaningful) < _MIN_MEANINGFUL_CHARS:
                             continue
                     except Exception:
                         pass  # If we can't extract text, include the page to be safe
