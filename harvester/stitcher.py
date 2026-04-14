@@ -39,7 +39,7 @@ def _xml_escape(text: str) -> str:
         text
         .replace("&", "&amp;")
         .replace("<", "&lt;")
-        .replace(">")
+        .replace(">", "&gt;")
     )
 
 def stitch_mega_pdf(
@@ -50,7 +50,7 @@ def stitch_mega_pdf(
     contacts_path: Path | None = None,
 ) -> None:
     """
-    Merge all downloaded PDFs (A–Z by display name) into one mega PDF, then
+    Merge all downloaded PDFs (A-Z by display name) into one mega PDF, then
     append a single compact summary page listing all HTML-only and unavailable
     parishes.
     """
@@ -78,7 +78,7 @@ def stitch_mega_pdf(
         except Exception as exc:
             print(f"  ⚠️  Could not load contacts file: {exc}")
 
-    # Build map: key → (pdf_path | None, url, display_name)
+    # Build map: key -> (pdf_path | None, url, display_name)
     parish_map: dict[str, tuple[Path | None, str, str]] = {}
     for r in results:
         key = r.key
@@ -92,7 +92,7 @@ def stitch_mega_pdf(
         else:
             parish_map.setdefault(key, (None, r.url, r.display_name))
 
-    # Sort A–Z by human display name (not domain key)
+    # Sort A-Z by human display name (not domain key)
     sorted_entries = sorted(
         parish_map.items(),
         key=lambda item: item[1][2].lower() if item[1][2] else item[0].lower()
@@ -158,7 +158,7 @@ def stitch_mega_pdf(
         small_style = styles["Normal"].clone("Small")
         small_style.fontSize = 9
         small_style.leading = 11
-        # Sort missing entries A–Z by display name
+        # Sort missing entries A-Z by display name
         missing_entries.sort(key=lambda x: x[0].lower())
         for display_name, parish_url, website in missing_entries:
             name_esc = _xml_escape(display_name)
@@ -188,8 +188,8 @@ def stitch_mega_pdf(
         bulletins_dir.mkdir(parents=True, exist_ok=True)
         with output_path.open("wb") as fh:
             merger.write(fh)
-        print(f"  📖 Mega PDF      : {output_path}")
-        print(f"     Real PDFs      : {real_count}")
-        print(f"     Online-only    : {len(missing_entries)} (condensed to {summary_page_count} summary page(s))")
+        print(f"  📖 Mega PDF      : {{output_path}}")
+        print(f"     Real PDFs      : {{real_count}}")
+        print(f"     Online-only    : {{len(missing_entries)}} (condensed to {{summary_page_count}} summary page(s))")
     else:
         print("  ⚠️  No pages to include in mega PDF — skipping.")
