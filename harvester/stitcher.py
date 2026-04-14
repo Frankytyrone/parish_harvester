@@ -19,13 +19,32 @@ if TYPE_CHECKING:
 
 # Characters that are considered "filler" and should not count as real content
 # when deciding whether a PDF page is blank/near-blank.
-# The `.` inside the character class matches a literal period (not any char).
-_FILLER_PATTERN = re.compile(r'[\s\u2022\u00b7\u2019\u2018\u2026.\u2013\u2014|-]+')
+# Covers:
+#   \s            — all whitespace (spaces, tabs, newlines, \r, \f, \v)
+#   \x00-\x1f     — all ASCII control characters (form feed \x0c, etc.)
+#   \x7f          — DEL character
+#   \xa0          — non-breaking space
+#   \xad          — soft hyphen
+#   \u200b        — zero-width space
+#   \u200c\u200d  — zero-width non-joiner/joiner
+#   \ufeff        — BOM / zero-width no-break space
+#   \u2022        — bullet •
+#   \u00b7        — middle dot ·
+#   \u2019\u2018  — smart quotes
+#   \u2026        — ellipsis …
+#   \u2013\u2014  — en-dash, em-dash
+#   .|,;:!?-_|    — common punctuation that alone means nothing
+_FILLER_PATTERN = re.compile(
+    r'[\s\x00-\x1f\x7f\xa0\xad'
+    r'\u200b\u200c\u200d\ufeff'
+    r'\u2022\u00b7\u2019\u2018\u2026\u2013\u2014'
+    r'.,:;!?\-_|]+'
+)
 # Minimum number of meaningful characters for a page to be kept.
 # Real bulletin pages always contain hundreds of characters; this threshold
-# catches truly blank pages (0 chars), dot-separator pages (e.g. "• • • •"),
-# and near-blank pages with only a page number or single word.
-_MIN_MEANINGFUL_CHARS = 20
+# catches truly blank pages (0 chars), dot/dash separator pages,
+# near-blank pages with only a page number, and control-character-only pages.
+_MIN_MEANINGFUL_CHARS = 30
 
 
 def _xml_escape(text: str) -> str:
