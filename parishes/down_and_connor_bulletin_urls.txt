@@ -27,8 +27,9 @@ https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/04/Bulleti
 https://www-static.antrimparish.com/wp-content/uploads/2026/04/12th-April-2026-Divine-Mercy.pdf
 
 # --- Ballycastle ---
-# Pattern A
-https://www.ballycastleparish.com/s/12th-April-2026.pdf
+# Pattern ballycastle
+# Key: ballycastleparish
+https://www.ballycastleparish.com/bulletins
 
 # --- Ballyclare and Ballygowan ---
 # html_link
