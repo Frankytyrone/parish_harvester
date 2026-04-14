@@ -48,8 +48,9 @@ https://www.ballymoneyparish.com/media/other/31871/26-04-12pdf.pdf
 https://www.bangorparish.com/wp-content/uploads/12-APR-2026-NEWSLETTER.pdf
 
 # --- Bright ---
-# Pattern A
-https://parishofbright.net/wp-content/uploads/2026/04/Bulletin-5-04-2026.pdf
+# Pattern bright
+# Key: parishofbright
+https://parishofbright.net/bulletin/
 
 # --- Carrickfergus ---
 # html_link

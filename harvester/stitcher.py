@@ -75,7 +75,7 @@ def stitch_mega_pdf(
         else:
             parish_map.setdefault(key, (None, r.url, r.display_name))
 
-    sorted_entries = sorted(parish_map.items())
+    sorted_entries = sorted(parish_map.items(), key=lambda item: item[1][2].lower() if item[1][2] else item[0].lower())
 
     output_path = bulletins_dir / f"all_bulletins_{target}.pdf"
     merger = PyPDF2.PdfWriter()
@@ -134,6 +134,7 @@ def stitch_mega_pdf(
         small_style = styles["Normal"].clone("Small")
         small_style.fontSize = 9
         small_style.leading = 11
+        missing_entries.sort(key=lambda x: x[0].lower())
         for display_name, parish_url, website in missing_entries:
             name_esc = _xml_escape(display_name)
             link_url = parish_url if (parish_url and parish_url.startswith("http")) else website

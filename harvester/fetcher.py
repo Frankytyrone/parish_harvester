@@ -207,6 +207,8 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
                 cur_pattern = "greenlough"
             elif "pattern clonleigh" in ll:
                 cur_pattern = "clonleigh"
+            elif "pattern bright" in ll:
+                cur_pattern = "bright"
             elif "pattern ballycastle" in ll:
                 cur_pattern = "ballycastle"
             elif re.search(r"pattern\s+a\b", ll):
@@ -256,6 +258,8 @@ def calculate_url(entry: ParishEntry, target: date) -> str:
         return url
     if pattern == "ballycastle":
         return url  # bulletins page — actual PDF URL found at runtime by scraper
+    if pattern == "bright":
+        return entry.example_url  # /bulletin/ page — actual PDF URL found at runtime
     if pattern == "greenlough":
         result = rewrite_greenlough_url(url, target)
         return result if result else url
@@ -499,6 +503,40 @@ async def _fetch_ballycastle(dest: Path, browser: Browser) -> str:
     return pdf_url
 
 
+async def _fetch_bright(dest: Path, browser: Browser) -> str:
+    """Scrape the Bright parish bulletin page and download the current PDF.
+
+    Navigates to https://parishofbright.net/bulletin/, finds the first
+    ``<a>`` element inside ``.entry-content`` whose ``href`` ends with ``.pdf``,
+    downloads it to *dest*, and returns the full URL string.
+    """
+    bulletin_page = "https://parishofbright.net/bulletin/"
+
+    context = await browser.new_context()
+    try:
+        page = await context.new_page()
+        await page.goto(bulletin_page, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="domcontentloaded")
+        await page.wait_for_selector(".entry-content", timeout=PAGE_LOAD_TIMEOUT_MS)
+        # Find all <a> elements inside .entry-content and pick the first PDF link
+        links = await page.locator(".entry-content a").all()
+        pdf_url: str | None = None
+        for link in links:
+            href = await link.get_attribute("href")
+            if href and href.lower().endswith(".pdf"):
+                pdf_url = href
+                break
+        if not pdf_url:
+            raise RuntimeError("Could not find a PDF link on the Bright parish bulletin page")
+    finally:
+        try:
+            await context.close()
+        except Exception:
+            pass
+
+    await _download_pdf(pdf_url, dest, browser)
+    return pdf_url
+
+
 # ---------------------------------------------------------------------------
 # Core fetch logic
 # ---------------------------------------------------------------------------
@@ -556,6 +594,38 @@ async def _fetch_entry(
             key=key, display_name=entry.display_name,
             status="error", url=entry.example_url,
             error="Ballycastle scrape failed and date-rewrite fallback also failed",
+        )
+
+    # Bright: scrape the bulletin page to find this week's PDF URL
+    if entry.pattern == "bright":
+        dest = output_dir / safe_filename(key, ".pdf")
+        try:
+            pdf_url = await _fetch_bright(dest, browser)
+            if _is_real_pdf(dest, key):
+                return FetchResult(
+                    key=key, display_name=entry.display_name,
+                    status="ok", url=pdf_url,
+                    file_path=dest, file_type="pdf",
+                )
+        except Exception as exc:
+            print(f"  ↩️  {key}: bright scrape failed: {exc}, falling back to date rewrite")
+            dest.unlink(missing_ok=True)
+        # Fall back to date-rewrite approach using the example URL
+        fallback_url = rewrite_date_url(entry.example_url, target)
+        try:
+            await _download_pdf(fallback_url, dest, browser)
+            if _is_real_pdf(dest, key):
+                return FetchResult(
+                    key=key, display_name=entry.display_name,
+                    status="ok", url=fallback_url,
+                    file_path=dest, file_type="pdf",
+                )
+        except Exception as exc:
+            print(f"  ↩️  {key}: bright date-rewrite fallback failed: {exc}")
+        return FetchResult(
+            key=key, display_name=entry.display_name,
+            status="error", url=entry.example_url,
+            error="Bright scrape failed and date-rewrite fallback also failed",
         )
 
     # Calculate the predicted URL for this week
