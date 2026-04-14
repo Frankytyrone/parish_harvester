@@ -334,7 +334,7 @@ def rewrite_date_url(url: str, target: date) -> str:
                     sep_pos = m.start(2) - 1
                     sep = path[sep_pos] if 0 <= sep_pos < len(path) else "-"
                     month_str = _MONTH_NAMES[target.month].capitalize()
-                    return f"{target.day:02d}{sep}{month_str}{sep}{target.year}"
+                    return f"{target.day}{sep}{month_str}{sep}{target.year}"
             except ValueError:
                 pass
             return m.group(0)

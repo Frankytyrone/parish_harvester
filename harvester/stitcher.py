@@ -95,6 +95,13 @@ def stitch_mega_pdf(
             try:
                 reader = PyPDF2.PdfReader(str(pdf_path))
                 for page in reader.pages:
+                    # Skip blank pages (no extractable text content)
+                    try:
+                        text = page.extract_text() or ""
+                        if not text.strip():
+                            continue
+                    except Exception:
+                        pass  # If we can't extract text, include the page to be safe
                     merger.add_page(page)
                 real_count += 1
             except Exception as exc:
@@ -122,11 +129,11 @@ def stitch_mega_pdf(
                 "Click a link to view the bulletin online.",
                 styles["Normal"],
             ),
-            Spacer(1, 0.3 * cm),
+            Spacer(1, 0.15 * cm),
         ]
         small_style = styles["Normal"].clone("Small")
         small_style.fontSize = 9
-        small_style.leading = 13
+        small_style.leading = 11
         for display_name, parish_url, website in missing_entries:
             name_esc = _xml_escape(display_name)
             link_url = parish_url if (parish_url and parish_url.startswith("http")) else website
@@ -139,7 +146,7 @@ def stitch_mega_pdf(
             else:
                 line = f'<b>{name_esc}</b>: contact parish directly'
             story.append(Paragraph(line, small_style))
-            story.append(Spacer(1, 0.1 * cm))
+            story.append(Spacer(1, 0.05 * cm))
 
         try:
             doc.build(story)

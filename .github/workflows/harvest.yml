@@ -62,7 +62,7 @@ jobs:
                   lines.append(f\"  _Reason: {f.get('error','unknown')}_\")
               print('\n'.join(lines))
           else:
-              print('_None_ 🎉')
+              print('_None_ \U0001f389')
           ")
             HTML_LIST=$(python -c "
           import json
@@ -90,10 +90,21 @@ jobs:
           ${HTML_LIST}
 
           [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
             ISSUE_TITLE="📋 Bulletin Harvest Report — ${REPORT_DATE}"
-            EXISTING_ISSUE=$(gh issue list \
+
+            # Close any stale harvest-report issues that are NOT for today's date
+            gh issue list \
+              --label "harvest-report" \
               --state open \
-              --search "${ISSUE_TITLE}" \
+              --json number,title \
+              --jq ".[] | select(.title != \"${ISSUE_TITLE}\") | .number" \
+              | xargs -r -I{} gh issue close {} --comment "Superseded by newer harvest report." || true
+
+            # Find existing issue for today's date (match by label, then filter by title)
+            EXISTING_ISSUE=$(gh issue list \
+              --label "harvest-report" \
+              --state open \
               --json number,title \
               --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" \
               | head -n 1)
