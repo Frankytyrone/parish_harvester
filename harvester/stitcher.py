@@ -1,7 +1,7 @@
 """
 stitcher.py — Mega PDF stitcher for the Parish Bulletin Harvester.
 
-Merges all downloaded PDFs (A–Z) into one mega PDF.
+Merges all downloaded PDFs (A-Z) into one mega PDF.
 Appends a compact summary section for HTML-only and failed parishes.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ _FILLER_PATTERN = re.compile(
     r'[\s\x00-\x1f\x7f\xa0\xad'
     r'\u200b\u200c\u200d\ufeff'
     r'\u2022\u00b7\u2019\u2018\u2026\u2013\u2014'
-    r'.,:;!?\-_|]+')
+    r'.,:;!?\-_|]+')
 # Minimum number of meaningful characters for a page to be kept.
 # Real bulletin pages always contain hundreds of characters; this threshold
 # catches truly blank pages (0 chars), dot/dash separator pages,
@@ -166,11 +166,11 @@ def stitch_mega_pdf(
             if link_url:
                 safe_link = _xml_escape(link_url)
                 line = (
-                    f'<b>{{name_esc}}</b>: '
-                    f'<link href="{{link_url}}" color="blue">{{safe_link}}</link>'
+                    f'<b>{name_esc}</b>: '
+                    f'<link href="{link_url}" color="blue">{safe_link}</link>'
                 )
             else:
-                line = f'<b>{{name_esc}}</b>: contact parish directly'
+                line = f'<b>{name_esc}</b>: contact parish directly'
             story.append(Paragraph(line, small_style))
             story.append(Spacer(1, 0.05 * cm))
 
@@ -188,8 +188,8 @@ def stitch_mega_pdf(
         bulletins_dir.mkdir(parents=True, exist_ok=True)
         with output_path.open("wb") as fh:
             merger.write(fh)
-        print(f"  📖 Mega PDF      : {{output_path}}")
-        print(f"     Real PDFs      : {{real_count}}")
-        print(f"     Online-only    : {{len(missing_entries)}} (condensed to {{summary_page_count}} summary page(s))")
+        print(f"  📖 Mega PDF      : {output_path}")
+        print(f"     Real PDFs      : {real_count}")
+        print(f"     Online-only    : {len(missing_entries)} (condensed to {summary_page_count} summary page(s))")
     else:
         print("  ⚠️  No pages to include in mega PDF — skipping.")
