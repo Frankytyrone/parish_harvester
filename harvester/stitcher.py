@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,15 +17,30 @@ if TYPE_CHECKING:
     from .fetcher import FetchResult
 
 
+# Characters that are considered "filler" and should not count as real content
+# when deciding whether a PDF page is blank/near-blank.
+# Covers whitespace, ALL ASCII control chars (incl. form feed \x0c),
+# invisible Unicode (NBSP, soft-hyphen, zero-width chars, BOM),
+# bullets, dashes, smart-quotes, ellipsis, and standalone punctuation.
+_FILLER_PATTERN = re.compile(
+    r'[\s\x00-\x1f\x7f\xa0\xad'
+    r'\u200b\u200c\u200d\ufeff'
+    r'\u2022\u00b7\u2019\u2018\u2026\u2013\u2014'
+    r'.,:;!?\-_|]+')
+# Minimum number of meaningful characters for a page to be kept.
+# Real bulletin pages always contain hundreds of characters; this threshold
+# catches truly blank pages (0 chars), dot/dash separator pages,
+# near-blank pages with only a page number, and control-character-only pages.
+_MIN_MEANINGFUL_CHARS = 30
+
 def _xml_escape(text: str) -> str:
     """Escape XML/HTML special characters for use in ReportLab markup."""
     return (
         text
         .replace("&", "&amp;")
         .replace("<", "&lt;")
-        .replace(">", "&gt;")
+        .replace(">")
     )
-
 
 def stitch_mega_pdf(
     results: list["FetchResult"],
@@ -34,8 +50,9 @@ def stitch_mega_pdf(
     contacts_path: Path | None = None,
 ) -> None:
     """
-    Merge all downloaded PDFs (A–Z) into one mega PDF, then append a single
-    compact summary page listing all HTML-only and unavailable parishes.
+    Merge all downloaded PDFs (A–Z by display name) into one mega PDF, then
+    append a single compact summary page listing all HTML-only and unavailable
+    parishes.
     """
     try:
         import PyPDF2
@@ -75,7 +92,11 @@ def stitch_mega_pdf(
         else:
             parish_map.setdefault(key, (None, r.url, r.display_name))
 
-    sorted_entries = sorted(parish_map.items())
+    # Sort A–Z by human display name (not domain key)
+    sorted_entries = sorted(
+        parish_map.items(),
+        key=lambda item: item[1][2].lower() if item[1][2] else item[0].lower()
+    )
 
     output_path = bulletins_dir / f"all_bulletins_{target}.pdf"
     merger = PyPDF2.PdfWriter()
@@ -95,10 +116,13 @@ def stitch_mega_pdf(
             try:
                 reader = PyPDF2.PdfReader(str(pdf_path))
                 for page in reader.pages:
-                    # Skip blank pages (no extractable text content)
+                    # Skip blank or near-blank pages (no real text content).
+                    # Strips all invisible/filler characters before counting —
+                    # catches form-feed-only pages, dot-separator pages, etc.
                     try:
                         text = page.extract_text() or ""
-                        if not text.strip():
+                        meaningful = _FILLER_PATTERN.sub('', text)
+                        if len(meaningful) < _MIN_MEANINGFUL_CHARS:
                             continue
                     except Exception:
                         pass  # If we can't extract text, include the page to be safe
@@ -134,17 +158,19 @@ def stitch_mega_pdf(
         small_style = styles["Normal"].clone("Small")
         small_style.fontSize = 9
         small_style.leading = 11
+        # Sort missing entries A–Z by display name
+        missing_entries.sort(key=lambda x: x[0].lower())
         for display_name, parish_url, website in missing_entries:
             name_esc = _xml_escape(display_name)
             link_url = parish_url if (parish_url and parish_url.startswith("http")) else website
             if link_url:
                 safe_link = _xml_escape(link_url)
                 line = (
-                    f'<b>{name_esc}</b>: '
-                    f'<link href="{link_url}" color="blue">{safe_link}</link>'
+                    f'<b>{{name_esc}}</b>: '
+                    f'<link href="{{link_url}}" color="blue">{{safe_link}}</link>'
                 )
             else:
-                line = f'<b>{name_esc}</b>: contact parish directly'
+                line = f'<b>{{name_esc}}</b>: contact parish directly'
             story.append(Paragraph(line, small_style))
             story.append(Spacer(1, 0.05 * cm))
 
