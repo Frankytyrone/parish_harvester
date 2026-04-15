@@ -93,15 +93,31 @@ jobs:
 
             ISSUE_TITLE="📋 Bulletin Harvest Report — ${REPORT_DATE}"
 
-            # Close any stale harvest-report issues that are NOT for today's date
+                       # Close all open harvest report issues that are NOT for today's date
             gh issue list \
-              --label "harvest-report" \
               --state open \
               --json number,title \
-              --jq ".[] | select(.title != \"${ISSUE_TITLE}\") | .number" \
+              --limit 100 \
+              --jq ".[] | select(.title | startswith(\"📋 Bulletin Harvest Report\")) | select(.title != \"${ISSUE_TITLE}\") | .number" \
               | xargs -r -I{} gh issue close {} --comment "Superseded by newer harvest report." || true
 
-            # Find existing issue for today's date (match by label, then filter by title)
+            # Find existing open issue with exactly today's title
+            EXISTING_ISSUE=$(gh issue list \
+              --state open \
+              --json number,title \
+              --limit 100 \
+              --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" \
+              | head -n 1)
+
+            if [ -n "${EXISTING_ISSUE}" ]; then
+              echo "Updating existing issue #${EXISTING_ISSUE}"
+              gh issue edit "${EXISTING_ISSUE}" --body "${BODY}"
+            else
+              echo "Creating new issue"
+              gh issue create \
+                --title "${ISSUE_TITLE}" \
+                --body "${BODY}" || true
+            fi
             EXISTING_ISSUE=$(gh issue list \
               --label "harvest-report" \
               --state open \
