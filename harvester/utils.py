@@ -404,46 +404,6 @@ def rewrite_date_url(url: str, target: date) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Pattern G — WordPress date-based post slugs (Clonleigh / Strabane)
-# ---------------------------------------------------------------------------
-
-
-def rewrite_wp_date_post_url(url: str, target: date) -> str:
-    """
-    Rewrite a WordPress post URL in the format ``/YYYY/MM/DD/slug/`` by
-    date-shifting the date component 7 days forward and stripping the
-    unpredictable slug.
-
-    The resulting URL is the WordPress day-archive page (``/YYYY/MM/DD/``).
-    The fetcher uses ``_find_dated_bulletin_link()`` to locate the actual
-    newsletter post on that archive page.
-
-    Example::
-
-        https://clonleighparish.com/2026/04/03/strabane-pastoral-area-newsletter.../
-        → https://clonleighparish.com/2026/04/10/   (target 7 days later, slug stripped)
-
-    Returns the original URL unchanged if no ``/YYYY/MM/DD/slug/`` segment is found.
-    """
-    m = _WP_DATE_POST_RE.search(url)
-    if not m:
-        return url
-    try:
-        orig = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
-    except ValueError:
-        return url
-
-    if abs((orig - target).days) >= 365:
-        return url
-
-    # Shift date by 7 days to predict next post publish date
-    predicted_date = orig + timedelta(days=7)
-    new_seg = f"/{predicted_date.year}/{predicted_date.month:02d}/{predicted_date.day:02d}/"
-    # Strip everything from the slug onwards; keep only up to /YYYY/MM/DD/
-    return url[: m.start()] + new_seg
-
-
-# ---------------------------------------------------------------------------
 # Pattern H — Sequential newsletter number (Banagher & Three Patrons)
 # ---------------------------------------------------------------------------
 
