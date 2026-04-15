@@ -49,6 +49,7 @@ jobs:
           if [ -f Bulletins/report.json ]; then
             REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
             DOWNLOADED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['downloaded'])")
+            FALLBACK=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary'].get('fallback', 0))")
             HTML_LINKS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['html_links'])")
             FAILED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['failed'])")
             FAILED_LIST=$(python -c "
@@ -64,6 +65,15 @@ jobs:
           else:
               print('_None_ \U0001f389')
           ")
+            FALLBACK_LIST=$(python -c "
+          import json
+          d = json.load(open('Bulletins/report.json'))
+          fbs = d.get('fallback', [])
+          if fbs:
+              print('\n'.join(f\"- **{f['display_name']}**: {f['url']}\" for f in fbs))
+          else:
+              print('_None_')
+          ")
             HTML_LIST=$(python -c "
           import json
           d = json.load(open('Bulletins/report.json'))
@@ -78,12 +88,17 @@ jobs:
           | Category | Count |
           |----------|-------|
           | ✅ Downloaded | ${DOWNLOADED} |
+          | ⏪ Fallback (possibly stale) | ${FALLBACK} |
           | 🔗 HTML links | ${HTML_LINKS} |
-          | 💥 Failed     | ${FAILED} |
+          | 💥 Failed | ${FAILED} |
 
           ### Failed Parishes
 
           ${FAILED_LIST}
+
+          ### Fallback Parishes (target URL unavailable — possibly stale bulletin)
+
+          ${FALLBACK_LIST}
 
           ### HTML-Only Parishes (links in mega PDF)
 
@@ -106,22 +121,6 @@ jobs:
               --state open \
               --json number,title \
               --limit 100 \
-              --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" \
-              | head -n 1)
-
-            if [ -n "${EXISTING_ISSUE}" ]; then
-              echo "Updating existing issue #${EXISTING_ISSUE}"
-              gh issue edit "${EXISTING_ISSUE}" --body "${BODY}"
-            else
-              echo "Creating new issue"
-              gh issue create \
-                --title "${ISSUE_TITLE}" \
-                --body "${BODY}" || true
-            fi
-            EXISTING_ISSUE=$(gh issue list \
-              --label "harvest-report" \
-              --state open \
-              --json number,title \
               --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" \
               | head -n 1)
 

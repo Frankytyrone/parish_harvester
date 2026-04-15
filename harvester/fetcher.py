@@ -19,7 +19,6 @@ from urllib.parse import urlparse
 from playwright.async_api import (
     Browser,
     async_playwright,
-    TimeoutError as PlaywrightTimeout,
 )
 try:
     from playwright._impl._errors import TargetClosedError as _TargetClosedError
@@ -76,6 +75,7 @@ class FetchResult:
     file_path: Optional[Path] = None
     file_type: str = ""     # "pdf" | "docx_to_pdf" | "image_to_pdf" | "html_link"
     error: str = ""
+    is_fallback: bool = False  # True when a fallback URL was used (bulletin may be stale)
 
     # Legacy compat — old code used .parish
     @property
@@ -478,19 +478,6 @@ async def _fetch_entry(
     output_dir.mkdir(parents=True, exist_ok=True)
     key = entry.key
 
-    # html_link parishes: return URL (possibly calculated) without downloading
-    if entry.content_type == "html_link":
-        # Apply date math for any parish with a real date pattern (A–H, greenlough, etc.).
-        # Only static patterns ("html_link", "F") return the example URL as-is.
-        url = calculate_url(entry, target) if entry.pattern not in ("html_link", "F") else entry.example_url
-        return FetchResult(
-            key=key,
-            display_name=entry.display_name,
-            status="html_link",
-            url=url,
-            file_type="html_link",
-        )
-
     # Calculate the predicted URL for this week
     target_url = calculate_url(entry, target)
 
@@ -536,6 +523,7 @@ async def _fetch_entry(
                         key=key, display_name=entry.display_name,
                         status="ok", url=candidate,
                         file_path=dest, file_type="image_to_pdf",
+                        is_fallback=(candidate != target_url),
                     )
             elif entry.content_type == "docx":
                 await _download_docx_as_pdf(candidate_encoded, dest, browser)
@@ -544,6 +532,7 @@ async def _fetch_entry(
                         key=key, display_name=entry.display_name,
                         status="ok", url=candidate,
                         file_path=dest, file_type="docx_to_pdf",
+                        is_fallback=(candidate != target_url),
                     )
             else:
                 await _download_pdf(candidate_encoded, dest, browser)
@@ -554,6 +543,7 @@ async def _fetch_entry(
                         key=key, display_name=entry.display_name,
                         status="ok", url=candidate,
                         file_path=dest, file_type="pdf",
+                        is_fallback=(candidate != target_url),
                     )
         except Exception as exc:
             last_err = str(exc)
@@ -575,7 +565,8 @@ async def fetch_parish(
     browser: Browser,
 ) -> FetchResult:
     """Fetch one parish bulletin with retries and a total timeout."""
-    # html_link: instant, no timeout needed
+    # html_link entries are handled here before calling _fetch_entry() —
+    # they need no browser download, just URL calculation.
     if entry.content_type == "html_link":
         url = calculate_url(entry, target) if entry.pattern not in ("html_link", "F") else entry.example_url
         return FetchResult(
