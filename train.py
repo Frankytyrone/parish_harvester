@@ -158,8 +158,12 @@ def _match_parish(parish_query: str, diocese: str | None, parishes_dir: Path) ->
     if len(unique) == 1:
         return next(iter(unique.values()))
 
+    sorted_matches = sorted(
+        unique.values(),
+        key=lambda m: (m.entry.display_name.lower(), m.diocese),
+    )
     options = "\n".join(
-        f"  - {m.entry.display_name} ({m.diocese})" for m in sorted(unique.values(), key=lambda x: (x.entry.display_name.lower(), x.diocese))
+        f"  - {m.entry.display_name} ({m.diocese})" for m in sorted_matches
     )
     raise ValueError(
         f'Parish query "{parish_query}" is ambiguous. Please be more specific:\n{options}'
@@ -277,8 +281,9 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
         context.on("close", lambda: stop_event.set())
         browser.on("disconnected", lambda: stop_event.set())
 
+        print()
         enter_task = asyncio.create_task(
-            asyncio.to_thread(input, "\n✅ When you are done, press ENTER here... ")
+            asyncio.to_thread(input, "✅ When you are done, press ENTER here... ")
         )
         wait_task = asyncio.create_task(stop_event.wait())
 

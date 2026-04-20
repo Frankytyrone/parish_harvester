@@ -67,7 +67,6 @@ def _build_parish_header_pdf(
     c.setFillColor(colors_module.Color(1, 1, 1, alpha=_HEADER_BACKGROUND_ALPHA))
     c.rect(0, height - banner_h - _HEADER_BACKGROUND_OFFSET, width, banner_h + _HEADER_BACKGROUND_OFFSET, fill=1, stroke=0)
 
-    c.setFillColor(colors_module.black)
     c.setFont("Helvetica-Bold", 9)
     c.setFillColor(colors_module.black)
     c.drawString(_HEADER_SIDE_MARGIN, top - 8, display_name)

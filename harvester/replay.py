@@ -20,6 +20,7 @@ class RecipeReplayError(RuntimeError):
 DOCX_CONVERSION_TIMEOUT_S = 60
 RECIPE_STEP_TIMEOUT_MS = 15_000
 POST_CLICK_WAIT_TIMEOUT_MS = 3_000
+MAX_SELECTOR_ERRORS = 3
 
 
 def recipe_path_for(parish_key: str, parishes_dir: Path = PARISHES_DIR) -> Path:
@@ -203,7 +204,7 @@ async def _replay_click(page: Page, step: dict) -> None:
         except Exception as exc:
             errors.append(f"{sel}: {exc}")
 
-    detail = "; ".join(errors[:3]) if errors else "no selector details available"
+    detail = "; ".join(errors[:MAX_SELECTOR_ERRORS]) if errors else "no selector details available"
     raise RecipeReplayError(
         f"Recipe outdated — re-train with --train (all selectors failed: {detail})"
     )
