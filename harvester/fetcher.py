@@ -53,6 +53,7 @@ _PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
 _MAX_ATTEMPTS: int = 2
 # Seconds to wait between retry attempts
 _RETRY_DELAY_S: float = 3.0
+_HEADER_DASH_CLASS = r"[-\u2013\u2014]"
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +201,10 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
         if not line:
             continue
 
-        header_match = re.match(r"#\s*[-–—]{2,}\s*(.+?)\s*[-–—]{2,}\s*$", line)
+        header_match = re.match(
+            rf"#\s*{_HEADER_DASH_CLASS}{{2,}}\s*(.+?)\s*{_HEADER_DASH_CLASS}{{2,}}\s*$",
+            line,
+        )
         if header_match:
             _flush()
             cur_name = header_match.group(1).strip()

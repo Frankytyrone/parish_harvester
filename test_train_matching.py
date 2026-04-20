@@ -60,6 +60,22 @@ https://www.saintmalachysparish.com/
             match_2 = _match_parish("St Malachys", "down_and_connor", base)
             self.assertEqual(match_2.entry.display_name, "Saint Malachy's")
 
+    def test_match_parish_ignores_nested_parenthetical_parts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            self._write_evidence(
+                base,
+                "derry_diocese",
+                """
+# --- Example Parish (Outer (Inner)) ---
+# html_link
+https://example.org/bulletin
+                """.strip(),
+            )
+
+            match = _match_parish("Example Parish", "derry_diocese", base)
+            self.assertEqual(match.entry.display_name, "Example Parish (Outer (Inner))")
+
     def test_match_parish_mismatch_error_lists_detected_parishes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

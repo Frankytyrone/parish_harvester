@@ -39,12 +39,28 @@ def _normalize_parish_text(text: str) -> str:
     return " ".join(normalized.split())
 
 
+def _remove_parenthetical_text(text: str) -> str:
+    result: list[str] = []
+    depth = 0
+    for ch in text:
+        if ch == "(":
+            depth += 1
+            continue
+        if ch == ")":
+            if depth > 0:
+                depth -= 1
+                continue
+        if depth == 0:
+            result.append(ch)
+    return "".join(result)
+
+
 def _parish_name_forms(name: str) -> set[str]:
     forms: set[str] = set()
     base = _normalize_parish_text(name)
     if base:
         forms.add(base)
-    without_parens = re.sub(r"\([^)]*\)", " ", name)
+    without_parens = _remove_parenthetical_text(name)
     no_paren_form = _normalize_parish_text(without_parens)
     if no_paren_form:
         forms.add(no_paren_form)
