@@ -80,6 +80,7 @@ async def _convert_docx_to_pdf_bytes(docx_bytes: bytes) -> bytes:
         docx_path = tmp_path / "bulletin.docx"
         out_pdf = tmp_path / "bulletin.pdf"
         docx_path.write_bytes(docx_bytes)
+        libreoffice_error = ""
 
         try:
             result = subprocess.run(
@@ -97,6 +98,7 @@ async def _convert_docx_to_pdf_bytes(docx_bytes: bytes) -> bytes:
             )
             if result.returncode == 0 and out_pdf.exists():
                 return out_pdf.read_bytes()
+            libreoffice_error = (result.stderr or b"").decode("utf-8", errors="ignore").strip()
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
@@ -107,8 +109,9 @@ async def _convert_docx_to_pdf_bytes(docx_bytes: bytes) -> bytes:
             from reportlab.lib.units import cm
             from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
         except ImportError as exc:
+            suffix = f" LibreOffice error: {libreoffice_error}" if libreoffice_error else ""
             raise RecipeReplayError(
-                "Could not convert DOCX to PDF (missing converter dependencies)"
+                f"Could not convert DOCX to PDF (missing converter dependencies).{suffix}"
             ) from exc
 
         doc = _docx.Document(str(docx_path))
@@ -200,8 +203,9 @@ async def _replay_click(page: Page, step: dict) -> None:
         except Exception as exc:
             errors.append(f"{sel}: {exc}")
 
+    detail = "; ".join(errors[:3]) if errors else "no selector details available"
     raise RecipeReplayError(
-        "Recipe outdated — re-train with --train (all selectors failed)"
+        f"Recipe outdated — re-train with --train (all selectors failed: {detail})"
     )
 
 
