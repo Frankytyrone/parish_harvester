@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from harvester.fetcher import parse_evidence_file
-from train import _match_parish
+from train import _build_mark_step, _match_parish
 
 
 class ParishMatchingTests(unittest.TestCase):
@@ -105,6 +105,18 @@ https://www.antrimparish.com
             with self.subTest(name=name):
                 match = _match_parish(name, None, parishes_dir)
                 self.assertEqual(match.entry.display_name, name)
+
+    def test_build_mark_step_validates_http_and_supported_actions(self) -> None:
+        self.assertEqual(
+            _build_mark_step("image", "https://example.org/bulletin.png"),
+            {"action": "image", "url": "https://example.org/bulletin.png"},
+        )
+        self.assertEqual(
+            _build_mark_step("html", "http://example.org/news"),
+            {"action": "html", "url": "http://example.org/news"},
+        )
+        self.assertIsNone(_build_mark_step("image", "javascript:alert(1)"))
+        self.assertIsNone(_build_mark_step("download", "https://example.org/file.pdf"))
 
 
 if __name__ == "__main__":

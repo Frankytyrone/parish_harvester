@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fnmatch
+import io
 import json
 import re
 import subprocess
@@ -178,6 +179,20 @@ async def _download_document_url(page: Page, raw_url: str, dest: Path) -> tuple[
     return raw_url, "pdf"
 
 
+async def _download_image_url_as_pdf(page: Page, raw_url: str, dest: Path) -> tuple[str, str]:
+    response = await page.request.get(raw_url, timeout=PAGE_LOAD_TIMEOUT_MS)
+    if not response.ok:
+        raise RecipeReplayError(f"HTTP {response.status} for {raw_url}")
+    body = await response.body()
+    try:
+        from PIL import Image  # type: ignore[import]
+    except ImportError as exc:
+        raise RecipeReplayError("Pillow is required for image bulletin conversion") from exc
+    img = Image.open(io.BytesIO(body)).convert("RGB")
+    img.save(str(dest), "PDF", resolution=150)
+    return raw_url, "image_to_pdf"
+
+
 async def _replay_click(page: Page, step: dict) -> None:
     selectors: list[str] = []
     selector = (step.get("selector") or "").strip()
@@ -280,6 +295,19 @@ async def replay_recipe(
                 if last_err:
                     raise RecipeReplayError(last_err)
                 raise RecipeReplayError("Recipe download step did not find a matching document URL")
+
+            if action == "image":
+                raw_url = (step.get("url") or "").strip()
+                if not raw_url:
+                    raise RecipeReplayError("Recipe image step missing URL")
+                source_url, file_type = await _download_image_url_as_pdf(page, raw_url, dest)
+                return dest, file_type, source_url
+
+            if action == "html":
+                html_url = (step.get("url") or "").strip() or page.url
+                if not html_url:
+                    raise RecipeReplayError("Recipe html step missing URL")
+                return dest, "html_link", html_url
 
             raise RecipeReplayError(f"Unsupported recipe action: {action}")
 

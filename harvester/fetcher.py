@@ -770,6 +770,14 @@ async def _fetch_entry(
                 dest=dest,
                 browser=browser,
             )
+            if replay_file_type == "html_link":
+                return FetchResult(
+                    key=key,
+                    display_name=entry.display_name,
+                    status="html_link",
+                    url=replay_url,
+                    file_type="html_link",
+                )
             if _is_real_pdf(replayed_path, key):
                 return FetchResult(
                     key=key,
