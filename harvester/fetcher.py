@@ -553,7 +553,7 @@ async def _scrape_and_download(
                 last_err = str(exc)
                 print(f"  ↩️  {key}: scraped candidate failed {candidate_url}: {last_err}")
             finally:
-                if dest.exists() and not _is_real_pdf(dest):
+                if dest.exists() and not _is_real_pdf(dest, key):
                     dest.unlink(missing_ok=True)
 
         return FetchResult(
@@ -779,7 +779,7 @@ async def _fetch_entry(
             last_err = str(exc)
             print(f"  ↩️  {key}: {target_url} failed: {last_err}")
         finally:
-            if dest.exists() and not _is_real_pdf(dest):
+            if dest.exists() and not _is_real_pdf(dest, key):
                 dest.unlink(missing_ok=True)
 
     # Prediction failed, or entry is html_link: scrape bulletin pages.
