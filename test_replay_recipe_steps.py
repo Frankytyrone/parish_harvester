@@ -34,7 +34,7 @@ class _FakeBrowser:
         self.context = context
 
     async def new_context(self, accept_downloads: bool = True) -> _FakeContext:
-        _ = accept_downloads
+        self.accept_downloads = accept_downloads
         return self.context
 
 
