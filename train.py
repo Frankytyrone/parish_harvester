@@ -467,7 +467,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                   ? event.target.closest('a,button,[role],input[type="submit"],input[type="button"]')
                   : null;
                 if (!target) return;
-                if (target.closest('#ph-training-panel') || target.closest('#ph-training-image-menu')) {
+                if (target.closest('#ph-training-panel, #ph-training-image-menu')) {
                   return;
                 }
                 window.ph_record_click({
