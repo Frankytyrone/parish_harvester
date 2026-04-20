@@ -195,16 +195,15 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
         cur_bulletin_page = None
         cur_urls = []
 
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for raw_line in path.read_text(encoding="utf-8-sig").splitlines():
         line = raw_line.strip()
         if not line:
             continue
 
-        if line.startswith("# ---"):
+        header_match = re.match(r"#\s*[-–—]{2,}\s*(.+?)\s*[-–—]{2,}\s*$", line)
+        if header_match:
             _flush()
-            m = re.match(r"#\s*---\s*(.+?)\s*---", line)
-            if m:
-                cur_name = m.group(1)
+            cur_name = header_match.group(1).strip()
             continue
 
         if line.startswith("#"):
@@ -243,8 +242,9 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
                 cur_is_docx = True
             continue
 
-        if line.startswith("http"):
-            cur_urls.append(line)
+        normalized_line = re.sub(r"^[\-\*\u2022]\s+", "", line)
+        if normalized_line.startswith("http"):
+            cur_urls.append(normalized_line)
 
     _flush()
     return entries

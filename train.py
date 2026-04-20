@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -27,6 +28,33 @@ _MONTH_RE = re.compile(
 class TrainingTarget:
     diocese: str
     entry: ParishEntry
+
+
+def _normalize_parish_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    normalized = normalized.casefold().replace("&", " and ")
+    normalized = re.sub(r"[’'`]", "", normalized)
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return " ".join(normalized.split())
+
+
+def _parish_name_forms(name: str) -> set[str]:
+    forms: set[str] = set()
+    base = _normalize_parish_text(name)
+    if base:
+        forms.add(base)
+    without_parens = re.sub(r"\([^)]*\)", " ", name)
+    no_paren_form = _normalize_parish_text(without_parens)
+    if no_paren_form:
+        forms.add(no_paren_form)
+
+    expanded: set[str] = set()
+    for form in forms:
+        expanded.add(form)
+        expanded.add(re.sub(r"\bst\b", "saint", form))
+        expanded.add(re.sub(r"\bsaint\b", "st", form))
+    return {f for f in expanded if f}
 
 
 def _discover_dioceses(parishes_dir: Path) -> list[str]:
@@ -126,12 +154,14 @@ def _build_click_step(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _match_parish(parish_query: str, diocese: str | None, parishes_dir: Path) -> TrainingTarget:
-    q = parish_query.strip().lower()
-    if not q:
+    query = parish_query.strip()
+    if not query:
         raise ValueError("Parish name cannot be empty")
+    query_forms = _parish_name_forms(query)
 
     dioceses = [diocese] if diocese else _discover_dioceses(parishes_dir)
     matches: list[TrainingTarget] = []
+    known_parishes: dict[str, set[str]] = {}
 
     for d in dioceses:
         if not d:
@@ -140,15 +170,33 @@ def _match_parish(parish_query: str, diocese: str | None, parishes_dir: Path) ->
             entries = parse_evidence_file(d, parishes_dir)
         except FileNotFoundError:
             continue
+        known_parishes[d] = {entry.display_name for entry in entries}
         for entry in entries:
-            name = entry.display_name.lower()
-            if q == name or q in name:
+            entry_forms = _parish_name_forms(entry.display_name)
+            if query_forms & entry_forms:
+                matches.append(TrainingTarget(diocese=d, entry=entry))
+                continue
+            if any(
+                qf in ef or ef in qf
+                for qf in query_forms
+                for ef in entry_forms
+                if qf and ef
+            ):
                 matches.append(TrainingTarget(diocese=d, entry=entry))
 
     if not matches:
+        detected = sorted(
+            {(d, name) for d, names in known_parishes.items() for name in names},
+            key=lambda item: (item[1].lower(), item[0]),
+        )
+        if detected:
+            options = "\n".join(f"  - {name} ({d})" for d, name in detected)
+            raise ValueError(
+                f'No parish matched "{parish_query}". Detected parishes:\n{options}'
+            )
         raise ValueError(f'No parish matched "{parish_query}"')
 
-    exact = [m for m in matches if m.entry.display_name.lower() == q]
+    exact = [m for m in matches if query_forms & _parish_name_forms(m.entry.display_name)]
     if len(exact) == 1:
         return exact[0]
 
