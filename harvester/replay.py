@@ -17,6 +17,11 @@ class RecipeReplayError(RuntimeError):
     """Raised when replaying a trained parish recipe fails."""
 
 
+DOCX_CONVERSION_TIMEOUT_S = 60
+RECIPE_STEP_TIMEOUT_MS = 15_000
+POST_CLICK_WAIT_TIMEOUT_MS = 3_000
+
+
 def recipe_path_for(parish_key: str, parishes_dir: Path = PARISHES_DIR) -> Path:
     return parishes_dir / "recipes" / f"{parish_key}.json"
 
@@ -88,7 +93,7 @@ async def _convert_docx_to_pdf_bytes(docx_bytes: bytes) -> bytes:
                     str(docx_path),
                 ],
                 capture_output=True,
-                timeout=60,
+                timeout=DOCX_CONVERSION_TIMEOUT_S,
             )
             if result.returncode == 0 and out_pdf.exists():
                 return out_pdf.read_bytes()
@@ -185,10 +190,10 @@ async def _replay_click(page: Page, step: dict) -> None:
     for sel in selectors:
         try:
             locator = page.locator(sel).first
-            await locator.wait_for(state="visible", timeout=15_000)
-            await locator.click(timeout=15_000)
+            await locator.wait_for(state="visible", timeout=RECIPE_STEP_TIMEOUT_MS)
+            await locator.click(timeout=RECIPE_STEP_TIMEOUT_MS)
             try:
-                await page.wait_for_load_state("domcontentloaded", timeout=3_000)
+                await page.wait_for_load_state("domcontentloaded", timeout=POST_CLICK_WAIT_TIMEOUT_MS)
             except PlaywrightTimeoutError:
                 pass
             return
@@ -220,7 +225,7 @@ async def replay_recipe(
                 url = (step.get("url") or "").strip()
                 if not url:
                     raise RecipeReplayError("Recipe goto step missing URL")
-                await page.goto(url, timeout=15_000, wait_until="domcontentloaded")
+                await page.goto(url, timeout=RECIPE_STEP_TIMEOUT_MS, wait_until="domcontentloaded")
                 continue
 
             if action == "click":

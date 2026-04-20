@@ -175,7 +175,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
     print(f"🎯 Matched parish: {entry.display_name} ({target.diocese})")
     print(f"🎬 Training mode for: {entry.display_name}")
-    print("═══════════════════════════════════")
+    print("===================================")
     print("A browser window will open.\n")
     print("Step 1: Navigate to the parish bulletin page")
     print("Step 2: Click through to find the PDF bulletin")

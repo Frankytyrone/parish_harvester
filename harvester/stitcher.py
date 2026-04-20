@@ -33,6 +33,12 @@ _FILLER_PATTERN = re.compile(
 # near-blank pages with only a page number, and control-character-only pages.
 _MIN_MEANINGFUL_CHARS = 30
 
+_HEADER_BANNER_HEIGHT = 18
+_HEADER_TOP_MARGIN = 8
+_HEADER_SIDE_MARGIN = 20
+_HEADER_RULE_SIDE_PADDING = 16
+_HEADER_BACKGROUND_ALPHA = 0.75
+
 def _xml_escape(text: str) -> str:
     """Escape XML/HTML special characters for use in ReportLab markup."""
     return (
@@ -55,27 +61,27 @@ def _build_parish_header_pdf(
     width, height = pagesize
     c = canvas_module.Canvas(buf, pagesize=pagesize)
 
-    banner_h = 18
-    top = height - 8
-    c.setFillColor(colors_module.Color(1, 1, 1, alpha=0.75))
+    banner_h = _HEADER_BANNER_HEIGHT
+    top = height - _HEADER_TOP_MARGIN
+    c.setFillColor(colors_module.Color(1, 1, 1, alpha=_HEADER_BACKGROUND_ALPHA))
     c.rect(0, height - banner_h - 4, width, banner_h + 4, fill=1, stroke=0)
 
     c.setFillColor(colors_module.black)
     c.setFont("Helvetica-Bold", 9)
     c.setFillColor(colors_module.black)
-    c.drawString(20, top - 8, display_name)
+    c.drawString(_HEADER_SIDE_MARGIN, top - 8, display_name)
 
     if website:
         c.setFont("Helvetica", 8)
         c.setFillColor(colors_module.blue)
-        c.drawRightString(width - 20, top - 8, website)
+        c.drawRightString(width - _HEADER_SIDE_MARGIN, top - 8, website)
         text_w = c.stringWidth(website, "Helvetica", 8)
         c.linkURL(
             website,
             (
-                width - 20 - text_w,
+                width - _HEADER_SIDE_MARGIN - text_w,
                 top - 11,
-                width - 20,
+                width - _HEADER_SIDE_MARGIN,
                 top - 2,
             ),
             relative=0,
@@ -84,7 +90,7 @@ def _build_parish_header_pdf(
         )
 
     c.setStrokeColor(colors_module.Color(0.85, 0.85, 0.85))
-    c.line(16, height - banner_h - 4, width - 16, height - banner_h - 4)
+    c.line(_HEADER_RULE_SIDE_PADDING, height - banner_h - 4, width - _HEADER_RULE_SIDE_PADDING, height - banner_h - 4)
     c.save()
     buf.seek(0)
     return buf
