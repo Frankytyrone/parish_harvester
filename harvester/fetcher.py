@@ -11,13 +11,15 @@ import re
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 from playwright.async_api import (
     Browser,
+    Error as PlaywrightError,
+    TimeoutError as PlaywrightTimeoutError,
     async_playwright,
 )
 try:
@@ -33,6 +35,8 @@ from .config import (
     TOTAL_TIMEOUT_S,
 )
 from .utils import (
+    extract_date_from_slug,
+    extract_date_from_string,
     extract_newsletter_number,
     is_valid_pdf,
     rewrite_clonleigh_url,
@@ -307,6 +311,267 @@ def _is_pdf_content(data: bytes) -> bool:
     return data[:4] == b"%PDF"
 
 
+def _is_docx_url(url: str) -> bool:
+    """Return True if URL path indicates a DOCX file."""
+    path = urlparse(url).path.lower()
+    return path.endswith(".docx")
+
+
+def _looks_like_document_link(url: str) -> bool:
+    """Return True if *url* looks like a bulletin document link."""
+    lower = url.lower()
+    path = urlparse(lower).path
+    if path.endswith(".pdf") or path.endswith(".docx"):
+        return True
+    patterns = (
+        "drive.google.com/file/d/",
+        "docs.google.com/viewer",
+        "dropbox.com/",
+        "/wp-content/uploads/",
+        "filesafe.space/",
+        "storage.googleapis.com/",
+        "amazonaws.com/",
+        "blob.core.windows.net/",
+    )
+    return any(p in lower for p in patterns)
+
+
+def _unwrap_docs_viewer_url(url: str) -> str:
+    """Extract the real file URL from a Google Docs viewer URL when present."""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower()
+    if "docs.google.com" not in host:
+        return url
+    if "viewer" not in parsed.path and "viewerng" not in parsed.path:
+        return url
+    raw = parse_qs(parsed.query).get("url", [""])[0].strip()
+    return unquote(raw) if raw else url
+
+
+def _target_date_tokens(target: date) -> list[str]:
+    """Return date tokens that commonly appear in bulletin URLs/titles."""
+    month = target.strftime("%B")
+    mon_abbr = target.strftime("%b")
+    dd = f"{target.day:02d}"
+    mm = f"{target.month:02d}"
+    yy = f"{target.year % 100:02d}"
+    yyyy = f"{target.year}"
+    return [
+        f"{dd}{mm}{yy}",
+        f"{dd}{mm}{yyyy}",
+        f"{yyyy}-{mm}-{dd}",
+        f"{yyyy}{mm}{dd}",
+        f"{target.day}-{target.month}-{yy}",
+        f"{target.day}-{target.month:02d}-{yy}",
+        f"{target.day}-{month.lower()}-{yyyy}",
+        f"{target.day}{month.lower()}{yyyy}",
+        f"{target.day}{mon_abbr.lower()}{yyyy}",
+    ]
+
+
+def _extract_candidate_date(text: str) -> date | None:
+    """Extract a plausible date from bulletin link text/URL."""
+    parsed = extract_date_from_string(text)
+    if parsed:
+        return parsed
+    return extract_date_from_slug(text)
+
+
+def _candidate_score(
+    target: date,
+    url: str,
+    label: str,
+    idx: int,
+) -> tuple[int, int, int, int, int]:
+    """Ranking key: this-week match > recency > top-of-page."""
+    raw = f"{unquote(url)} {label}".lower()
+    tokens = _target_date_tokens(target)
+    has_target_token = any(tok in raw for tok in tokens)
+
+    candidate_date = _extract_candidate_date(raw)
+    week_start = target - timedelta(days=6)
+    in_current_week = (
+        candidate_date is not None and week_start <= candidate_date <= target
+    )
+    not_known_stale = 1 if (candidate_date is None or in_current_week) else 0
+    recency = candidate_date.toordinal() if candidate_date else -1
+    return (
+        1 if has_target_token else 0,
+        1 if in_current_week else 0,
+        not_known_stale,
+        recency,
+        -idx,
+    )
+
+
+async def _download_candidate(url: str, dest: Path, browser: Browser) -> str:
+    """Download a scraped candidate URL and return the output file type."""
+    encoded = url.replace(" ", "%20")
+    if _is_docx_url(url):
+        await _download_docx_as_pdf(encoded, dest, browser)
+        return "docx_to_pdf"
+    await _download_pdf(encoded, dest, browser)
+    return "pdf"
+
+
+def _scrape_seed_urls(entry: ParishEntry, target_url: str) -> list[str]:
+    """Generate candidate pages to scrape for bulletin links."""
+    seeds: list[str] = []
+    if entry.content_type == "html_link":
+        seeds.append(entry.example_url)
+    else:
+        seeds.extend([target_url, entry.example_url])
+
+    for src in [target_url, entry.example_url]:
+        parsed = urlparse(src)
+        if not parsed.scheme or not parsed.netloc:
+            continue
+        root = f"{parsed.scheme}://{parsed.netloc}/"
+        seeds.append(root)
+        path = parsed.path or "/"
+        if "/" in path.strip("/"):
+            parent = path.rsplit("/", 1)[0] + "/"
+            seeds.append(f"{parsed.scheme}://{parsed.netloc}{parent}")
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for s in seeds:
+        k = s.strip()
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        deduped.append(k)
+    return deduped
+
+
+async def _scrape_and_download(
+    entry: ParishEntry,
+    target: date,
+    scrape_url: str,
+    dest: Path,
+    browser: Browser,
+) -> FetchResult:
+    """Scrape a page for bulletin document links and download the best match."""
+    context = await browser.new_context()
+    page = await context.new_page()
+    key = entry.key
+    last_err = "No downloadable bulletin links found"
+    try:
+        await page.goto(
+            scrape_url.replace(" ", "%20"),
+            timeout=20_000,
+            wait_until="domcontentloaded",
+        )
+        try:
+            await page.wait_for_load_state("networkidle", timeout=5_000)
+        except PlaywrightTimeoutError:
+            pass
+
+        candidates: list[tuple[str, str, int]] = []
+        seen_urls: set[str] = set()
+        idx = 0
+
+        async def _collect(selector: str, attr: str, include_text: bool = False) -> None:
+            nonlocal idx
+            elements = await page.query_selector_all(selector)
+            for el in elements:
+                raw = (await el.get_attribute(attr) or "").strip()
+                if not raw:
+                    continue
+                resolved = _unwrap_docs_viewer_url(urljoin(page.url, raw))
+                if not _looks_like_document_link(resolved):
+                    continue
+                norm = resolved.lower()
+                if norm in seen_urls:
+                    continue
+                seen_urls.add(norm)
+                label = ""
+                if include_text:
+                    try:
+                        label = (await el.inner_text() or "").strip()
+                    except PlaywrightError:
+                        label = ""
+                candidates.append((resolved, label, idx))
+                idx += 1
+
+        await _collect("a[href]", "href", include_text=True)
+        await _collect("iframe[src]", "src")
+        await _collect("embed[src]", "src")
+        await _collect("object[data]", "data")
+
+        page_url_unwrapped = _unwrap_docs_viewer_url(page.url)
+        if _looks_like_document_link(page_url_unwrapped):
+            candidates.insert(0, (page_url_unwrapped, "", -1))
+
+        if not candidates:
+            return FetchResult(
+                key=key,
+                display_name=entry.display_name,
+                status="error",
+                url=scrape_url,
+                error=last_err,
+            )
+
+        # Prevent stale downloads: if dated links exist and none match this week, fail.
+        week_start = target - timedelta(days=6)
+        dated = [
+            _extract_candidate_date(f"{unquote(u)} {t}".lower())
+            for u, t, _ in candidates
+        ]
+        has_dated = any(d is not None for d in dated)
+        has_current_week = any(d is not None and week_start <= d <= target for d in dated)
+        has_undated = any(d is None for d in dated)
+        has_target_token = any(
+            _candidate_score(target, u, t, i)[0] == 1 for u, t, i in candidates
+        )
+        if has_dated and not has_undated and not (has_current_week or has_target_token):
+            return FetchResult(
+                key=key,
+                display_name=entry.display_name,
+                status="error",
+                url=scrape_url,
+                error="Only stale dated bulletin links found on page",
+            )
+
+        ranked = sorted(
+            candidates,
+            key=lambda c: _candidate_score(target, c[0], c[1], c[2]),
+            reverse=True,
+        )
+
+        for candidate_url, _label, _i in ranked:
+            try:
+                file_type = await _download_candidate(candidate_url, dest, browser)
+                if _is_real_pdf(dest, key):
+                    return FetchResult(
+                        key=key,
+                        display_name=entry.display_name,
+                        status="ok",
+                        url=candidate_url,
+                        file_path=dest,
+                        file_type=file_type,
+                    )
+            except Exception as exc:
+                last_err = str(exc)
+                print(f"  ↩️  {key}: scraped candidate failed {candidate_url}: {last_err}")
+            finally:
+                if dest.exists() and not _is_real_pdf(dest, key):
+                    dest.unlink(missing_ok=True)
+
+        return FetchResult(
+            key=key,
+            display_name=entry.display_name,
+            status="error",
+            url=scrape_url,
+            error=last_err,
+        )
+    finally:
+        try:
+            await context.close()
+        except Exception:
+            pass
+
+
 async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
     """Download a PDF via a headless page."""
     # Convert Google Drive viewer links to direct-download URLs
@@ -481,22 +746,19 @@ async def _fetch_entry(
     # Calculate the predicted URL for this week
     target_url = calculate_url(entry, target)
 
-    candidates: list[str] = [target_url]
-
     dest = output_dir / safe_filename(key, ".pdf")
     last_err = "No valid content found"
 
-    for candidate in candidates:
+    # Non-html entries keep URL prediction first.
+    if entry.content_type != "html_link":
         try:
-            # Encode any spaces in the URL (e.g. "NEWSLETTER 12-4-26.docx") so the
-            # HTTP request succeeds.  Keep the original for display/logging.
-            candidate_encoded = candidate.replace(" ", "%20")
+            candidate_encoded = target_url.replace(" ", "%20")
             if entry.content_type == "image":
                 await _download_image_as_pdf(candidate_encoded, dest, browser)
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
-                        status="ok", url=candidate,
+                        status="ok", url=target_url,
                         file_path=dest, file_type="image_to_pdf",
                     )
             elif entry.content_type == "docx":
@@ -504,7 +766,7 @@ async def _fetch_entry(
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
-                        status="ok", url=candidate,
+                        status="ok", url=target_url,
                         file_path=dest, file_type="docx_to_pdf",
                     )
             else:
@@ -512,15 +774,32 @@ async def _fetch_entry(
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
-                        status="ok", url=candidate,
+                        status="ok", url=target_url,
                         file_path=dest, file_type="pdf",
                     )
         except Exception as exc:
             last_err = str(exc)
-            print(f"  ↩️  {key}: {candidate} failed: {last_err}")
+            print(f"  ↩️  {key}: {target_url} failed: {last_err}")
         finally:
-            if dest.exists() and not _is_real_pdf(dest):
+            if dest.exists() and not _is_real_pdf(dest, key):
                 dest.unlink(missing_ok=True)
+
+    # Prediction failed, or entry is html_link: scrape bulletin pages.
+    for scrape_url in _scrape_seed_urls(entry, target_url):
+        scraped = await _scrape_and_download(entry, target, scrape_url, dest, browser)
+        if scraped.status == "ok":
+            return scraped
+        last_err = scraped.error or last_err
+
+    # html_link parishes return clickable URL only when scraping could not find a file.
+    if entry.content_type == "html_link":
+        return FetchResult(
+            key=key,
+            display_name=entry.display_name,
+            status="html_link",
+            url=entry.example_url,
+            file_type="html_link",
+        )
 
     return FetchResult(
         key=key, display_name=entry.display_name,
@@ -535,24 +814,12 @@ async def fetch_parish(
     browser: Browser,
 ) -> FetchResult:
     """Fetch one parish bulletin with retries and a total timeout."""
-    # html_link entries are handled here before calling _fetch_entry() —
-    # they need no browser download, just URL calculation.
-    if entry.content_type == "html_link":
-        url = calculate_url(entry, target) if entry.pattern not in ("html_link", "F") else entry.example_url
-        return FetchResult(
-            key=entry.key,
-            display_name=entry.display_name,
-            status="html_link",
-            url=url,
-            file_type="html_link",
-        )
-
     last_error = ""
     for attempt in range(_MAX_ATTEMPTS):
         try:
             async with asyncio.timeout(TOTAL_TIMEOUT_S):
                 result = await _fetch_entry(entry, output_dir, target, browser)
-            if result.status == "ok":
+            if result.status in ("ok", "html_link"):
                 return result
             last_error = result.error
         except TimeoutError:

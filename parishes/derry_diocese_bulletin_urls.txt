@@ -36,7 +36,7 @@ http://www.ardmoreparish.com/news.html
 # --- Ballinascreen (& Desertmartin amalgamated) ---
 # Pattern D: slug date DD_Month_YYYY (Wix site — HTML page, not PDF)
 # html_link: displayed as clickable link in mega PDF
-https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-12_april_2026
+https://www.parishofballinascreen.com
 https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-5_april_2026
 
 # --- Banagher ---

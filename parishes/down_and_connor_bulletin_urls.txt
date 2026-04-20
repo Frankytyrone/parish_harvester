@@ -56,11 +56,11 @@ https://parishofbright.net/wp-content/uploads/2026/04/Bulletin-5-04-2026.pdf
 
 # --- Carrickfergus ---
 # html_link
-https://www.carrickparish.org/_files/ugd/15976c_23fe5352b24b415e9a7f1c53bbcf9aed.pdf
+https://www.carrickparish.org
 
 # --- Derriaghy ---
 # html_link
-https://derriaghycatholicparish.com/wp-content/uploads/2026/04/Second-Sunday-of-Easter.png
+https://derriaghycatholicparish.com
 
 # --- Dunsford and Ardglass ---
 # html_link
@@ -76,7 +76,7 @@ https://www.glenavyandkilleadparish.com
 
 # --- Loughshore ---
 # html_link
-https://www.loughshoreparishes.org/sunday-bulletin/2nd-sunday-of-easter-3/
+https://www.loughshoreparishes.org/sunday-bulletin/
 
 # --- Hannahstown ---
 # html_link
@@ -112,7 +112,7 @@ https://portaferryparish.com/bulletin
 
 # --- Portstewart ---
 # html_link
-https://portstewartparish.website/mdocs-posts/divine-mercy-sunday-12th-april-2026/
+https://portstewartparish.website/mdocs-posts/
 
 # --- St MacNissi Randalstown ---
 # html_link
