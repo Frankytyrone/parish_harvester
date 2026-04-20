@@ -189,7 +189,7 @@ async def _download_image_url_as_pdf(page: Page, raw_url: str, dest: Path) -> tu
     except ImportError as exc:
         raise RecipeReplayError("Pillow is required for image bulletin conversion") from exc
     img = Image.open(io.BytesIO(body)).convert("RGB")
-    img.save(str(dest), "PDF", resolution=150)
+    img.save(str(dest), "PDF")
     return raw_url, "image_to_pdf"
 
 
