@@ -186,7 +186,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     print("Step 3: When the PDF opens or downloads, press ENTER here\n")
     print("Opening browser...")
 
-    start_url = entry.example_url
+    start_url = entry.bulletin_page or entry.example_url
     click_steps: list[dict[str, Any]] = []
     nav_urls: list[str] = []
     final_document_url: str | None = None

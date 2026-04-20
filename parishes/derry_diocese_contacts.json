@@ -168,5 +168,65 @@
     "display_name": "Waterside & Strathfoyle Parish",
     "website": "https://watersideparish.net",
     "facebook": null
+  },
+  "parishofaghyaran": {
+    "display_name": "Parish of Aghyaran",
+    "website": "https://www.parishofaghyaran.com",
+    "facebook": null
+  },
+  "parishofardstraweast": {
+    "display_name": "Parish of Ardstraw East",
+    "website": "http://parishofardstraweast.com",
+    "facebook": null
+  },
+  "camusparish": {
+    "display_name": "Camus Parish",
+    "website": "https://camusparish.com",
+    "facebook": null
+  },
+  "parishofstjohncoleraine": {
+    "display_name": "Parish of St John Coleraine",
+    "website": "https://www.parishofstjohncoleraine.com",
+    "facebook": null
+  },
+  "desertmartinparish": {
+    "display_name": "Desertmartin Parish",
+    "website": "https://www.desertmartinparish.com",
+    "facebook": null
+  },
+  "drumraghparish": {
+    "display_name": "Drumragh Parish",
+    "website": "https://www.drumraghparish.com",
+    "facebook": null
+  },
+  "granaghanparish": {
+    "display_name": "Granaghan Parish",
+    "website": "https://granaghanparish.com",
+    "facebook": null
+  },
+  "greencastleparish": {
+    "display_name": "Greencastle Parish",
+    "website": "https://greencastleparish.com",
+    "facebook": null
+  },
+  "holyfamily-parish": {
+    "display_name": "Holy Family Parish",
+    "website": "https://www.holyfamily-parish.com",
+    "facebook": null
+  },
+  "longtowerchurch": {
+    "display_name": "Long Tower Church",
+    "website": "https://longtowerchurch.org",
+    "facebook": null
+  },
+  "steelstownparish": {
+    "display_name": "Steelstown Parish",
+    "website": "http://www.steelstownparish.com",
+    "facebook": null
+  },
+  "urneyandcastlefinparish": {
+    "display_name": "Urney and Castlefin Parish",
+    "website": "http://urneyandcastlefinparish.com",
+    "facebook": null
   }
 }

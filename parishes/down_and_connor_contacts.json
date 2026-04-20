@@ -183,5 +183,75 @@
     "display_name": "St Teresas Parish",
     "website": "https://stteresasparish.church",
     "facebook": null
+  },
+  "stmarysbelfast": {
+    "display_name": "St Mary's Belfast",
+    "website": "https://www.stmarysbelfast.org",
+    "facebook": null
+  },
+  "christtheredeemer": {
+    "display_name": "Christ the Redeemer",
+    "website": "https://www.christtheredeemer.co.uk",
+    "facebook": null
+  },
+  "corpuschristiparishbelfast": {
+    "display_name": "Corpus Christi Belfast",
+    "website": "https://www.corpuschristiparishbelfast.com",
+    "facebook": null
+  },
+  "drumbocarryduff": {
+    "display_name": "Drumbo and Carryduff",
+    "website": "https://www.drumbocarryduff.ie",
+    "facebook": null
+  },
+  "holy-familyparish": {
+    "display_name": "Holy Family",
+    "website": "https://www.holy-familyparish.com",
+    "facebook": null
+  },
+  "holytrinityparishbelfast": {
+    "display_name": "Holy Trinity Belfast",
+    "website": "https://holytrinityparishbelfast.com",
+    "facebook": null
+  },
+  "nativityparish": {
+    "display_name": "Nativity",
+    "website": "https://www.nativityparish.com",
+    "facebook": null
+  },
+  "stmarysportglenone": {
+    "display_name": "Port Glenone",
+    "website": "https://stmarysportglenone.co.uk",
+    "facebook": null
+  },
+  "stlukesparishbelfast": {
+    "display_name": "St Luke's Belfast",
+    "website": "https://www.stlukesparishbelfast.com",
+    "facebook": null
+  },
+  "saintmalachysparish": {
+    "display_name": "Saint Malachy's",
+    "website": "https://www.saintmalachysparish.com",
+    "facebook": null
+  },
+  "stmarysonthehill": {
+    "display_name": "St Mary's on the Hill",
+    "website": "https://www.stmarysonthehill.online",
+    "facebook": null
+  },
+  "stmatthewsparish": {
+    "display_name": "St Matthew's",
+    "website": "https://www.stmatthewsparish.com",
+    "facebook": null
+  },
+  "stpatricksdownpatrick": {
+    "display_name": "St Patrick's Downpatrick",
+    "website": "https://stpatricksdownpatrick.com",
+    "facebook": null
+  },
+  "stvincentdepaulparishbelfast": {
+    "display_name": "St Vincent de Paul Belfast",
+    "website": "https://www.stvincentdepaulparishbelfast.com",
+    "facebook": null
   }
 }
