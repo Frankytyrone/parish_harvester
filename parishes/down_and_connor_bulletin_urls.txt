@@ -10,6 +10,7 @@
 #   Each parish uses one of these URL date patterns:
 #     Pattern A  →  DDMMYY       e.g. holycrossparishbelfast.com/pdf/120426.pdf
 #     Pattern D  →  DD-Month-YYYY / slug variants
+#                   e.g. ballycastleparish.com/s/12th-April-2026.pdf
 #     Pattern F  →  Static URL   e.g. carrickparish.org/_files/ugd/... (never changes)
 #     html_link  →  HTML page, no predictable PDF URL — link shown in mega PDF
 #     image      →  Bulletin is a JPEG/PNG image, converted to PDF

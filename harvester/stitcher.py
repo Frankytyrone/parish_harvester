@@ -128,6 +128,7 @@ def stitch_mega_pdf(
     parish_map: dict[str, tuple[Path | None, str, str]] = {}
     for r in results:
         key = r.key
+        # Keep stale historical fallback results out of the mega PDF.
         if r.is_fallback:
             continue
         if r.status == "ok" and r.file_path:
@@ -162,8 +163,11 @@ def stitch_mega_pdf(
 
         if pdf_path and pdf_path.exists():
             try:
-                link_url = website if (website and website.startswith("http")) else parish_url
-                if link_url and not link_url.startswith("http"):
+                if website and website.startswith("http"):
+                    link_url = website
+                elif parish_url and parish_url.startswith("http"):
+                    link_url = parish_url
+                else:
                     link_url = None
                 header_pdf = _build_parish_header_pdf(
                     display_name,

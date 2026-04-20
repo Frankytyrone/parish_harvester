@@ -75,7 +75,7 @@ class FetchResult:
     file_path: Optional[Path] = None
     file_type: str = ""     # "pdf" | "docx_to_pdf" | "image_to_pdf" | "html_link"
     error: str = ""
-    is_fallback: bool = False  # Legacy flag; stale fallback downloads are not used
+    is_fallback: bool = False  # Backward-compatible flag used only to skip stale historical results
 
     # Legacy compat — old code used .parish
     @property

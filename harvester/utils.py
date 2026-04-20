@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +223,7 @@ def rewrite_date_url(url: str, target: date) -> str:
     static files like laveyparishbulletin.pdf are downloaded as-is).
     """
     parsed = urlparse(url)
-    path = parsed.path.replace("%20", " ")
+    path = unquote(parsed.path)
 
     def _update_yyyymm_dir(old_d: date, p: str) -> str:
         """Replace /YYYY/MM/ directory segments matching *old_d* with the target."""
