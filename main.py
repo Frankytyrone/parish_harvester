@@ -3,6 +3,7 @@ main.py — CLI entry point for the Parish Bulletin Harvester v2.
 
 Usage:
     python main.py [--diocese DIOCESE] [--target-date YYYY-MM-DD] [--dry-run]
+    python main.py --train "Parish Name" [--diocese DIOCESE]
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ from harvester.config import (
 from harvester.fetcher import fetch_all, parse_evidence_file
 from harvester.report import generate_report
 from harvester.stitcher import stitch_mega_pdf
+from train import run_training
 
 
 def _silence_playwright_shutdown(
@@ -57,12 +59,32 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fetch only; do not move files or stitch mega PDF",
     )
+    parser.add_argument(
+        "--train",
+        default=None,
+        metavar="PARISH_NAME",
+        help="Interactive training mode: record browser steps for a parish",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     logging.basicConfig(level=logging.WARNING)
+
+    if args.train:
+        try:
+            asyncio.run(
+                run_training(
+                    parish_query=args.train,
+                    diocese=args.diocese,
+                    parishes_dir=PARISHES_DIR,
+                )
+            )
+            return 0
+        except Exception as exc:
+            print(f"💥 Training failed: {exc}", file=sys.stderr)
+            return 1
 
     # Resolve target date
     if args.target_date:
