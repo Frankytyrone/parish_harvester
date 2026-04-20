@@ -7,13 +7,14 @@ then stitches them into one A–Z mega PDF.
 
 1. **Evidence file** (`parishes/{diocese}_bulletin_urls.txt`) records real, manually
    verified bulletin URLs for every parish.
-2. The harvester **reads the evidence file**, uses date maths to predict this week's
-   URL for each parish, and downloads it directly.
-3. All PDFs are **stitched into one mega PDF** (A–Z). HTML-only parishes get a
+2. The harvester **reads the evidence file** and first uses date maths to predict
+   this week's URL for each parish.
+3. If prediction fails (or the parish is marked `html_link`), Playwright opens the
+   parish page, scans links/embeds/iframes, and downloads the best PDF/DOCX match.
+4. All PDFs are **stitched into one mega PDF** (A–Z). HTML-only parishes get a
    clickable link page instead.
 
-**No crawling. No guessing. No AI verifier.**  
-The user already knows where every bulletin is — the code just does the maths.
+**Prediction first, page scraping fallback. No AI verifier.**
 
 ---
 
