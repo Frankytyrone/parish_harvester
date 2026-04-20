@@ -27,12 +27,11 @@ def generate_report(
     """
     Move downloaded PDFs from raw_dir to current_dir, write report files.
 
-    Returns a summary dict with keys: downloaded, html_links, failed, fallback.
+    Returns a summary dict with keys: downloaded, html_links, failed.
     """
     current_dir.mkdir(parents=True, exist_ok=True)
 
     downloaded: list[dict] = []
-    fallback: list[dict] = []
     html_links: list[dict] = []
     failed: list[dict] = []
 
@@ -47,10 +46,7 @@ def generate_report(
                 "file": dest.name,
                 "file_type": r.file_type,
             }
-            if r.is_fallback:
-                fallback.append(entry)
-            else:
-                downloaded.append(entry)
+            downloaded.append(entry)
         elif r.status == "html_link":
             html_links.append({
                 "parish": r.key,
@@ -69,12 +65,10 @@ def generate_report(
         "target_date": str(target),
         "summary": {
             "downloaded": len(downloaded),
-            "fallback": len(fallback),
             "html_links": len(html_links),
             "failed": len(failed),
         },
         "downloaded": downloaded,
-        "fallback": fallback,
         "html_links": html_links,
         "failed": failed,
     }
@@ -86,7 +80,6 @@ def generate_report(
         f"Parish Bulletin Harvest Report — {target}",
         "=" * 50,
         f"Downloaded : {len(downloaded)}",
-        f"Fallback   : {len(fallback)}",
         f"HTML links : {len(html_links)}",
         f"Failed     : {len(failed)}",
         "",
@@ -95,11 +88,6 @@ def generate_report(
         lines += ["Downloaded bulletins:", ""]
         for d in downloaded:
             lines.append(f"  ✅ {d['display_name']} — {d['file']}")
-        lines.append("")
-    if fallback:
-        lines += ["Fallback bulletins (possibly stale — target URL unavailable):", ""]
-        for d in fallback:
-            lines.append(f"  ⏪ {d['display_name']} — {d['file']}")
         lines.append("")
     if html_links:
         lines += ["HTML-only parishes (clickable links in mega PDF):", ""]

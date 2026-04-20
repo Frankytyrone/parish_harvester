@@ -11,7 +11,7 @@ import re
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -75,7 +75,7 @@ class FetchResult:
     file_path: Optional[Path] = None
     file_type: str = ""     # "pdf" | "docx_to_pdf" | "image_to_pdf" | "html_link"
     error: str = ""
-    is_fallback: bool = False  # True when a fallback URL was used (bulletin may be stale)
+    is_fallback: bool = False  # Legacy flag; stale fallback downloads are not used
 
     # Legacy compat — old code used .parish
     @property
@@ -481,37 +481,12 @@ async def _fetch_entry(
     # Calculate the predicted URL for this week
     target_url = calculate_url(entry, target)
 
-    # Build fallback candidates:
-    # - predicted target URL
-    # - last Sunday's URL (target - 7 days)
-    fallback_candidates: list[str] = [target_url]
-    if entry.pattern == "H":
-        # Pattern H requires the slug after the bulletin number — the server
-        # returns 403 without it.  Try the current example_url (with slug)
-        # FIRST, then fall back to the incremented number URL (no slug).
-        fallback_candidates.insert(0, entry.example_url)
-    elif entry.pattern not in ("F", "clonleigh", "html_link"):
-        last_sunday_url = rewrite_date_url(entry.example_url, target - timedelta(days=7))
-        if last_sunday_url != target_url and last_sunday_url != entry.example_url:
-            fallback_candidates.append(last_sunday_url)
-        # For greenlough, also try the last-Sunday liturgical URL
-        if entry.pattern == "greenlough":
-            gs = rewrite_greenlough_url(entry.example_url, target - timedelta(days=7))
-            if gs and gs not in fallback_candidates:
-                fallback_candidates.append(gs)
-        # Also try the literal example_url as last resort
-        if entry.example_url not in fallback_candidates:
-            fallback_candidates.append(entry.example_url)
-    elif entry.pattern == "clonleigh":
-        # Also try last week's clonleigh URL
-        last_week = rewrite_clonleigh_url(target - timedelta(days=7))
-        if last_week != target_url:
-            fallback_candidates.append(last_week)
+    candidates: list[str] = [target_url]
 
     dest = output_dir / safe_filename(key, ".pdf")
     last_err = "No valid content found"
 
-    for candidate in fallback_candidates:
+    for candidate in candidates:
         try:
             # Encode any spaces in the URL (e.g. "NEWSLETTER 12-4-26.docx") so the
             # HTTP request succeeds.  Keep the original for display/logging.
@@ -523,7 +498,6 @@ async def _fetch_entry(
                         key=key, display_name=entry.display_name,
                         status="ok", url=candidate,
                         file_path=dest, file_type="image_to_pdf",
-                        is_fallback=(candidate != target_url),
                     )
             elif entry.content_type == "docx":
                 await _download_docx_as_pdf(candidate_encoded, dest, browser)
@@ -532,18 +506,14 @@ async def _fetch_entry(
                         key=key, display_name=entry.display_name,
                         status="ok", url=candidate,
                         file_path=dest, file_type="docx_to_pdf",
-                        is_fallback=(candidate != target_url),
                     )
             else:
                 await _download_pdf(candidate_encoded, dest, browser)
                 if _is_real_pdf(dest, key):
-                    if candidate != target_url:
-                        print(f"  📅 Used fallback URL for {key}: {candidate}")
                     return FetchResult(
                         key=key, display_name=entry.display_name,
                         status="ok", url=candidate,
                         file_path=dest, file_type="pdf",
-                        is_fallback=(candidate != target_url),
                     )
         except Exception as exc:
             last_err = str(exc)

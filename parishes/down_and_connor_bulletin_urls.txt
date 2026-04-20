@@ -9,8 +9,9 @@
 # HOW IT WORKS (The "Safe Cracker"):
 #   Each parish uses one of these URL date patterns:
 #     Pattern A  →  DDMMYY       e.g. holycrossparishbelfast.com/pdf/120426.pdf
+#     Pattern D  →  DD-Month-YYYY / slug variants
 #     Pattern F  →  Static URL   e.g. carrickparish.org/_files/ugd/... (never changes)
-#     html_link  →  HTML page, no PDF available — link shown in mega PDF
+#     html_link  →  HTML page, no predictable PDF URL — link shown in mega PDF
 #     image      →  Bulletin is a JPEG/PNG image, converted to PDF
 #
 # FORMAT:
@@ -19,15 +20,17 @@
 # ============================================================
 
 # --- Aghagallon and Ballinderry ---
-# Pattern A
-https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026-Easter-Sunday2-.pdf
+# Pattern D
+# html_link
+https://www.aghagallonandballinderryparish.ie
 
 # --- Antrim ---
-# Pattern A
-https://www-static.antrimparish.com/wp-content/uploads/2026/04/12th-April-2026-Divine-Mercy.pdf
+# Pattern D
+# html_link
+https://www.antrimparish.com
 
 # --- Ballycastle ---
-# Pattern A
+# Pattern D
 https://www.ballycastleparish.com/s/12th-April-2026.pdf
 
 # --- Ballyclare and Ballygowan ---
@@ -35,19 +38,19 @@ https://www.ballycastleparish.com/s/12th-April-2026.pdf
 https://ballyclareballygowan.com/notice%20board.htm
 
 # --- Ballymena ---
-# Pattern A
-https://ballymenaparish.org/wp-content/uploads/2026/04/5.4.26-Easter-Sunday-r.pdf
+# html_link
+https://ballymenaparish.org
 
 # --- Ballymoney ---
-# Pattern A
-https://www.ballymoneyparish.com/media/other/31871/26-04-12pdf.pdf
+# html_link
+https://www.ballymoneyparish.com
 
 # --- Bangor ---
-# Pattern A
-https://www.bangorparish.com/wp-content/uploads/12-APR-2026-NEWSLETTER.pdf
+# html_link
+https://www.bangorparish.com
 
 # --- Bright ---
-# Pattern A
+# Pattern D
 https://parishofbright.net/wp-content/uploads/2026/04/Bulletin-5-04-2026.pdf
 
 # --- Carrickfergus ---
@@ -67,8 +70,8 @@ https://www.dunsfordandardglassparish.com/?page_id=623
 https://glenariffeparish.org/whats-on
 
 # --- Glenavy and Killead ---
-# Pattern A
-https://www.glenavyandkilleadparish.com/app/uploads/2026/04/2026-April-12-Second-Sunday-of-Easter-Divine-Mercy-Sunday.pdf
+# html_link
+https://www.glenavyandkilleadparish.com
 
 # --- Loughshore ---
 # html_link
@@ -87,12 +90,12 @@ http://www.holycrossparishbelfast.com/pdf/120426.pdf
 https://www.holyrosaryparishbelfast.net/weekly-bulletin
 
 # --- Kilmore and Killyleagh ---
-# Pattern A
-https://www.kilmoreandkillyleagh.com/uploads/8/7/4/5/8745725/easter_5th_april_2026.pdf
+# html_link
+https://www.kilmoreandkillyleagh.com
 
 # --- Lisburn ---
-# Pattern A
-https://parishoflisburn.org/wp-content/uploads/2026/04/12-04-26-Blaris-Bulletin_Small.pdf
+# html_link
+https://parishoflisburn.org
 
 # --- Maghera ---
 # html_link
@@ -115,32 +118,32 @@ https://portstewartparish.website/mdocs-posts/divine-mercy-sunday-12th-april-202
 https://www.stmacnissirandalstown.com/bulletin
 
 # --- Sacred Heart Belfast ---
-# Pattern A
+# Pattern D
 https://www.sacredheartparishbelfast.com/gallery/Parish%20Bulletin%2012th%20April%202026.pdf
 
 # --- Saul and Ballee ---
-# Pattern A
-https://www.saulandballeeparish.com/app/uploads/2026/04/Bulletin-12-04-2026.pdf
+# html_link
+https://www.saulandballeeparish.com
 
 # --- St Agnes Belfast ---
 # html_link
 https://www.stagnesbelfast.com/
 
 # --- Saint Annes ---
-# Pattern A
-https://www.saintannesparish.net/wp-content/uploads/2026/04/120426_Bulletin-2ndSunday-Easter_Divine-Mercy.pdf
+# html_link
+https://www.saintannesparish.net
 
 # --- Saint Anthony ---
-# Pattern A
-http://www.saintanthony.co.uk/ParishNews/Apr%202026/Bulletin120426DivineMercySunday.pdf
+# html_link
+http://www.saintanthony.co.uk
 
 # --- St Bernadettes ---
-# Pattern A
+# Pattern D
 https://www.stbernadettesparish.org/bulletin/uploaded/Parish%20Bulletin%2012th%20April%202026.pdf
 
 # --- St Brigids Belfast ---
-# Pattern A
-https://stbrigidsparishbelfast.org/assets/documents/Parish-Bulletin-12.04.26-FOR-PRINTING.pdf
+# html_link
+https://stbrigidsparishbelfast.org
 
 # --- St Colmcilles ---
 # html_link
@@ -155,8 +158,8 @@ https://stgerardsparish.org/parish-news-events/
 https://saintmichaelthearchangel.godaddysites.com/
 
 # --- St Oliver Plunkett ---
-# Pattern A
-https://stoliverplunkettparish.ie/wp-content/uploads/2026/04/Sun-12th-April-26.pdf
+# html_link
+https://stoliverplunkettparish.ie
 
 # --- St Patricks Belfast ---
 # html_link

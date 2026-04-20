@@ -74,8 +74,8 @@ https://www.castledergparish.com/pdf/290326.pdf
 # --- Claudy ---
 # Pattern B: D-M-YY DOCX (Word document)
 # docx: the fetcher downloads the DOCX and converts to PDF via LibreOffice.
-http://parishofclaudy.com/onewebmedia/NEWSLETTER 12-4-26.docx
-http://parishofclaudy.com/onewebmedia/NEWSLETTER 15-3-26.docx
+http://parishofclaudy.com/onewebmedia/NEWSLETTER%2012-4-26.docx
+http://parishofclaudy.com/onewebmedia/NEWSLETTER%2015-3-26.docx
 
 # --- Clonleigh (Strabane Pastoral Area) ---
 # Pattern clonleigh: WordPress post published the Saturday before Sunday

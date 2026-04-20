@@ -47,9 +47,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -f Bulletins/report.json ]; then
+            DIOCESE="${{ github.event.inputs.diocese || 'derry_diocese' }}"
             REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
             DOWNLOADED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['downloaded'])")
-            FALLBACK=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary'].get('fallback', 0))")
             HTML_LINKS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['html_links'])")
             FAILED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['failed'])")
             FAILED_LIST=$(python -c "
@@ -65,15 +65,6 @@ jobs:
           else:
               print('_None_ \U0001f389')
           ")
-            FALLBACK_LIST=$(python -c "
-          import json
-          d = json.load(open('Bulletins/report.json'))
-          fbs = d.get('fallback', [])
-          if fbs:
-              print('\n'.join(f\"- **{f['display_name']}**: {f['url']}\" for f in fbs))
-          else:
-              print('_None_')
-          ")
             HTML_LIST=$(python -c "
           import json
           d = json.load(open('Bulletins/report.json'))
@@ -83,12 +74,13 @@ jobs:
           else:
               print('_None_')
           ")
-            BODY="## 📋 Bulletin Harvest Report — ${REPORT_DATE}
+            BODY="## 📋 Bulletin Harvest Report — ${DIOCESE} — ${REPORT_DATE}
+
+          **Diocese:** \`${DIOCESE}\`
 
           | Category | Count |
           |----------|-------|
           | ✅ Downloaded | ${DOWNLOADED} |
-          | ⏪ Fallback (possibly stale) | ${FALLBACK} |
           | 🔗 HTML links | ${HTML_LINKS} |
           | 💥 Failed | ${FAILED} |
 
@@ -96,27 +88,23 @@ jobs:
 
           ${FAILED_LIST}
 
-          ### Fallback Parishes (target URL unavailable — possibly stale bulletin)
-
-          ${FALLBACK_LIST}
-
           ### HTML-Only Parishes (links in mega PDF)
 
           ${HTML_LIST}
 
           [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
 
-            ISSUE_TITLE="📋 Bulletin Harvest Report — ${REPORT_DATE}"
+            ISSUE_TITLE="📋 Bulletin Harvest Report — ${DIOCESE} — ${REPORT_DATE}"
 
-                       # Close all open harvest report issues that are NOT for today's date
+            # Close superseded open reports for this same diocese only
             gh issue list \
               --state open \
               --json number,title \
               --limit 100 \
-              --jq ".[] | select(.title | startswith(\"📋 Bulletin Harvest Report\")) | select(.title != \"${ISSUE_TITLE}\") | .number" \
+              --jq ".[] | select(.title | startswith(\"📋 Bulletin Harvest Report — ${DIOCESE} — \")) | select(.title != \"${ISSUE_TITLE}\") | .number" \
               | xargs -r -I{} gh issue close {} --comment "Superseded by newer harvest report." || true
 
-            # Find existing open issue with exactly today's title
+            # Find existing open issue with exactly today's diocese+date title
             EXISTING_ISSUE=$(gh issue list \
               --state open \
               --json number,title \
