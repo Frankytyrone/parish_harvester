@@ -9,9 +9,11 @@ then stitches them into one A–Z mega PDF.
    verified bulletin URLs for every parish.
 2. The harvester **reads the evidence file** and first uses date maths to predict
    this week's URL for each parish.
-3. If prediction fails (or the parish is marked `html_link`), Playwright opens the
-   parish page, scans links/embeds/iframes, and downloads the best PDF/DOCX match.
-4. All PDFs are **stitched into one mega PDF** (A–Z). HTML-only parishes get a
+3. If `parishes/recipes/{parish_key}.json` exists, Playwright replays those
+   recorded steps first (training recipe mode).
+4. If recipe replay fails (or no recipe exists), Playwright opens the parish page,
+   scans links/embeds/iframes, and downloads the best PDF/DOCX match.
+5. All PDFs are **stitched into one mega PDF** (A–Z). HTML-only parishes get a
    clickable link page instead.
 
 **Prediction first, page scraping fallback. No AI verifier.**
@@ -38,6 +40,11 @@ python main.py --diocese derry_diocese --target-date 2026-04-19
 
 # Fetch only (no report or mega PDF)
 python main.py --dry-run
+
+# Train a parish recipe (interactive browser)
+python main.py --train "Hannahstown"
+# or
+python train.py "Hannahstown"
 ```
 
 ---
@@ -52,16 +59,19 @@ parish_harvester/
 ├── parishes/
 │   ├── derry_diocese_bulletin_urls.txt   # Evidence file — master list of bulletin URLs
 │   ├── derry_diocese_contacts.json       # Parish display names, websites, Facebook
+│   ├── recipes/                          # Recorded Playwright recipes per parish
 │   └── NEW_DIOCESE_TEMPLATE.md           # Guide: how to add a new diocese
 ├── harvester/
 │   ├── __init__.py
 │   ├── config.py       # Paths, timeouts, target_sunday()
 │   ├── fetcher.py      # Parse evidence file, calculate URLs, download
+│   ├── replay.py       # Replays trained recipe steps
 │   ├── liturgical.py   # Catholic liturgical calendar 2026 (for Greenlough)
 │   ├── report.py       # Generate report.json and report.txt
 │   ├── stitcher.py     # Stitch A–Z mega PDF
 │   └── utils.py        # Date maths: rewrite_date_url, rewrite_greenlough_url, etc.
 ├── main.py             # CLI entry point
+├── train.py            # Interactive recipe recorder
 └── .github/
     └── workflows/
         └── harvest.yml   # Scheduled GitHub Actions workflow (every Sunday 12:00 UTC)

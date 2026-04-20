@@ -34,6 +34,7 @@ from .config import (
     PARISHES_DIR,
     TOTAL_TIMEOUT_S,
 )
+from .replay import RecipeReplayError, recipe_path_for, replay_recipe
 from .utils import (
     extract_date_from_slug,
     extract_date_from_string,
@@ -748,6 +749,41 @@ async def _fetch_entry(
 
     dest = output_dir / safe_filename(key, ".pdf")
     last_err = "No valid content found"
+    recipe_error = ""
+
+    recipe_path = recipe_path_for(key, PARISHES_DIR)
+    if recipe_path.exists():
+        try:
+            replayed_path, replay_file_type, replay_url = await replay_recipe(
+                recipe_path=recipe_path,
+                dest=dest,
+                browser=browser,
+            )
+            if _is_real_pdf(replayed_path, key):
+                return FetchResult(
+                    key=key,
+                    display_name=entry.display_name,
+                    status="ok",
+                    url=replay_url,
+                    file_path=replayed_path,
+                    file_type=replay_file_type,
+                )
+        except RecipeReplayError as exc:
+            msg = str(exc)
+            if "Recipe outdated" in msg:
+                recipe_error = (
+                    f"Recipe for {entry.display_name} is outdated — the website may "
+                    f"have changed. Re-train with: python main.py --train \"{entry.display_name}\""
+                )
+            else:
+                recipe_error = f"Recipe replay failed: {msg}"
+            print(f"  ↩️  {key}: recipe replay failed: {recipe_error}")
+        except Exception as exc:
+            recipe_error = f"Recipe replay failed: {exc}"
+            print(f"  ↩️  {key}: recipe replay failed: {exc}")
+        finally:
+            if dest.exists() and not _is_real_pdf(dest, key):
+                dest.unlink(missing_ok=True)
 
     # Non-html entries keep URL prediction first.
     if entry.content_type != "html_link":
@@ -790,6 +826,9 @@ async def _fetch_entry(
         if scraped.status == "ok":
             return scraped
         last_err = scraped.error or last_err
+
+    if recipe_error:
+        last_err = f"{recipe_error}; {last_err}"
 
     # html_link parishes return clickable URL only when scraping could not find a file.
     if entry.content_type == "html_link":

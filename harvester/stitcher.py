@@ -47,41 +47,44 @@ def _build_parish_header_pdf(
     display_name: str,
     website: str | None,
     pagesize: tuple[float, float],
-    cm_unit: float,
     colors_module,
     canvas_module,
 ) -> io.BytesIO:
-    """Create a one-page PDF header with parish name and clickable website."""
+    """Create a transparent top-banner overlay with parish name + website link."""
     buf = io.BytesIO()
     width, height = pagesize
     c = canvas_module.Canvas(buf, pagesize=pagesize)
 
-    top = height - (2.0 * cm_unit)
-    c.setFont("Helvetica-Bold", 16)
+    banner_h = 18
+    top = height - 8
+    c.setFillColor(colors_module.Color(1, 1, 1, alpha=0.75))
+    c.rect(0, height - banner_h - 4, width, banner_h + 4, fill=1, stroke=0)
+
     c.setFillColor(colors_module.black)
-    c.drawString(2.0 * cm_unit, top, display_name)
+    c.setFont("Helvetica-Bold", 9)
+    c.setFillColor(colors_module.black)
+    c.drawString(20, top - 8, display_name)
 
     if website:
-        c.setFont("Helvetica", 10)
+        c.setFont("Helvetica", 8)
         c.setFillColor(colors_module.blue)
-        c.drawString(2.0 * cm_unit, top - (0.6 * cm_unit), website)
-        text_w = c.stringWidth(website, "Helvetica", 10)
+        c.drawRightString(width - 20, top - 8, website)
+        text_w = c.stringWidth(website, "Helvetica", 8)
         c.linkURL(
             website,
             (
-                2.0 * cm_unit,
-                top - (0.7 * cm_unit),
-                2.0 * cm_unit + text_w,
-                top - (0.45 * cm_unit),
+                width - 20 - text_w,
+                top - 11,
+                width - 20,
+                top - 2,
             ),
             relative=0,
             thickness=0,
             color=colors_module.blue,
         )
 
-    c.setStrokeColor(colors_module.grey)
-    c.line(2.0 * cm_unit, top - (1.0 * cm_unit), width - (2.0 * cm_unit), top - (1.0 * cm_unit))
-    c.showPage()
+    c.setStrokeColor(colors_module.Color(0.85, 0.85, 0.85))
+    c.line(16, height - banner_h - 4, width - 16, height - banner_h - 4)
     c.save()
     buf.seek(0)
     return buf
@@ -169,20 +172,21 @@ def stitch_mega_pdf(
                     link_url = parish_url
                 else:
                     link_url = None
-                header_pdf = _build_parish_header_pdf(
-                    display_name,
-                    link_url,
-                    A4,
-                    cm,
-                    colors,
-                    canvas,
-                )
-                header_reader = PyPDF2.PdfReader(header_pdf)
-                if header_reader.pages:
-                    merger.add_page(header_reader.pages[0])
-
                 reader = PyPDF2.PdfReader(str(pdf_path))
-                for page in reader.pages:
+                for idx, page in enumerate(reader.pages):
+                    if idx == 0:
+                        page_w = float(page.mediabox.width)
+                        page_h = float(page.mediabox.height)
+                        header_pdf = _build_parish_header_pdf(
+                            display_name,
+                            link_url,
+                            (page_w, page_h),
+                            colors,
+                            canvas,
+                        )
+                        header_reader = PyPDF2.PdfReader(header_pdf)
+                        if header_reader.pages:
+                            page.merge_page(header_reader.pages[0])
                     # Skip blank or near-blank pages (no real text content).
                     # Strips all invisible/filler characters before counting —
                     # catches form-feed-only pages, dot-separator pages, etc.
