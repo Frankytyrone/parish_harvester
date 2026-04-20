@@ -187,9 +187,14 @@ async def _download_image_url_as_pdf(page: Page, raw_url: str, dest: Path) -> tu
     try:
         from PIL import Image  # type: ignore[import]
     except ImportError as exc:
-        raise RecipeReplayError("Pillow is required for image bulletin conversion") from exc
-    img = Image.open(io.BytesIO(body)).convert("RGB")
-    img.save(str(dest), "PDF")
+        raise RecipeReplayError(
+            "Pillow is required for image bulletin conversion. Install with: pip install Pillow"
+        ) from exc
+    try:
+        img = Image.open(io.BytesIO(body)).convert("RGB")
+        img.save(str(dest), "PDF")
+    except Exception as exc:
+        raise RecipeReplayError(f"Invalid image content for bulletin conversion: {raw_url}") from exc
     return raw_url, "image_to_pdf"
 
 
