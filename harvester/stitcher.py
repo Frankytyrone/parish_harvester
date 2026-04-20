@@ -38,6 +38,7 @@ _HEADER_TOP_MARGIN = 8
 _HEADER_SIDE_MARGIN = 20
 _HEADER_RULE_SIDE_PADDING = 16
 _HEADER_BACKGROUND_ALPHA = 0.75
+_HEADER_BACKGROUND_OFFSET = 4
 
 def _xml_escape(text: str) -> str:
     """Escape XML/HTML special characters for use in ReportLab markup."""
@@ -64,7 +65,7 @@ def _build_parish_header_pdf(
     banner_h = _HEADER_BANNER_HEIGHT
     top = height - _HEADER_TOP_MARGIN
     c.setFillColor(colors_module.Color(1, 1, 1, alpha=_HEADER_BACKGROUND_ALPHA))
-    c.rect(0, height - banner_h - 4, width, banner_h + 4, fill=1, stroke=0)
+    c.rect(0, height - banner_h - _HEADER_BACKGROUND_OFFSET, width, banner_h + _HEADER_BACKGROUND_OFFSET, fill=1, stroke=0)
 
     c.setFillColor(colors_module.black)
     c.setFont("Helvetica-Bold", 9)
@@ -90,7 +91,7 @@ def _build_parish_header_pdf(
         )
 
     c.setStrokeColor(colors_module.Color(0.85, 0.85, 0.85))
-    c.line(_HEADER_RULE_SIDE_PADDING, height - banner_h - 4, width - _HEADER_RULE_SIDE_PADDING, height - banner_h - 4)
+    c.line(_HEADER_RULE_SIDE_PADDING, height - banner_h - _HEADER_BACKGROUND_OFFSET, width - _HEADER_RULE_SIDE_PADDING, height - banner_h - _HEADER_BACKGROUND_OFFSET)
     c.save()
     buf.seek(0)
     return buf

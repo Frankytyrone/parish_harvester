@@ -192,7 +192,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
         context = await browser.new_context(accept_downloads=True)
         page = await context.new_page()
 
-        def on_navigate(frame) -> None:
+        def handle_navigate(frame) -> None:
             nonlocal final_document_url
             if frame != page.main_frame:
                 return
@@ -204,14 +204,14 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
             if lowered.endswith(".pdf") or lowered.endswith(".docx"):
                 final_document_url = url
 
-        async def on_download(download) -> None:
+        async def handle_download(download) -> None:
             nonlocal final_document_url
             try:
                 final_document_url = download.url
             except Exception:
                 pass
 
-        async def record_click(_source, payload: dict[str, Any]) -> None:
+        async def handle_record_click(_source, payload: dict[str, Any]) -> None:
             step = _build_click_step(payload)
             if not step:
                 return
@@ -219,7 +219,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                 return
             click_steps.append(step)
 
-        await page.expose_binding("phRecordClick", record_click)
+        await page.expose_binding("ph_record_click", handle_record_click)
         await page.add_init_script(
             """
             (() => {
@@ -252,7 +252,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                   ? event.target.closest('a,button,[role],input[type="submit"],input[type="button"]')
                   : null;
                 if (!target) return;
-                window.phRecordClick({
+                window.ph_record_click({
                   tag: (target.tagName || '').toLowerCase(),
                   role: (target.getAttribute('role') || '').toLowerCase(),
                   text: (target.innerText || target.textContent || '').trim().slice(0, 200),
@@ -264,8 +264,8 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
             """
         )
 
-        page.on("framenavigated", on_navigate)
-        page.on("download", on_download)
+        page.on("framenavigated", handle_navigate)
+        page.on("download", handle_download)
 
         try:
             await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
