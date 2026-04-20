@@ -34,7 +34,7 @@ class _FakeBrowser:
         self.context = context
 
     async def new_context(self, accept_downloads: bool = True) -> _FakeContext:
-        self.accept_downloads = accept_downloads
+        self.context.accept_downloads = accept_downloads
         return self.context
 
 
@@ -56,6 +56,7 @@ class ReplayRecipeStepTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(out_path, dest)
             self.assertEqual(file_type, "html_link")
             self.assertEqual(source_url, "https://example.org/bulletin")
+            self.assertTrue(context.accept_downloads)
             self.assertTrue(context.closed)
 
     async def test_replay_recipe_supports_image_step(self) -> None:
@@ -77,6 +78,7 @@ class ReplayRecipeStepTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(out_path, dest)
             self.assertEqual(file_type, "image_to_pdf")
             self.assertEqual(source_url, "https://example.org/bulletin.jpg")
+            self.assertTrue(context.accept_downloads)
             fake_download.assert_awaited_once()
             self.assertTrue(context.closed)
 
