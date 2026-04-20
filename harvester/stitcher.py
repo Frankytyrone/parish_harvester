@@ -42,6 +42,51 @@ def _xml_escape(text: str) -> str:
         .replace(">", "&gt;")
     )
 
+
+def _build_parish_header_pdf(
+    display_name: str,
+    website: str | None,
+    pagesize: tuple[float, float],
+    cm_unit: float,
+    colors_module,
+    canvas_module,
+) -> io.BytesIO:
+    """Create a one-page PDF header with parish name and clickable website."""
+    buf = io.BytesIO()
+    width, height = pagesize
+    c = canvas_module.Canvas(buf, pagesize=pagesize)
+
+    top = height - (2.0 * cm_unit)
+    c.setFont("Helvetica-Bold", 16)
+    c.setFillColor(colors_module.black)
+    c.drawString(2.0 * cm_unit, top, display_name)
+
+    if website:
+        c.setFont("Helvetica", 10)
+        c.setFillColor(colors_module.blue)
+        c.drawString(2.0 * cm_unit, top - (0.6 * cm_unit), website)
+        text_w = c.stringWidth(website, "Helvetica", 10)
+        c.linkURL(
+            website,
+            (
+                2.0 * cm_unit,
+                top - (0.7 * cm_unit),
+                2.0 * cm_unit + text_w,
+                top - (0.45 * cm_unit),
+            ),
+            relative=0,
+            thickness=0,
+            color=colors_module.blue,
+        )
+
+    c.setStrokeColor(colors_module.grey)
+    c.line(2.0 * cm_unit, top - (1.0 * cm_unit), width - (2.0 * cm_unit), top - (1.0 * cm_unit))
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf
+
+
 def stitch_mega_pdf(
     results: list["FetchResult"],
     current_dir: Path,
@@ -60,6 +105,7 @@ def stitch_mega_pdf(
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.lib.units import cm
+        from reportlab.pdfgen import canvas
         from reportlab.platypus import (
             HRFlowable,
             Paragraph,
@@ -82,6 +128,9 @@ def stitch_mega_pdf(
     parish_map: dict[str, tuple[Path | None, str, str]] = {}
     for r in results:
         key = r.key
+        # Keep stale historical fallback results out of the mega PDF.
+        if r.is_fallback:
+            continue
         if r.status == "ok" and r.file_path:
             pdf_path: Path | None = current_dir / r.file_path.name
             if not (pdf_path and pdf_path.exists()):
@@ -114,6 +163,24 @@ def stitch_mega_pdf(
 
         if pdf_path and pdf_path.exists():
             try:
+                if website and website.startswith("http"):
+                    link_url = website
+                elif parish_url and parish_url.startswith("http"):
+                    link_url = parish_url
+                else:
+                    link_url = None
+                header_pdf = _build_parish_header_pdf(
+                    display_name,
+                    link_url,
+                    A4,
+                    cm,
+                    colors,
+                    canvas,
+                )
+                header_reader = PyPDF2.PdfReader(header_pdf)
+                if header_reader.pages:
+                    merger.add_page(header_reader.pages[0])
+
                 reader = PyPDF2.PdfReader(str(pdf_path))
                 for page in reader.pages:
                     # Skip blank or near-blank pages (no real text content).

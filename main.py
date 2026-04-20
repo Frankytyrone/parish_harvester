@@ -97,13 +97,11 @@ def main() -> int:
     finally:
         loop.close()
 
-    ok_count = sum(1 for r in results if r.status == "ok" and not r.is_fallback)
-    fallback_count = sum(1 for r in results if r.status == "ok" and r.is_fallback)
+    ok_count = sum(1 for r in results if r.status == "ok")
     html_count = sum(1 for r in results if r.status == "html_link")
     err_count = sum(1 for r in results if r.status == "error")
 
     print(f"  ✅ Downloaded  : {ok_count}")
-    print(f"  ⏪ Fallback    : {fallback_count}")
     print(f"  🔗 HTML links  : {html_count}")
     print(f"  💥 Failed      : {err_count}")
 
