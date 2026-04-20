@@ -18,6 +18,8 @@ from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 from playwright.async_api import (
     Browser,
+    Error as PlaywrightError,
+    TimeoutError as PlaywrightTimeoutError,
     async_playwright,
 )
 try:
@@ -462,7 +464,7 @@ async def _scrape_and_download(
         )
         try:
             await page.wait_for_load_state("networkidle", timeout=5_000)
-        except Exception:
+        except PlaywrightTimeoutError:
             pass
 
         candidates: list[tuple[str, str, int]] = []
@@ -487,7 +489,7 @@ async def _scrape_and_download(
                 if include_text:
                     try:
                         label = (await el.inner_text() or "").strip()
-                    except Exception:
+                    except PlaywrightError:
                         label = ""
                 candidates.append((resolved, label, idx))
                 idx += 1
