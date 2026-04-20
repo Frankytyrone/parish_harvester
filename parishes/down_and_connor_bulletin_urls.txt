@@ -21,151 +21,258 @@
 # ============================================================
 
 # --- Aghagallon and Ballinderry ---
+# page: https://www.aghagallonandballinderryparish.ie/newsletter/
 # Pattern D
 # html_link
 https://www.aghagallonandballinderryparish.ie
 
 # --- Antrim ---
+# page: https://www.antrimparish.com/bulletinpage/
 # Pattern D
 # html_link
 https://www.antrimparish.com
 
 # --- Ballycastle ---
+# page: https://www.ballycastleparish.com/bulletins
 # Pattern D
 https://www.ballycastleparish.com/s/12th-April-2026.pdf
 
 # --- Ballyclare and Ballygowan ---
+# page: https://ballyclareballygowan.com/notice%20board.htm
 # html_link
 https://ballyclareballygowan.com/notice%20board.htm
 
 # --- Ballymena ---
+# page: https://ballymenaparish.org/bulletin-and-parish-documents/
 # html_link
 https://ballymenaparish.org
 
 # --- Ballymoney ---
+# page: http://www.ballymoneyparish.com/news_and_events.html
 # html_link
 https://www.ballymoneyparish.com
 
 # --- Bangor ---
+# page: https://www.bangorparish.com/parish-bulletin/
 # html_link
 https://www.bangorparish.com
 
 # --- Bright ---
+# page: https://parishofbright.net/bulletin/
 # Pattern D
 https://parishofbright.net/wp-content/uploads/2026/04/Bulletin-5-04-2026.pdf
 
 # --- Carrickfergus ---
+# page: https://www.carrickparish.org/info
 # html_link
 https://www.carrickparish.org
 
 # --- Derriaghy ---
+# page: https://derriaghycatholicparish.com/?page_id=262
 # html_link
 https://derriaghycatholicparish.com
 
 # --- Dunsford and Ardglass ---
+# page: https://www.dunsfordandardglassparish.com/?page_id=623
 # html_link
 https://www.dunsfordandardglassparish.com/?page_id=623
 
 # --- Glenariffe ---
+# page: https://glenariffeparish.org/whats-on
 # html_link
 https://glenariffeparish.org/whats-on
 
 # --- Glenavy and Killead ---
+# page: https://www.glenavyandkilleadparish.com/bulletins/
 # html_link
 https://www.glenavyandkilleadparish.com
 
 # --- Loughshore ---
+# page: https://www.loughshoreparishes.org/sunday-bulletin/
 # html_link
 https://www.loughshoreparishes.org/sunday-bulletin/
 
 # --- Hannahstown ---
+# page: https://www.parishofhannahstown.com/weekly-bulletins
 # html_link
 https://www.parishofhannahstown.com/weekly-bulletins
 
 # --- Holy Cross Belfast ---
+# page: http://www.holycrossparishbelfast.com/parishnews.html
 # Pattern A
 http://www.holycrossparishbelfast.com/pdf/120426.pdf
 
 # --- Holy Rosary Belfast ---
+# page: https://www.holyrosaryparishbelfast.net/weekly-bulletin
 # html_link
 https://www.holyrosaryparishbelfast.net/weekly-bulletin
 
 # --- Kilmore and Killyleagh ---
+# page: https://www.kilmoreandkillyleagh.com/latest-notices--downloads.html
 # html_link
 https://www.kilmoreandkillyleagh.com
 
 # --- Lisburn ---
+# page: https://parishoflisburn.org/about/
 # html_link
 https://parishoflisburn.org
 
 # --- Maghera ---
+# page: https://www.parishofmaghera.com/copy-of-sunday-missalette
 # html_link
 https://www.parishofmaghera.com/copy-of-sunday-missalette
 
 # --- Our Lady Queen of Peace ---
+# page: https://www.ourladyqueenofpeacekilwee.com/bulletins
 # html_link
 https://www.ourladyqueenofpeacekilwee.com/bulletins
 
 # --- Portaferry ---
+# page: https://portaferryparish.com/bulletin
 # html_link
 https://portaferryparish.com/bulletin
 
 # --- Portstewart ---
+# page: https://portstewartparish.website/bulletins/
 # html_link
 https://portstewartparish.website/mdocs-posts/
 
 # --- St MacNissi Randalstown ---
+# page: https://www.stmacnissirandalstown.com/bulletin
 # html_link
 https://www.stmacnissirandalstown.com/bulletin
 
 # --- Sacred Heart Belfast ---
+# page: https://www.sacredheartparishbelfast.com/Parish-Bulletins/
 # Pattern D
 https://www.sacredheartparishbelfast.com/gallery/Parish%20Bulletin%2012th%20April%202026.pdf
 
 # --- Saul and Ballee ---
+# page: https://www.saulandballeeparish.com/
 # html_link
 https://www.saulandballeeparish.com
 
 # --- St Agnes Belfast ---
+# page: https://www.stagnesbelfast.com/?p=6069
 # html_link
 https://www.stagnesbelfast.com/
 
 # --- Saint Annes ---
+# page: https://www.saintannesparish.net/bulletins/
 # html_link
 https://www.saintannesparish.net
 
 # --- Saint Anthony ---
+# page: http://www.saintanthony.co.uk/
 # html_link
 http://www.saintanthony.co.uk
 
 # --- St Bernadettes ---
+# page: https://www.stbernadettesparish.org/?page_id=672
 # Pattern D
 https://www.stbernadettesparish.org/bulletin/uploaded/Parish%20Bulletin%2012th%20April%202026.pdf
 
 # --- St Brigids Belfast ---
+# page: https://stbrigidsparishbelfast.org/bulletins
 # html_link
 https://stbrigidsparishbelfast.org
 
 # --- St Colmcilles ---
+# page: https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/
 # html_link
 https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/
 
 # --- St Gerards ---
+# page: https://stgerardsparish.org/
 # html_link
 https://stgerardsparish.org/parish-news-events/
 
 # --- St Michael the Archangel ---
+# page: https://saintmichaelthearchangel.godaddysites.com/
 # html_link
 https://saintmichaelthearchangel.godaddysites.com/
 
 # --- St Oliver Plunkett ---
+# page: https://stoliverplunkettparish.ie/bulletins/
 # html_link
 https://stoliverplunkettparish.ie
 
 # --- St Patricks Belfast ---
+# page: https://www.stpatricksbelfast.org/category/weekly-bulletins/
 # html_link
 https://www.stpatricksbelfast.org/category/weekly-bulletins/
 
 # --- St Teresas ---
+# page: https://stteresasparish.church/parish-news/
 # html_link
 https://stteresasparish.church/parish-news/
+
+# --- St Mary's Belfast ---
+# page: https://www.stmarysbelfast.org/news
+# html_link
+https://www.stmarysbelfast.org/news
+
+# --- Christ the Redeemer ---
+# page: https://www.christtheredeemer.co.uk/parish-bulletin
+# html_link
+https://www.christtheredeemer.co.uk/parish-bulletin
+
+# --- Corpus Christi Belfast ---
+# page: https://www.corpuschristiparishbelfast.com/news
+# html_link
+https://www.corpuschristiparishbelfast.com/news
+
+# --- Drumbo and Carryduff ---
+# page: https://www.drumbocarryduff.ie/#sbp-bulletin
+# html_link
+https://www.drumbocarryduff.ie/#sbp-bulletin
+
+# --- Holy Family ---
+# page: https://www.holy-familyparish.com/bulletin/
+# html_link
+https://www.holy-familyparish.com/bulletin/
+
+# --- Holy Trinity Belfast ---
+# page: https://holytrinityparishbelfast.com/newsletters/
+# html_link
+https://holytrinityparishbelfast.com/newsletters/
+
+# --- Nativity ---
+# page: https://www.nativityparish.com/news
+# html_link
+https://www.nativityparish.com/news
+
+# --- Port Glenone ---
+# page: https://stmarysportglenone.co.uk/?page_id=40
+# html_link
+https://stmarysportglenone.co.uk/?page_id=40
+
+# --- St Luke's Belfast ---
+# page: https://www.stlukesparishbelfast.com/news
+# html_link
+https://www.stlukesparishbelfast.com/news
+
+# --- Saint Malachy's ---
+# page: https://www.saintmalachysparish.com/
+# html_link
+https://www.saintmalachysparish.com/
+
+# --- St Mary's on the Hill ---
+# page: https://www.stmarysonthehill.online/
+# html_link
+https://www.stmarysonthehill.online/
+
+# --- St Matthew's ---
+# page: https://www.stmatthewsparish.com/news
+# html_link
+https://www.stmatthewsparish.com/news
+
+# --- St Patrick's Downpatrick ---
+# page: https://stpatricksdownpatrick.com/parish-bulletins/
+# html_link
+https://stpatricksdownpatrick.com/parish-bulletins/
+
+# --- St Vincent de Paul Belfast ---
+# page: https://www.stvincentdepaulparishbelfast.com/news
+# html_link
+https://www.stvincentdepaulparishbelfast.com/news

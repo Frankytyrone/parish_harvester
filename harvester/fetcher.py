@@ -67,6 +67,7 @@ class ParishEntry:
     pattern: str        # "A"-"H", "greenlough", "clonleigh", "html_link", "F"
     content_type: str   # "pdf" | "docx" | "image" | "html_link"
     example_url: str    # Most recent confirmed URL (used for date math)
+    bulletin_page: str = ""  # URL of bulletin listing page (for training)
     all_urls: list[str] = field(default_factory=list)
 
 
@@ -139,15 +140,17 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
     cur_is_html_link: bool = False
     cur_is_image: bool = False
     cur_is_docx: bool = False
+    cur_bulletin_page: Optional[str] = None
     cur_urls: list[str] = []
 
     def _flush() -> None:
         nonlocal cur_name, cur_key_override, cur_pattern, cur_is_html_link
-        nonlocal cur_is_image, cur_is_docx, cur_urls
+        nonlocal cur_is_image, cur_is_docx, cur_bulletin_page, cur_urls
 
         if not cur_urls:
             cur_name = cur_key_override = cur_pattern = None
             cur_is_html_link = cur_is_image = cur_is_docx = False
+            cur_bulletin_page = None
             return
 
         example_url = cur_urls[0]
@@ -183,11 +186,13 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
             pattern=pattern,
             content_type=content_type,
             example_url=example_url,
+            bulletin_page=cur_bulletin_page or "",
             all_urls=cur_urls[:],
         ))
 
         cur_name = cur_key_override = cur_pattern = None
         cur_is_html_link = cur_is_image = cur_is_docx = False
+        cur_bulletin_page = None
         cur_urls = []
 
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -206,6 +211,8 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
             ll = line.lower()
             if ll.startswith("# key:"):
                 cur_key_override = line.split(":", 1)[1].strip()
+            elif ll.startswith("# page:"):
+                cur_bulletin_page = line.split(":", 1)[1].strip()
             # Check multi-word patterns BEFORE single-letter patterns to avoid
             # substring collisions (e.g. "pattern clonleigh" contains "pattern c")
             elif "pattern greenlough" in ll:

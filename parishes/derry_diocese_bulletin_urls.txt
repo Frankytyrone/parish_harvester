@@ -30,54 +30,64 @@
 # ============================================================
 
 # --- Ardmore ---
+# page: http://www.ardmoreparish.com/news.html
 # html_link: bulletin page is consistently out of date; just provide a link.
 http://www.ardmoreparish.com/news.html
 
 # --- Ballinascreen (& Desertmartin amalgamated) ---
+# page: https://www.parishofballinascreen.com/bulletins-2025
 # Pattern D: slug date DD_Month_YYYY (Wix site — HTML page, not PDF)
 # html_link: displayed as clickable link in mega PDF
 https://www.parishofballinascreen.com
 https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-5_april_2026
 
 # --- Banagher ---
+# page: https://www.banagherparish.com/information#47-9-newsletters
 # Pattern H: Numeric ID in path — ID increments each week (384, 383, 382...)
 https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026
 https://www.banagherparish.com/files/9/Newsletters/383/Bulletin---Easter-Day-of-the-Lord-s-Resurrection--5th-April-2026
 https://www.banagherparish.com/files/9/Newsletters/382/Bulletin---Palm-Sunday---29th-March-2026
 
 # --- Bellaghy ---
+# page: https://bellaghyparish.com/current-newsletter/
 # Pattern D: DD-Month-YYYY slug inside WordPress /YYYY/MM/ directory
 https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf
 https://bellaghyparish.com/wp-content/uploads/2026/04/29-March-2026.pdf
 
 # --- Buncrana ---
+# page: https://www.buncranaparish.com/pastnews.htm
 # Pattern A: DDMMYY
 https://www.buncranaparish.com/pdf/050426.pdf
 https://www.buncranaparish.com/pdf/220326.pdf
 
 # --- Cappagh (& Killyclogher amalgamated) ---
+# page: https://www.cappaghparish.com/
 # DISABLED: secretary uses wrong dates in filenames; bulletin content is stale (2025).
 # Removed to avoid including outdated bulletins.
 # https://www.cappaghparish.com/pdf/120426.pdf
 # https://www.cappaghparish.com/pdf/050426.pdf
 
 # --- Carndonagh ---
+# page: http://www.carndonaghparish.com/parishnews.html
 # Pattern A: DDMMYY
 http://www.carndonaghparish.com/pdf/120426.pdf
 http://www.carndonaghparish.com/pdf/290326.pdf
 
 # --- Castlederg ---
+# page: https://www.castledergparish.com/parishnews.html
 # Pattern A: DDMMYY
 https://www.castledergparish.com/pdf/120426.pdf
 https://www.castledergparish.com/pdf/290326.pdf
 
 # --- Claudy ---
+# page: https://www.parishofclaudy.com/welcome/weekly-bulletin.html
 # Pattern B: D-M-YY DOCX (Word document)
 # docx: the fetcher downloads the DOCX and converts to PDF via LibreOffice.
 http://parishofclaudy.com/onewebmedia/NEWSLETTER%2012-4-26.docx
 http://parishofclaudy.com/onewebmedia/NEWSLETTER%2015-3-26.docx
 
 # --- Clonleigh (Strabane Pastoral Area) ---
+# page: https://clonleighparish.com/category/newsletter/
 # Pattern clonleigh: WordPress post published the Saturday before Sunday
 # Slug format: strabane-pastoral-area-newsletter-for-sunday-DDth-month-YYYY
 # (HTML bulletin: the calculated URL is shown as a clickable link in the mega PDF)
@@ -87,46 +97,55 @@ https://clonleighparish.com/2026/03/28/strabane-pastoral-area-newsletter-for-sun
 https://clonleighparish.com/2026/01/24/strabane-pastoral-area-newsletter-for-sunday-25th-january-2026/
 
 # --- Clonmany ---
+# page: https://clonmanyparish.ie/newsletter/
 # Pattern C: ISO YYYY-MM-DD inside WordPress /YYYY/MM/ directory
 https://clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-12.pdf
 https://clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-05.pdf
 
 # --- Culdaff ---
+# page: http://www.culdaffparish.com/
 # Pattern A: DDMMYY
 http://www.culdaffparish.com/pdf/120426.pdf
 http://www.culdaffparish.com/pdf/050426.pdf
 
 # --- Culmoe ---
+# page: http://culmoreparish.com/news.html
 # Pattern A: DDMMYY
 http://culmoreparish.com/pdf/120426.pdf
 http://culmoreparish.com/pdf/290326.pdf
 
 # --- DMA Parish (Claudy area) ---
+# page: https://dmaparish.com/
 # Pattern A: DDMMYY
 https://dmaparish.com/pdf/120426.pdf
 https://dmaparish.com/pdf/220326.pdf
 
 # --- Drumquin ---
+# page: https://drumquinparish.com/
 # Pattern A: DDMMYY
 https://drumquinparish.com/pdf/120426.pdf
 https://drumquinparish.com/pdf/050426.pdf
 
 # --- Dungiven ---
+# page: https://parishofdungiven.com/parishnews.html
 # Pattern A: DDMMYY
 https://parishofdungiven.com/pdf/120426.pdf
 https://parishofdungiven.com/pdf/050426.pdf
 
 # --- Errigal ---
+# page: https://www.errigalparish.com/news.html
 # Pattern A: DDMMYY
 https://www.errigalparish.com/pdf/120426.pdf
 https://www.errigalparish.com/pdf/290326.pdf
 
 # --- Fahan ---
+# page: http://www.fahanparish.com/
 # Pattern A: DDMMYY
 http://www.fahanparish.com/pdf/120426.pdf
 http://www.fahanparish.com/pdf/050426.pdf
 
 # --- Greenlough ---
+# page: https://www.greenlough.com/newsletter/
 # Pattern greenlough: liturgical name + [YYYY-M-D] bracketed ISO in filename
 # Uses liturgical.py to predict the full liturgical name each week
 http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf
@@ -135,66 +154,80 @@ http://www.greenlough.com/publications/newsletter/Palm_Sunday[2026-3-29].pdf
 http://www.greenlough.com/publications/newsletter/Third_Sunday_of_Lent[2026-3-8].pdf
 
 # --- Iskaheen ---
+# page: https://www.iskaheenparish.com/bulletin
 # image: bulletin is a JPEG image in wp-content/uploads/YYYY/MM/1.jpg
 # The fetcher downloads the JPEG and converts to PDF using Pillow.
 https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1
 
 # --- Kilrea ---
+# page: https://www.parishofkilrea.com/news.html
 # Pattern A: DDMMYY
 https://www.parishofkilrea.com/pdf/120426.pdf
 https://www.parishofkilrea.com/pdf/050426.pdf
 
 # --- Lavey ---
+# page: https://www.laveyparish.com/
 # Pattern F: STATIC URL — the same PDF link is overwritten each week.
 https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf
 
 # --- Leckpatrick ---
+# page: https://www.leckpatrickparish.com/news.html
 # Pattern A: DDMMYY
 https://www.leckpatrickparish.com/pdf/120426.pdf
 https://www.leckpatrickparish.com/pdf/050426.pdf
 
 # --- Limavady ---
+# page: https://www.limavadyparish.org/parish%20bulletins.html
 # Pattern B: D-M-YY (no leading zeros on day or month)
 https://www.limavadyparish.org/onewebmedia/5-4-26.pdf
 https://www.limavadyparish.org/onewebmedia/29-3-26.pdf
 
 # --- Maghera (Derry) ---
+# page: http://www.magheraparishderry.com/parishnews.php
 # Pattern A: DDMMYY
 http://www.magheraparishderry.com/pdf/050426.pdf
 http://www.magheraparishderry.com/pdf/290326.pdf
 
 # --- Malin ---
+# page: http://malinparish.ie/
 # Pattern D: DD-Month-YYYY slug inside WordPress /YYYY/MM/ directory
 https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf
 
 # --- Melmount (& Camus) ---
+# page: https://www.melmountparish.com/
 # html_link: parish publishes news on a web page, no direct PDF
 https://www.melmountparish.com/parishnews.html
 
 # --- Moville ---
+# page: https://www.movilleparish.com/
 # Pattern A: DDMMYY
 https://movilleparish.com/pdf/120426.pdf
 
 # --- Sion Mills ---
+# page: http://www.parishofsionmills.com/
 # html_link: no PDF available — link to parish news page shown in mega PDF
 http://www.parishofsionmills.com/news.html
 
 # --- Star of the Sea (Magilligan) ---
+# page: https://staroftheseacatholic.com/
 # key: staroftheseacatholic
 # Pattern F: STATIC URL — Google Drive direct download (file ID never changes).
 # Converted from /file/d/ID/view to drive.usercontent.google.com direct download.
 https://drive.usercontent.google.com/download?id=1cF4BuBrZCRrSwMQeTT8mJrGNpr5aFGpD&export=download
 
 # --- St Eugene's Cathedral (Templemore) ---
+# page: https://steugenescathedral.com/
 # Pattern A: DDMMYY
 https://steugenescathedral.com/pdf/120426.pdf
 
 # --- St Mary's Parish Creggan ---
+# page: https://www.stmarysparishcreggan.com/bulletins
 # html_link: bulletin listing page — CDN PDF links change each week and
 # cannot be predicted.  Link to the listing page in the mega PDF.
 https://www.stmarysparishcreggan.com/bulletins
 
 # --- Three Patrons ---
+# page: https://threepatrons.org/
 # Pattern H: Sequential number — number increments by 1 each week
 # URL format: /files/10/Weekly-Bulletins/NNN/Slug
 https://www.threepatrons.org/files/10/Weekly-Bulletins/95/Sunday-12th-April-2026
@@ -202,5 +235,66 @@ https://www.threepatrons.org/files/10/Weekly-Bulletins/94/Sunday-5th-April-2026
 https://www.threepatrons.org/files/10/Weekly-Bulletins/93/Sunday-29-March-2026-Palm-Sunday
 
 # --- Waterside (& Strathfoyle amalgamated) ---
+# page: https://watersideparish.net/
 # Pattern A: DDMMYY with suffix 'oo' before .pdf
 https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf
+
+# --- Aghyaran ---
+# page: https://www.parishofaghyaran.com/news.html
+# html_link
+https://www.parishofaghyaran.com/news.html
+
+# --- Ardstraw East ---
+# page: http://parishofardstraweast.com/parishnews.html
+# html_link
+http://parishofardstraweast.com/parishnews.html
+
+# --- Camus ---
+# page: https://camusparish.com/
+# html_link
+https://camusparish.com/
+
+# --- Coleraine (St John) ---
+# page: https://www.parishofstjohncoleraine.com/
+# html_link
+https://www.parishofstjohncoleraine.com/
+
+# --- Desertmartin ---
+# page: https://www.desertmartinparish.com/?page_id=6
+# html_link
+https://www.desertmartinparish.com/?page_id=6
+
+# --- Drumragh ---
+# page: https://www.drumraghparish.com/
+# html_link
+https://www.drumraghparish.com/
+
+# --- Granaghan ---
+# page: https://granaghanparish.com/
+# html_link
+https://granaghanparish.com/
+
+# --- Greencastle ---
+# page: https://greencastleparish.com/
+# html_link
+https://greencastleparish.com/
+
+# --- Holy Family ---
+# page: https://www.holyfamily-parish.com/
+# html_link
+https://www.holyfamily-parish.com/
+
+# --- Long Tower ---
+# page: https://longtowerchurch.org/
+# html_link
+https://longtowerchurch.org/
+
+# --- Steelstown ---
+# page: http://www.steelstownparish.com/
+# html_link
+http://www.steelstownparish.com/
+
+# --- Urney and Castlefin ---
+# page: http://urneyandcastlefinparish.com/?page_id=1227
+# html_link
+http://urneyandcastlefinparish.com/?page_id=1227
