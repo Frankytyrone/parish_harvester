@@ -25,8 +25,8 @@ _MONTH_RE = re.compile(
 
 _PANEL_JS = """
 (() => {
-  if (window.__phTrainingPanelInjected) return;
-  window.__phTrainingPanelInjected = true;
+  const _existingHost = document.getElementById('ph-training-host');
+  if (_existingHost) _existingHost.remove();
 
   const cssPath = (el) => {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return '';
@@ -526,6 +526,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
         async def _reinject_panel() -> None:
             try:
+                await asyncio.sleep(0.6)
                 await page.evaluate(_PANEL_JS)
             except Exception:
                 pass
@@ -537,6 +538,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
         try:
             await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
+            await asyncio.sleep(0.8)
             try:
                 await page.evaluate(_PANEL_JS)
             except Exception:

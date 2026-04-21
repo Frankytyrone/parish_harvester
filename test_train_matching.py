@@ -118,8 +118,10 @@ https://www.antrimparish.com
         self.assertIsNone(_build_mark_step("image", "javascript:alert(1)"))
         self.assertIsNone(_build_mark_step("download", "https://example.org/file.pdf"))
 
-    def test_panel_script_uses_shadow_dom_and_injection_guard(self) -> None:
-        self.assertIn("window.__phTrainingPanelInjected", _PANEL_JS)
+    def test_panel_script_uses_shadow_dom_and_recreates_host(self) -> None:
+        self.assertIn("document.getElementById('ph-training-host')", _PANEL_JS)
+        self.assertIn("_existingHost.remove()", _PANEL_JS)
+        self.assertNotIn("window.__phTrainingPanelInjected", _PANEL_JS)
         self.assertIn("attachShadow({ mode: 'open' })", _PANEL_JS)
         self.assertIn("id=\"html-btn\"", _PANEL_JS)
         self.assertIn("id=\"file-btn\"", _PANEL_JS)
