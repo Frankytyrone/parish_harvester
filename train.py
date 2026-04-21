@@ -54,7 +54,7 @@ _PANEL_JS = """
 
   const host = document.createElement('div');
   host.id = 'ph-training-host';
-  host.style.cssText = 'all:initial!important;position:fixed!important;right:12px!important;bottom:12px!important;z-index:2147483647!important;width:0!important;height:0!important;pointer-events:none!important;';
+  host.style.cssText = 'all:initial!important;position:fixed!important;right:12px!important;top:12px!important;z-index:2147483647!important;width:0!important;height:0!important;pointer-events:none!important;';
   document.documentElement.appendChild(host);
   const shadow = host.attachShadow({ mode: 'open' });
   shadow.innerHTML = `
@@ -62,7 +62,7 @@ _PANEL_JS = """
       #ph-training-panel {
         position: fixed;
         right: 12px;
-        bottom: 12px;
+        top: 12px;
         z-index: 2147483647;
         background: #111827;
         color: #f9fafb;
