@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from harvester.fetcher import parse_evidence_file
-from train import _build_mark_step, _match_parish
+from train import _PANEL_JS, _build_mark_step, _match_parish
 
 
 class ParishMatchingTests(unittest.TestCase):
@@ -117,6 +117,12 @@ https://www.antrimparish.com
         )
         self.assertIsNone(_build_mark_step("image", "javascript:alert(1)"))
         self.assertIsNone(_build_mark_step("download", "https://example.org/file.pdf"))
+
+    def test_panel_script_uses_shadow_dom_and_injection_guard(self) -> None:
+        self.assertIn("window.__phTrainingPanelInjected", _PANEL_JS)
+        self.assertIn("attachShadow({ mode: 'open' })", _PANEL_JS)
+        self.assertIn("id=\"html-btn\"", _PANEL_JS)
+        self.assertIn("id=\"file-btn\"", _PANEL_JS)
 
 
 if __name__ == "__main__":
