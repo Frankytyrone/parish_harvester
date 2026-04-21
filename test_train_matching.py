@@ -123,6 +123,10 @@ https://www.antrimparish.com
         self.assertIn("_existingHost.remove()", _PANEL_JS)
         self.assertNotIn("window.__phTrainingPanelInjected", _PANEL_JS)
         self.assertIn("attachShadow({ mode: 'open' })", _PANEL_JS)
+        self.assertIn("top:12px!important", _PANEL_JS)
+        self.assertIn("top: 12px;", _PANEL_JS)
+        self.assertNotIn("bottom:12px!important", _PANEL_JS)
+        self.assertNotIn("bottom: 12px;", _PANEL_JS)
         self.assertIn("id=\"html-btn\"", _PANEL_JS)
         self.assertIn("id=\"file-btn\"", _PANEL_JS)
 
