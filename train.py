@@ -169,6 +169,25 @@ def _build_click_step(payload: dict[str, Any]) -> dict[str, Any] | None:
     return step
 
 
+def _normalize_http_url(url: str) -> str:
+    cleaned = (url or "").strip()
+    if not cleaned:
+        return ""
+    parsed = urlparse(cleaned)
+    if parsed.scheme not in {"http", "https"}:
+        return ""
+    return cleaned
+
+
+def _build_mark_step(action: str, url: str) -> dict[str, Any] | None:
+    normalized = _normalize_http_url(url)
+    if not normalized:
+        return None
+    if action not in {"image", "html"}:
+        return None
+    return {"action": action, "url": normalized}
+
+
 def _match_parish(parish_query: str, diocese: str | None, parishes_dir: Path) -> TrainingTarget:
     query = parish_query.strip()
     if not query:
@@ -247,13 +266,15 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     print("A browser window will open.\n")
     print("Step 1: Navigate to the parish bulletin page")
     print("Step 2: Click through to find the PDF bulletin")
-    print("Step 3: When the PDF opens or downloads, press ENTER here\n")
+    print("Step 3: Use the floating trainer panel for image/HTML bulletins if needed")
+    print("Step 4: When done, press ENTER here\n")
     print("Opening browser...")
 
     start_url = entry.bulletin_page or entry.example_url
     click_steps: list[dict[str, Any]] = []
     nav_urls: list[str] = []
     final_document_url: str | None = None
+    marked_step: dict[str, Any] | None = None
 
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=False)
@@ -287,10 +308,48 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                 return
             click_steps.append(step)
 
+        async def handle_mark_image(_source, payload: dict[str, Any]) -> None:
+            nonlocal marked_step
+            step = _build_mark_step("image", str(payload.get("url", "")))
+            if not step:
+                return
+            marked_step = step
+            print(f"\n🖼️ Marked bulletin image: {step['url']}")
+
+        async def handle_mark_html(_source, payload: dict[str, Any]) -> None:
+            nonlocal marked_step
+            step = _build_mark_step("html", str(payload.get("url", "")))
+            if not step:
+                return
+            marked_step = step
+            print(f"\n🔗 Marked bulletin HTML page: {step['url']}")
+
+        async def handle_mark_download_url(_source, payload: dict[str, Any]) -> None:
+            nonlocal final_document_url, marked_step
+            url = _normalize_http_url(str(payload.get("url", "")))
+            if not url:
+                return
+            lowered = url.lower()
+            if lowered.endswith((".jpg", ".jpeg", ".png", ".webp")):
+                step = _build_mark_step("image", url)
+                if step:
+                    marked_step = step
+                    print(f"\n🖼️ Marked bulletin image: {step['url']}")
+                return
+            final_document_url = url
+            marked_step = None
+            print(f"\n📄 Marked bulletin file URL: {url}")
+
         await page.expose_binding("ph_record_click", handle_record_click)
+        await page.expose_binding("ph_mark_image", handle_mark_image)
+        await page.expose_binding("ph_mark_html", handle_mark_html)
+        await page.expose_binding("ph_mark_download_url", handle_mark_download_url)
         await page.add_init_script(
             """
             (() => {
+              if (window.__phTrainingPanelInjected) return;
+              window.__phTrainingPanelInjected = true;
+
               const cssPath = (el) => {
                 if (!el || el.nodeType !== Node.ELEMENT_NODE) return '';
                 const parts = [];
@@ -315,11 +374,102 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                 return parts.join(' > ');
               };
 
+              const panel = document.createElement('div');
+              panel.setAttribute('id', 'ph-training-panel');
+              panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:2147483647;background:#111827;color:#f9fafb;padding:10px 12px;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.35);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;max-width:310px;';
+
+              const title = document.createElement('div');
+              title.textContent = 'Parish Trainer';
+              title.style.cssText = 'font-weight:700;margin-bottom:6px;';
+              panel.appendChild(title);
+
+              const status = document.createElement('div');
+              status.textContent = 'Right-click an image to mark bulletin image.';
+              status.style.cssText = 'opacity:.92;margin-bottom:8px;line-height:1.35;';
+              panel.appendChild(status);
+
+              const row = document.createElement('div');
+              row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+
+              const makeButton = (label) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = label;
+                btn.style.cssText = 'border:none;border-radius:8px;padding:6px 8px;background:#2563eb;color:#fff;cursor:pointer;font-size:12px;';
+                return btn;
+              };
+
+              const htmlBtn = makeButton('Mark Page as Bulletin HTML');
+              htmlBtn.addEventListener('click', () => {
+                const url = window.location.href || '';
+                if (!url) return;
+                window.ph_mark_html({ url });
+                status.textContent = `Marked HTML: ${url}`;
+              });
+              row.appendChild(htmlBtn);
+
+              const fileBtn = makeButton('Mark Current URL as File');
+              fileBtn.addEventListener('click', () => {
+                const url = window.location.href || '';
+                if (!url) return;
+                window.ph_mark_download_url({ url });
+                status.textContent = `Marked file URL: ${url}`;
+              });
+              row.appendChild(fileBtn);
+
+              panel.appendChild(row);
+              document.documentElement.appendChild(panel);
+
+              const menu = document.createElement('div');
+              menu.setAttribute('id', 'ph-training-image-menu');
+              menu.style.cssText = 'position:fixed;display:none;z-index:2147483647;background:#111827;color:#f9fafb;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.35);padding:6px 0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;min-width:210px;';
+              const markImageItem = document.createElement('button');
+              markImageItem.type = 'button';
+              markImageItem.textContent = '🖼️ Mark as Bulletin Image';
+              markImageItem.style.cssText = 'display:block;width:100%;text-align:left;border:none;background:transparent;color:#f9fafb;padding:8px 10px;cursor:pointer;';
+              menu.appendChild(markImageItem);
+              document.documentElement.appendChild(menu);
+
+              let menuImage = null;
+              const closeMenu = () => {
+                menu.style.display = 'none';
+                menuImage = null;
+              };
+
+              markImageItem.addEventListener('click', () => {
+                if (!menuImage) return;
+                const raw = menuImage.currentSrc || menuImage.getAttribute('src') || '';
+                if (!raw) return;
+                const url = new URL(raw, window.location.href).href;
+                window.ph_mark_image({ url });
+                status.textContent = `Marked image: ${url}`;
+                closeMenu();
+              });
+
+              document.addEventListener('contextmenu', (event) => {
+                const target = event.target instanceof Element ? event.target.closest('img') : null;
+                if (!target) {
+                  closeMenu();
+                  return;
+                }
+                event.preventDefault();
+                menuImage = target;
+                menu.style.left = `${event.clientX}px`;
+                menu.style.top = `${event.clientY}px`;
+                menu.style.display = 'block';
+              }, true);
+
+              document.addEventListener('click', () => closeMenu(), true);
+              window.addEventListener('scroll', () => closeMenu(), true);
+
               document.addEventListener('click', (event) => {
                 const target = event.target instanceof Element
                   ? event.target.closest('a,button,[role],input[type="submit"],input[type="button"]')
                   : null;
                 if (!target) return;
+                if (target.closest('#ph-training-panel, #ph-training-image-menu')) {
+                  return;
+                }
                 window.ph_record_click({
                   tag: (target.tagName || '').toLowerCase(),
                   role: (target.getAttribute('role') || '').toLowerCase(),
@@ -364,18 +514,20 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     steps: list[dict[str, Any]] = [{"action": "goto", "url": start_url}]
     steps.extend(click_steps)
 
-    if not final_document_url and nav_urls:
+    if marked_step:
+        steps.append(marked_step)
+    elif not final_document_url and nav_urls:
         for url in reversed(nav_urls):
             lowered = url.lower()
             if lowered.endswith(".pdf") or lowered.endswith(".docx"):
                 final_document_url = url
                 break
 
-    if final_document_url:
+    if not marked_step and final_document_url:
         lower = final_document_url.lower()
         pattern = "*.docx" if lower.endswith(".docx") else "*.pdf"
         steps.append({"action": "download", "url_pattern": pattern, "captured_url": final_document_url})
-    else:
+    elif not marked_step:
         steps.append({"action": "download", "url_pattern": "*.pdf"})
 
     recipe = {
@@ -398,6 +550,10 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
         elif action == "download":
             shown = step.get("captured_url") or step.get("url_pattern", "*.pdf")
             print(f"{idx}. Download: {shown}")
+        elif action == "image":
+            print(f"{idx}. Image: {step.get('url', '')}")
+        elif action == "html":
+            print(f"{idx}. HTML link: {step.get('url', '')}")
 
     print(f"\nSaved to: {recipe_path}")
     print("\nThis will be replayed automatically during harvests.")
