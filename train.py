@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import re
+import shutil
+import tempfile
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
@@ -23,11 +26,8 @@ _MONTH_RE = re.compile(
     re.IGNORECASE,
 )
 
-_PANEL_JS = """
+_CLICK_TRACKER_JS = """
 (() => {
-  const _existingHost = document.getElementById('ph-training-host');
-  if (_existingHost) _existingHost.remove();
-
   const cssPath = (el) => {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return '';
     const parts = [];
@@ -52,144 +52,11 @@ _PANEL_JS = """
     return parts.join(' > ');
   };
 
-  const host = document.createElement('div');
-  host.id = 'ph-training-host';
-  host.style.cssText = 'all:initial!important;position:fixed!important;right:12px!important;top:12px!important;z-index:2147483647!important;width:0!important;height:0!important;pointer-events:none!important;';
-  document.documentElement.appendChild(host);
-  const shadow = host.attachShadow({ mode: 'open' });
-  shadow.innerHTML = `
-    <style>
-      #ph-training-panel {
-        position: fixed;
-        right: 12px;
-        top: 12px;
-        z-index: 2147483647;
-        background: #111827;
-        color: #f9fafb;
-        padding: 10px 12px;
-        border-radius: 10px;
-        box-shadow: 0 8px 28px rgba(0,0,0,.35);
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        font-size: 12px;
-        max-width: 310px;
-        pointer-events: auto;
-      }
-      #ph-title {
-        font-weight: 700;
-        margin-bottom: 6px;
-      }
-      #status {
-        opacity: .92;
-        margin-bottom: 8px;
-        line-height: 1.35;
-      }
-      #ph-row {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      .ph-btn {
-        border: none;
-        border-radius: 8px;
-        padding: 6px 8px;
-        background: #2563eb;
-        color: #fff;
-        cursor: pointer;
-        font-size: 12px;
-      }
-      #ph-training-image-menu {
-        position: fixed;
-        display: none;
-        z-index: 2147483647;
-        background: #111827;
-        color: #f9fafb;
-        border-radius: 8px;
-        box-shadow: 0 8px 28px rgba(0,0,0,.35);
-        padding: 6px 0;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        font-size: 12px;
-        min-width: 210px;
-        pointer-events: auto;
-      }
-      #mark-image-item {
-        display: block;
-        width: 100%;
-        text-align: left;
-        border: none;
-        background: transparent;
-        color: #f9fafb;
-        padding: 8px 10px;
-        cursor: pointer;
-      }
-    </style>
-    <div id="ph-training-panel">
-      <div id="ph-title">Parish Trainer</div>
-      <div id="status">Right-click an image to mark bulletin image.</div>
-      <div id="ph-row">
-        <button id="html-btn" type="button" class="ph-btn">Mark Page as HTML</button>
-        <button id="file-btn" type="button" class="ph-btn">Mark Current URL as File</button>
-      </div>
-    </div>
-    <div id="ph-training-image-menu">
-      <button id="mark-image-item" type="button">🖼️ Mark as Bulletin Image</button>
-    </div>
-  `;
-
-  const status = shadow.getElementById('status');
-  const menu = shadow.getElementById('ph-training-image-menu');
-  const markImageItem = shadow.getElementById('mark-image-item');
-
-  shadow.getElementById('html-btn').addEventListener('click', () => {
-    const url = window.location.href;
-    window.ph_mark_html({ url });
-    status.textContent = 'Marked HTML: ' + url;
-  });
-  shadow.getElementById('file-btn').addEventListener('click', () => {
-    const url = window.location.href;
-    window.ph_mark_download_url({ url });
-    status.textContent = 'Marked file: ' + url;
-  });
-
-  let menuImage = null;
-  const closeMenu = () => {
-    menu.style.display = 'none';
-    menuImage = null;
-  };
-
-  markImageItem.addEventListener('click', () => {
-    if (!menuImage) return;
-    const raw = menuImage.currentSrc || menuImage.getAttribute('src') || '';
-    if (!raw) return;
-    const url = new URL(raw, window.location.href).href;
-    window.ph_mark_image({ url });
-    status.textContent = 'Marked image: ' + url;
-    closeMenu();
-  });
-
-  document.addEventListener('contextmenu', (event) => {
-    const target = event.target instanceof Element ? event.target.closest('img') : null;
-    if (!target) {
-      closeMenu();
-      return;
-    }
-    event.preventDefault();
-    menuImage = target;
-    menu.style.left = `${event.clientX}px`;
-    menu.style.top = `${event.clientY}px`;
-    menu.style.display = 'block';
-  }, true);
-
-  document.addEventListener('click', () => closeMenu(), true);
-  window.addEventListener('scroll', () => closeMenu(), true);
-
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element
       ? event.target.closest('a,button,[role],input[type="submit"],input[type="button"]')
       : null;
     if (!target) return;
-    if (target.getRootNode() === shadow) {
-      return;
-    }
     window.ph_record_click({
       tag: (target.tagName || '').toLowerCase(),
       role: (target.getAttribute('role') || '').toLowerCase(),
@@ -366,6 +233,11 @@ def _build_mark_step(action: str, url: str) -> dict[str, Any] | None:
     return {"action": action, "url": normalized}
 
 
+def _has_trainer_extension(extension_dir: Path) -> bool:
+    required = {"manifest.json", "popup.html", "popup.js", "content.js", "background.js"}
+    return extension_dir.is_dir() and all((extension_dir / name).is_file() for name in required)
+
+
 def _match_parish(parish_query: str, diocese: str | None, parishes_dir: Path) -> TrainingTarget:
     query = parish_query.strip()
     if not query:
@@ -444,7 +316,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     print("A browser window will open.\n")
     print("Step 1: Navigate to the parish bulletin page")
     print("Step 2: Click through to find the PDF bulletin")
-    print("Step 3: Use the floating trainer panel for image/HTML bulletins if needed")
+    print("Step 3: Use the extension popup/context menu to mark image/HTML/file bulletins if needed")
     print("Step 4: When done, press ENTER here\n")
     print("Opening browser...")
 
@@ -454,118 +326,157 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     final_document_url: str | None = None
     marked_step: dict[str, Any] | None = None
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=False)
-        context = await browser.new_context(accept_downloads=True)
-        page = await context.new_page()
+    extension_dir = Path(__file__).resolve().parent / "extension"
+    use_extension = _has_trainer_extension(extension_dir)
+    user_data_dir: str | None = None
 
-        def handle_navigate(frame) -> None:
-            nonlocal final_document_url
-            if frame != page.main_frame:
-                return
-            url = frame.url
-            if not url.startswith("http"):
-                return
-            nav_urls.append(url)
-            lowered = url.lower()
-            if lowered.endswith(".pdf") or lowered.endswith(".docx"):
+    try:
+        async with async_playwright() as pw:
+            browser = None
+            if use_extension:
+                user_data_dir = tempfile.mkdtemp(
+                    prefix="parish-trainer-profile-",
+                    dir=tempfile.gettempdir(),
+                )
+                try:
+                    os.chmod(user_data_dir, 0o700)
+                except OSError:
+                    pass
+                context = await pw.chromium.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    headless=False,
+                    accept_downloads=True,
+                    args=[
+                        f"--disable-extensions-except={extension_dir}",
+                        f"--load-extension={extension_dir}",
+                    ],
+                )
+                page = context.pages[0] if context.pages else await context.new_page()
+            else:
+                browser = await pw.chromium.launch(headless=False)
+                context = await browser.new_context(accept_downloads=True)
+                page = await context.new_page()
+
+            def handle_navigate(frame) -> None:
+                nonlocal final_document_url
+                if frame != page.main_frame:
+                    return
+                url = frame.url
+                if not url.startswith("http"):
+                    return
+                nav_urls.append(url)
+                lowered = url.lower()
+                if lowered.endswith(".pdf") or lowered.endswith(".docx"):
+                    final_document_url = url
+
+            async def handle_download(download) -> None:
+                nonlocal final_document_url
+                try:
+                    final_document_url = download.url
+                except Exception:
+                    pass
+
+            async def handle_record_click(_source, payload: dict[str, Any]) -> None:
+                step = _build_click_step(payload)
+                if not step:
+                    return
+                if click_steps and click_steps[-1].get("selector") == step.get("selector"):
+                    return
+                click_steps.append(step)
+
+            async def handle_mark_image(_source, payload: dict[str, Any]) -> None:
+                nonlocal marked_step
+                step = _build_mark_step("image", str(payload.get("url", "")))
+                if not step:
+                    return
+                marked_step = step
+                print(f"\n🖼️ Marked bulletin image: {step['url']}")
+
+            async def handle_mark_html(_source, payload: dict[str, Any]) -> None:
+                nonlocal marked_step
+                step = _build_mark_step("html", str(payload.get("url", "")))
+                if not step:
+                    return
+                marked_step = step
+                print(f"\n🔗 Marked bulletin HTML page: {step['url']}")
+
+            async def handle_mark_download_url(_source, payload: dict[str, Any]) -> None:
+                nonlocal final_document_url, marked_step
+                url = _normalize_http_url(str(payload.get("url", "")))
+                if not url:
+                    return
+                lowered = url.lower()
+                if lowered.endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    step = _build_mark_step("image", url)
+                    if step:
+                        marked_step = step
+                        print(f"\n🖼️ Marked bulletin image: {step['url']}")
+                    return
                 final_document_url = url
+                marked_step = None
+                print(f"\n📄 Marked bulletin file URL: {url}")
 
-        async def handle_download(download) -> None:
-            nonlocal final_document_url
+            await page.expose_binding("ph_record_click", handle_record_click)
+            await page.expose_binding("ph_mark_image", handle_mark_image)
+            await page.expose_binding("ph_mark_html", handle_mark_html)
+            await page.expose_binding("ph_mark_download_url", handle_mark_download_url)
+            if not use_extension:
+                await page.add_init_script(_CLICK_TRACKER_JS)
+
+                async def _reinject_click_tracker() -> None:
+                    try:
+                        await asyncio.sleep(0.6)
+                        await page.evaluate(_CLICK_TRACKER_JS)
+                    except Exception:
+                        pass
+
+                page.on("load", lambda: asyncio.ensure_future(_reinject_click_tracker()))
+
+            page.on("framenavigated", handle_navigate)
+            page.on("download", handle_download)
+
             try:
-                final_document_url = download.url
+                await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
+                if not use_extension:
+                    await asyncio.sleep(0.8)
+                    try:
+                        await page.evaluate(_CLICK_TRACKER_JS)
+                    except Exception:
+                        pass
             except Exception:
-                pass
+                print("⚠️ Could not open start URL automatically. Please navigate manually.")
 
-        async def handle_record_click(_source, payload: dict[str, Any]) -> None:
-            step = _build_click_step(payload)
-            if not step:
-                return
-            if click_steps and click_steps[-1].get("selector") == step.get("selector"):
-                return
-            click_steps.append(step)
+            stop_event = asyncio.Event()
+            page.on("close", lambda: stop_event.set())
+            context.on("close", lambda: stop_event.set())
+            if browser is not None:
+                browser.on("disconnected", lambda: stop_event.set())
 
-        async def handle_mark_image(_source, payload: dict[str, Any]) -> None:
-            nonlocal marked_step
-            step = _build_mark_step("image", str(payload.get("url", "")))
-            if not step:
-                return
-            marked_step = step
-            print(f"\n🖼️ Marked bulletin image: {step['url']}")
+            print()
+            enter_task = asyncio.create_task(
+                asyncio.to_thread(input, "✅ When you are done, press ENTER here... ")
+            )
+            wait_task = asyncio.create_task(stop_event.wait())
 
-        async def handle_mark_html(_source, payload: dict[str, Any]) -> None:
-            nonlocal marked_step
-            step = _build_mark_step("html", str(payload.get("url", "")))
-            if not step:
-                return
-            marked_step = step
-            print(f"\n🔗 Marked bulletin HTML page: {step['url']}")
+            done, pending = await asyncio.wait(
+                {enter_task, wait_task}, return_when=asyncio.FIRST_COMPLETED
+            )
+            for task in pending:
+                task.cancel()
 
-        async def handle_mark_download_url(_source, payload: dict[str, Any]) -> None:
-            nonlocal final_document_url, marked_step
-            url = _normalize_http_url(str(payload.get("url", "")))
-            if not url:
-                return
-            lowered = url.lower()
-            if lowered.endswith((".jpg", ".jpeg", ".png", ".webp")):
-                step = _build_mark_step("image", url)
-                if step:
-                    marked_step = step
-                    print(f"\n🖼️ Marked bulletin image: {step['url']}")
-                return
-            final_document_url = url
-            marked_step = None
-            print(f"\n📄 Marked bulletin file URL: {url}")
-
-        await page.expose_binding("ph_record_click", handle_record_click)
-        await page.expose_binding("ph_mark_image", handle_mark_image)
-        await page.expose_binding("ph_mark_html", handle_mark_html)
-        await page.expose_binding("ph_mark_download_url", handle_mark_download_url)
-        await page.add_init_script(_PANEL_JS)
-
-        async def _reinject_panel() -> None:
+            if enter_task in done and (browser is None or browser.is_connected()):
+                await context.close()
+                if browser is not None:
+                    await browser.close()
+    finally:
+        if user_data_dir:
             try:
-                await asyncio.sleep(0.6)
-                await page.evaluate(_PANEL_JS)
-            except Exception:
-                pass
-
-        page.on("load", lambda: asyncio.ensure_future(_reinject_panel()))
-
-        page.on("framenavigated", handle_navigate)
-        page.on("download", handle_download)
-
-        try:
-            await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
-            await asyncio.sleep(0.8)
-            try:
-                await page.evaluate(_PANEL_JS)
-            except Exception:
-                pass
-        except Exception:
-            print("⚠️ Could not open start URL automatically. Please navigate manually.")
-
-        stop_event = asyncio.Event()
-        page.on("close", lambda: stop_event.set())
-        context.on("close", lambda: stop_event.set())
-        browser.on("disconnected", lambda: stop_event.set())
-
-        print()
-        enter_task = asyncio.create_task(
-            asyncio.to_thread(input, "✅ When you are done, press ENTER here... ")
-        )
-        wait_task = asyncio.create_task(stop_event.wait())
-
-        done, pending = await asyncio.wait(
-            {enter_task, wait_task}, return_when=asyncio.FIRST_COMPLETED
-        )
-        for task in pending:
-            task.cancel()
-
-        if enter_task in done and browser.is_connected():
-            await context.close()
-            await browser.close()
+                shutil.rmtree(user_data_dir)
+            except OSError as exc:
+                print(
+                    "⚠️ Could not remove temporary browser profile "
+                    f"{user_data_dir}; sensitive browsing data may remain: {exc}"
+                )
 
     steps: list[dict[str, Any]] = [{"action": "goto", "url": start_url}]
     steps.extend(click_steps)

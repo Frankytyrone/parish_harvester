@@ -47,10 +47,10 @@ python main.py --train "Hannahstown"
 python train.py "Hannahstown"
 ```
 
-Training mode now includes a floating trainer panel so you can mark:
-- image bulletins (right-click an image → **Mark as Bulletin Image**),
-- static HTML bulletin pages,
-- or the current URL as a bulletin file.
+Training mode now uses a Chrome extension popup so you can mark:
+- static HTML bulletin pages (**Mark Page as HTML**),
+- the current URL as a bulletin file (**Mark Current URL as File**),
+- image bulletins (right-click an image → **Mark as Bulletin Image**).
 
 ---
 

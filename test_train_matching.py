@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from harvester.fetcher import parse_evidence_file
-from train import _PANEL_JS, _build_mark_step, _match_parish
+from train import _CLICK_TRACKER_JS, _build_mark_step, _match_parish
 
 
 class ParishMatchingTests(unittest.TestCase):
@@ -118,17 +119,47 @@ https://www.antrimparish.com
         self.assertIsNone(_build_mark_step("image", "javascript:alert(1)"))
         self.assertIsNone(_build_mark_step("download", "https://example.org/file.pdf"))
 
-    def test_panel_script_uses_shadow_dom_and_recreates_host(self) -> None:
-        self.assertIn("document.getElementById('ph-training-host')", _PANEL_JS)
-        self.assertIn("_existingHost.remove()", _PANEL_JS)
-        self.assertNotIn("window.__phTrainingPanelInjected", _PANEL_JS)
-        self.assertIn("attachShadow({ mode: 'open' })", _PANEL_JS)
-        self.assertIn("top:12px!important", _PANEL_JS)
-        self.assertIn("top: 12px;", _PANEL_JS)
-        self.assertNotIn("bottom:12px!important", _PANEL_JS)
-        self.assertNotIn("bottom: 12px;", _PANEL_JS)
-        self.assertIn("id=\"html-btn\"", _PANEL_JS)
-        self.assertIn("id=\"file-btn\"", _PANEL_JS)
+    def test_click_tracker_script_is_invisible_and_records_clicks(self) -> None:
+        self.assertIn("document.addEventListener('click'", _CLICK_TRACKER_JS)
+        self.assertIn("window.ph_record_click({", _CLICK_TRACKER_JS)
+        self.assertNotIn("createElement('div')", _CLICK_TRACKER_JS)
+        self.assertNotIn("attachShadow", _CLICK_TRACKER_JS)
+
+    def test_extension_manifest_and_popup_are_present(self) -> None:
+        repo_root = Path(__file__).resolve().parent
+        extension_dir = repo_root / "extension"
+        manifest_path = extension_dir / "manifest.json"
+        popup_html = (extension_dir / "popup.html").read_text(encoding="utf-8")
+        popup_js = (extension_dir / "popup.js").read_text(encoding="utf-8")
+        content_js = (extension_dir / "content.js").read_text(encoding="utf-8")
+        background_js = (extension_dir / "background.js").read_text(encoding="utf-8")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(manifest["manifest_version"], 3)
+        self.assertEqual(
+            manifest["permissions"],
+            ["activeTab", "scripting", "contextMenus"],
+        )
+        self.assertEqual(manifest["action"]["default_popup"], "popup.html")
+        self.assertIn('"world": "MAIN"', manifest_path.read_text(encoding="utf-8"))
+        self.assertIn("<h1>Parish Trainer</h1>", popup_html)
+        self.assertIn("Mark Page as HTML", popup_html)
+        self.assertIn("Mark Current URL as File", popup_html)
+        self.assertIn("Mark as Bulletin Image", popup_html)
+        self.assertIn('type: "mark_html"', popup_js)
+        self.assertIn('type: "mark_file"', popup_js)
+        self.assertIn('type === "mark_html"', content_js)
+        self.assertIn('type === "mark_file"', content_js)
+        self.assertIn('type === "mark_image"', content_js)
+        self.assertIn("chrome.contextMenus.create", background_js)
+        self.assertIn('id: "mark-bulletin-image"', background_js)
+
+    def test_training_uses_persistent_context_with_extension_args(self) -> None:
+        train_source = (Path(__file__).resolve().parent / "train.py").read_text(encoding="utf-8")
+        self.assertIn("launch_persistent_context", train_source)
+        self.assertIn("--disable-extensions-except=", train_source)
+        self.assertIn("--load-extension=", train_source)
+        self.assertIn("tempfile.mkdtemp(", train_source)
 
 
 if __name__ == "__main__":
