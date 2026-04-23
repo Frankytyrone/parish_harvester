@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Parish Trainer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        width: 320px;
+        background: #111827;
+        color: #f9fafb;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        font-size: 12px;
+      }
+      .wrap {
+        padding: 12px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+      #status {
+        margin: 0 0 10px;
+        opacity: 0.92;
+        line-height: 1.35;
+      }
+      .row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 6px 8px;
+        background: #2563eb;
+        color: #fff;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .note {
+        margin: 10px 0 0;
+        line-height: 1.35;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Parish Trainer</h1>
+      <p id="status">Ready.</p>
+      <div class="row">
+        <button id="mark-html" type="button">Mark Page as HTML</button>
+        <button id="mark-file" type="button">Mark Current URL as File</button>
+      </div>
+      <p class="note">To mark a bulletin image, right-click an image on the page and choose "Mark as Bulletin Image"</p>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
