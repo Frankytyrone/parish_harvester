@@ -2,6 +2,10 @@
   let cropOverlay = null;
   let lastCropSignature = "";
 
+  // Build a stable key so the same crop payload isn't submitted twice.
+  const cropSignature = (payload) =>
+    `${payload.x},${payload.y},${payload.width},${payload.height},${payload.pageX},${payload.pageY},${payload.element_selector || ""}`;
+
   const cssPath = (el) => {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return "";
     const parts = [];
@@ -46,7 +50,7 @@
   };
 
   const emitCrop = (payload) => {
-    lastCropSignature = JSON.stringify(payload);
+    lastCropSignature = cropSignature(payload);
     if (window.ph_mark_crop) {
       window.ph_mark_crop(payload);
     } else {
@@ -175,16 +179,11 @@
       return;
     }
     if (type === "mark_crop") {
-      const payload = {
-        x: Number(message?.x ?? 0),
-        y: Number(message?.y ?? 0),
-        width: Number(message?.width ?? 0),
-        height: Number(message?.height ?? 0),
-        pageX: Number(message?.pageX ?? message?.x ?? 0),
-        pageY: Number(message?.pageY ?? message?.y ?? 0),
-        element_selector: message?.element_selector || "",
-      };
-      if (JSON.stringify(payload) === lastCropSignature) {
+      const payload = message?.x != null ? message : null;
+      if (!payload) {
+        return;
+      }
+      if (cropSignature(payload) === lastCropSignature) {
         return;
       }
       if (!window.ph_mark_crop) {

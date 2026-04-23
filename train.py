@@ -233,6 +233,18 @@ def _build_mark_step(action: str, url: str) -> dict[str, Any] | None:
     return {"action": action, "url": normalized}
 
 
+def _extract_int(payload: dict[str, Any], keys: tuple[str, ...], default: int = 0) -> int:
+    """Return the first payload value from *keys* that can be coerced to int."""
+    for key in keys:
+        value = payload.get(key)
+        if value is not None:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                continue
+    return default
+
+
 def _has_trainer_extension(extension_dir: Path) -> bool:
     required = {"manifest.json", "sidepanel.html", "sidepanel.js", "content.js", "background.js"}
     return extension_dir.is_dir() and all((extension_dir / name).is_file() for name in required)
@@ -423,12 +435,12 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                 nonlocal crop_step, marked_step, final_document_url
                 crop_step = {
                     "action": "crop_screenshot",
-                    "x": int(payload.get("x", 0) or 0),
-                    "y": int(payload.get("y", 0) or 0),
-                    "width": int(payload.get("width", 0) or 0),
-                    "height": int(payload.get("height", 0) or 0),
-                    "page_x": int(payload.get("pageX", payload.get("page_x", payload.get("x", 0))) or 0),
-                    "page_y": int(payload.get("pageY", payload.get("page_y", payload.get("y", 0))) or 0),
+                    "x": _extract_int(payload, ("x",)),
+                    "y": _extract_int(payload, ("y",)),
+                    "width": _extract_int(payload, ("width",)),
+                    "height": _extract_int(payload, ("height",)),
+                    "page_x": _extract_int(payload, ("pageX", "page_x", "x")),
+                    "page_y": _extract_int(payload, ("pageY", "page_y", "y")),
                     "element_selector": str(payload.get("element_selector", "") or ""),
                 }
                 marked_step = None

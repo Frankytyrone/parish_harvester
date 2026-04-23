@@ -22,6 +22,8 @@ DOCX_CONVERSION_TIMEOUT_S = 60
 RECIPE_STEP_TIMEOUT_MS = 15_000
 POST_CLICK_WAIT_TIMEOUT_MS = 3_000
 MAX_SELECTOR_ERRORS = 3
+PDFEMB_SELECTOR = "a.pdfemb-viewer[href]"
+PDFEMB_HREF_EXTRACT_JS = "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)"
 
 
 def recipe_path_for(parish_key: str, parishes_dir: Path = PARISHES_DIR) -> Path:
@@ -199,10 +201,7 @@ async def _download_image_url_as_pdf(page: Page, raw_url: str, dest: Path) -> tu
 
 
 async def _find_pdfemb_url(page: Page) -> str | None:
-    links = await page.eval_on_selector_all(
-        "a.pdfemb-viewer[href]",
-        "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)",
-    )
+    links = await page.eval_on_selector_all(PDFEMB_SELECTOR, PDFEMB_HREF_EXTRACT_JS)
     for href in links:
         resolved = urljoin(page.url, href)
         lower = resolved.lower()
@@ -293,10 +292,7 @@ async def replay_recipe(
                     return dest, file_type, source_url
 
                 pattern = (step.get("url_pattern") or "*.pdf").strip() or "*.pdf"
-                pdfemb_links = await page.eval_on_selector_all(
-                    "a.pdfemb-viewer[href]",
-                    "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)",
-                )
+                pdfemb_links = await page.eval_on_selector_all(PDFEMB_SELECTOR, PDFEMB_HREF_EXTRACT_JS)
                 links = await page.eval_on_selector_all(
                     "a[href],iframe[src],embed[src],object[data]",
                     """
@@ -355,6 +351,8 @@ async def replay_recipe(
                         pass
 
                 use_page_coords = "page_x" in step or "page_y" in step
+                # page_x/page_y are absolute document coordinates, so capture the full page
+                # before cropping. Otherwise viewport-only screenshots can crop the wrong area.
                 screenshot_bytes = await page.screenshot(full_page=use_page_coords)
 
                 try:

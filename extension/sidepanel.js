@@ -30,7 +30,6 @@ document.getElementById("mark-file").addEventListener("click", () => {
 });
 
 document.getElementById("crop-btn").addEventListener("click", async () => {
-  statusEl.textContent = "Click and drag to select the bulletin area...";
   await sendToActiveTab({ type: "start_crop" }, "Click and drag to select the bulletin area...");
 });
 
@@ -46,7 +45,7 @@ chrome.runtime.onMessage.addListener((message) => {
   const pageY = Number(message.pageY ?? y);
   const elementSelector = message.element_selector || "";
 
-  statusEl.textContent = `Crop saved (${Math.round(width)}×${Math.round(height)})`;
+  statusEl.textContent = `Crop saved (${Math.round(width)}x${Math.round(height)})`;
 
   void withActiveTab((tabId) => {
     chrome.tabs.sendMessage(tabId, {
