@@ -198,6 +198,19 @@ async def _download_image_url_as_pdf(page: Page, raw_url: str, dest: Path) -> tu
     return raw_url, "image_to_pdf"
 
 
+async def _find_pdfemb_url(page: Page) -> str | None:
+    links = await page.eval_on_selector_all(
+        "a.pdfemb-viewer[href]",
+        "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)",
+    )
+    for href in links:
+        resolved = urljoin(page.url, href)
+        lower = resolved.lower()
+        if lower.endswith(".pdf") or ".pdf" in lower:
+            return resolved
+    return None
+
+
 async def _replay_click(page: Page, step: dict) -> None:
     selectors: list[str] = []
     selector = (step.get("selector") or "").strip()
@@ -274,7 +287,16 @@ async def replay_recipe(
                     source_url, file_type = await _download_document_url(page, page.url, dest)
                     return dest, file_type, source_url
 
+                pdfemb_url = await _find_pdfemb_url(page)
+                if pdfemb_url:
+                    source_url, file_type = await _download_document_url(page, pdfemb_url, dest)
+                    return dest, file_type, source_url
+
                 pattern = (step.get("url_pattern") or "*.pdf").strip() or "*.pdf"
+                pdfemb_links = await page.eval_on_selector_all(
+                    "a.pdfemb-viewer[href]",
+                    "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)",
+                )
                 links = await page.eval_on_selector_all(
                     "a[href],iframe[src],embed[src],object[data]",
                     """
@@ -282,7 +304,7 @@ async def replay_recipe(
                     """,
                 )
                 last_err = ""
-                for raw in links:
+                for raw in [*pdfemb_links, *links]:
                     if not isinstance(raw, str):
                         continue
                     resolved = urljoin(page.url, raw)
@@ -313,6 +335,46 @@ async def replay_recipe(
                 if not html_url:
                     raise RecipeReplayError("Recipe html step missing URL")
                 return dest, "html_link", html_url
+
+            if action == "crop_screenshot":
+                x = int(step.get("x", 0) or 0)
+                y = int(step.get("y", 0) or 0)
+                page_x = int(step.get("page_x", x) or x)
+                page_y = int(step.get("page_y", y) or y)
+                width = int(step.get("width", 0) or 0)
+                height = int(step.get("height", 0) or 0)
+                element_selector = str(step.get("element_selector", "") or "").strip()
+
+                if width <= 0 or height <= 0:
+                    raise RecipeReplayError("Recipe crop_screenshot step requires positive width/height")
+
+                if element_selector:
+                    try:
+                        await page.locator(element_selector).first.scroll_into_view_if_needed(timeout=5000)
+                    except Exception:
+                        pass
+
+                use_page_coords = "page_x" in step or "page_y" in step
+                screenshot_bytes = await page.screenshot(full_page=use_page_coords)
+
+                try:
+                    from PIL import Image as PILImage
+
+                    img = PILImage.open(io.BytesIO(screenshot_bytes))
+                    left = page_x if use_page_coords else x
+                    top = page_y if use_page_coords else y
+                    right = left + width
+                    bottom = top + height
+                    cropped = img.crop((left, top, right, bottom)).convert("RGB")
+                    cropped.save(str(dest), "PDF", resolution=150)
+                except ImportError as exc:
+                    raise RecipeReplayError(
+                        "Pillow is required for crop-screenshot bulletin conversion. Install with: pip install Pillow"
+                    ) from exc
+                except Exception as exc:
+                    raise RecipeReplayError(f"Crop screenshot failed: {exc}") from exc
+
+                return dest, "crop_screenshot_to_pdf", page.url
 
             raise RecipeReplayError(f"Unsupported recipe action: {action}")
 

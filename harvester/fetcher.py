@@ -348,6 +348,19 @@ def _looks_like_document_link(url: str) -> bool:
     return any(p in lower for p in patterns)
 
 
+async def _find_pdfemb_url(page) -> str | None:
+    links = await page.eval_on_selector_all(
+        "a.pdfemb-viewer[href]",
+        "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)",
+    )
+    for href in links:
+        resolved = _unwrap_docs_viewer_url(urljoin(page.url, href))
+        lower = resolved.lower()
+        if lower.endswith(".pdf") or ".pdf" in lower:
+            return resolved
+    return None
+
+
 def _unwrap_docs_viewer_url(url: str) -> str:
     """Extract the real file URL from a Google Docs viewer URL when present."""
     parsed = urlparse(url)
@@ -478,6 +491,26 @@ async def _scrape_and_download(
             await page.wait_for_load_state("networkidle", timeout=5_000)
         except PlaywrightTimeoutError:
             pass
+
+        preferred_pdfemb = await _find_pdfemb_url(page)
+        if preferred_pdfemb:
+            try:
+                file_type = await _download_candidate(preferred_pdfemb, dest, browser)
+                if _is_real_pdf(dest, key):
+                    return FetchResult(
+                        key=key,
+                        display_name=entry.display_name,
+                        status="ok",
+                        url=preferred_pdfemb,
+                        file_path=dest,
+                        file_type=file_type,
+                    )
+            except Exception as exc:
+                last_err = str(exc)
+                print(f"  ↩️  {key}: pdfemb candidate failed {preferred_pdfemb}: {last_err}")
+            finally:
+                if dest.exists() and not _is_real_pdf(dest, key):
+                    dest.unlink(missing_ok=True)
 
         candidates: list[tuple[str, str, int]] = []
         seen_urls: set[str] = set()

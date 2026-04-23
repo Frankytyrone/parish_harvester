@@ -3,18 +3,41 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from harvester.replay import replay_recipe
+from PIL import Image
+
+from harvester.replay import _find_pdfemb_url, replay_recipe
 
 
 class _FakePage:
     def __init__(self) -> None:
         self.url = "https://example.org/start"
+        self._screenshot = None
 
     def on(self, _event: str, _callback) -> None:
         return None
+
+    def locator(self, _selector: str):
+        class _FakeLocator:
+            @property
+            def first(self):
+                return self
+
+            async def scroll_into_view_if_needed(self, timeout: int = 0) -> None:
+                return None
+
+        return _FakeLocator()
+
+    async def screenshot(self, full_page: bool = False) -> bytes:
+        if self._screenshot is None:
+            img = Image.new("RGB", (120, 120), color=(255, 255, 255))
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            self._screenshot = buf.getvalue()
+        return self._screenshot
 
 
 class _FakeContext:
@@ -39,6 +62,19 @@ class _FakeBrowser:
 
 
 class ReplayRecipeStepTests(unittest.IsolatedAsyncioTestCase):
+    async def test_find_pdfemb_url_prefers_pdf_embedder_links(self) -> None:
+        class _Page:
+            url = "https://example.org/news/"
+
+            async def eval_on_selector_all(self, selector: str, _script: str):
+                self.selector = selector
+                return ["/wp-content/uploads/2026/04/bulletin.pdf", "/other.html"]
+
+        page = _Page()
+        found = await _find_pdfemb_url(page)
+        self.assertEqual(page.selector, "a.pdfemb-viewer[href]")
+        self.assertEqual(found, "https://example.org/wp-content/uploads/2026/04/bulletin.pdf")
+
     async def test_replay_recipe_supports_html_step(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -80,6 +116,42 @@ class ReplayRecipeStepTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(source_url, "https://example.org/bulletin.jpg")
             self.assertTrue(context.accept_downloads)
             fake_download.assert_awaited_once()
+            self.assertTrue(context.closed)
+
+    async def test_replay_recipe_supports_crop_screenshot_step(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recipe_path = root / "recipe.json"
+            recipe_path.write_text(
+                json.dumps(
+                    {
+                        "steps": [
+                            {
+                                "action": "crop_screenshot",
+                                "x": 10,
+                                "y": 10,
+                                "width": 50,
+                                "height": 40,
+                                "page_x": 10,
+                                "page_y": 10,
+                                "element_selector": "img",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            dest = root / "bulletin.pdf"
+            context = _FakeContext()
+            browser = _FakeBrowser(context)
+
+            out_path, file_type, source_url = await replay_recipe(recipe_path, dest, browser)
+
+            self.assertEqual(out_path, dest)
+            self.assertEqual(file_type, "crop_screenshot_to_pdf")
+            self.assertEqual(source_url, "https://example.org/start")
+            self.assertTrue(dest.exists())
+            self.assertGreater(dest.stat().st_size, 0)
             self.assertTrue(context.closed)
 
 
