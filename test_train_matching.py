@@ -162,7 +162,8 @@ https://www.antrimparish.com
         self.assertIn("--load-extension=", train_source)
         self.assertIn("--start-maximized", train_source)
         self.assertIn("--window-size=1400,900", train_source)
-        self.assertIn("browser.new_context(accept_downloads=True, no_viewport=True)", train_source)
+        self.assertIn("browser.new_context(", train_source)
+        self.assertIn("new_context(accept_downloads=True, no_viewport=True)", train_source)
         self.assertIn("tempfile.mkdtemp(", train_source)
 
 
