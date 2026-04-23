@@ -159,6 +159,10 @@ https://www.antrimparish.com
         self.assertIn("launch_persistent_context", train_source)
         self.assertIn("--disable-extensions-except=", train_source)
         self.assertIn("--load-extension=", train_source)
+        self.assertIn("no_viewport=True", train_source)
+        self.assertIn('"--start-maximized"', train_source)
+        self.assertIn('"--window-size=1400,900"', train_source)
+        self.assertIn("browser.new_context(accept_downloads=True, no_viewport=True)", train_source)
         self.assertIn("tempfile.mkdtemp(", train_source)
 
 
