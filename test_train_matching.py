@@ -162,7 +162,10 @@ https://www.antrimparish.com
         self.assertIn("no_viewport=True", train_source)
         self.assertIn('"--start-maximized"', train_source)
         self.assertIn('"--window-size=1400,900"', train_source)
-        self.assertIn("browser.new_context(accept_downloads=True, no_viewport=True)", train_source)
+        self.assertRegex(
+            train_source,
+            r"browser\.new_context\(\s*accept_downloads=True,\s*no_viewport=True\s*\)",
+        )
         self.assertIn("tempfile.mkdtemp(", train_source)
 
 
