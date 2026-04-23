@@ -52,6 +52,10 @@ Training mode now includes a floating trainer panel so you can mark:
 - static HTML bulletin pages,
 - or the current URL as a bulletin file.
 
+If `extension/` exists beside `train.py`, training automatically loads the
+Manifest V3 Chromium extension panel instead of injecting inline page JS. If
+the folder is missing, it falls back to inline panel injection.
+
 ---
 
 ## Project Structure

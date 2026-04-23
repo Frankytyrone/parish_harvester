@@ -54,15 +54,15 @@ _PANEL_JS = """
 
   const host = document.createElement('div');
   host.id = 'ph-training-host';
-  host.style.cssText = 'all:initial!important;position:fixed!important;right:12px!important;top:12px!important;z-index:2147483647!important;width:0!important;height:0!important;pointer-events:none!important;';
+  host.style.cssText = 'all:initial!important;position:fixed!important;right:12px!important;top:12px!important;z-index:2147483647!important;width:auto!important;height:auto!important;pointer-events:none!important;';
   document.documentElement.appendChild(host);
   const shadow = host.attachShadow({ mode: 'open' });
   shadow.innerHTML = `
     <style>
       #ph-training-panel {
-        position: fixed;
-        right: 12px;
-        top: 12px;
+        position: relative;
+        right: auto;
+        top: auto;
         z-index: 2147483647;
         background: #111827;
         color: #f9fafb;
@@ -455,9 +455,24 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     marked_step: dict[str, Any] | None = None
 
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=False)
-        context = await browser.new_context(accept_downloads=True)
-        page = await context.new_page()
+        extension_path = Path(__file__).parent / "extension"
+        use_extension = extension_path.exists()
+        browser = None
+        if use_extension:
+            context = await pw.chromium.launch_persistent_context(
+                user_data_dir="",
+                headless=False,
+                args=[
+                    f"--disable-extensions-except={extension_path}",
+                    f"--load-extension={extension_path}",
+                ],
+                accept_downloads=True,
+            )
+            page = await context.new_page()
+        else:
+            browser = await pw.chromium.launch(headless=False)
+            context = await browser.new_context(accept_downloads=True)
+            page = await context.new_page()
 
         def handle_navigate(frame) -> None:
             nonlocal final_document_url
@@ -522,9 +537,12 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
         await page.expose_binding("ph_mark_image", handle_mark_image)
         await page.expose_binding("ph_mark_html", handle_mark_html)
         await page.expose_binding("ph_mark_download_url", handle_mark_download_url)
-        await page.add_init_script(_PANEL_JS)
+        if not use_extension:
+            await page.add_init_script(_PANEL_JS)
 
         async def _reinject_panel() -> None:
+            if use_extension:
+                return
             try:
                 await asyncio.sleep(0.6)
                 await page.evaluate(_PANEL_JS)
@@ -539,17 +557,19 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
         try:
             await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
             await asyncio.sleep(0.8)
-            try:
-                await page.evaluate(_PANEL_JS)
-            except Exception:
-                pass
+            if not use_extension:
+                try:
+                    await page.evaluate(_PANEL_JS)
+                except Exception:
+                    pass
         except Exception:
             print("⚠️ Could not open start URL automatically. Please navigate manually.")
 
         stop_event = asyncio.Event()
         page.on("close", lambda: stop_event.set())
         context.on("close", lambda: stop_event.set())
-        browser.on("disconnected", lambda: stop_event.set())
+        if browser is not None:
+            browser.on("disconnected", lambda: stop_event.set())
 
         print()
         enter_task = asyncio.create_task(
@@ -563,9 +583,10 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
         for task in pending:
             task.cancel()
 
-        if enter_task in done and browser.is_connected():
+        if enter_task in done:
             await context.close()
-            await browser.close()
+            if browser is not None and browser.is_connected():
+                await browser.close()
 
     steps: list[dict[str, Any]] = [{"action": "goto", "url": start_url}]
     steps.extend(click_steps)
