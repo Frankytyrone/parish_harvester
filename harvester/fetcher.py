@@ -890,7 +890,7 @@ async def _fetch_entry(
 
     # Non-html entries keep URL prediction first.
     if entry.content_type != "html_link":
-        _primary_is_404 = False
+        primary_is_404 = False
         try:
             candidate_encoded = target_url.replace(" ", "%20")
             if entry.content_type == "image":
@@ -919,7 +919,7 @@ async def _fetch_entry(
                     )
         except Exception as exc:
             last_err = str(exc)
-            _primary_is_404 = "404" in last_err
+            primary_is_404 = "HTTP 404" in last_err
             print(f"  ↩️  {key}: {target_url} failed: {last_err}")
         finally:
             if dest.exists() and not _is_real_pdf(dest, key):
@@ -927,7 +927,7 @@ async def _fetch_entry(
 
         # Pattern detection: when primary URL returns HTTP 404, try alternative
         # date-format variants before falling back to scraping.
-        if _primary_is_404 and entry.content_type == "pdf":
+        if primary_is_404 and entry.content_type == "pdf":
             print(f"  Primary pattern failed (HTTP 404)")
             new_url = await detect_pattern(key, target_url, target, browser)
             if new_url:
