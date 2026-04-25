@@ -205,6 +205,132 @@ def date_variants(target: date) -> list[str]:
     return variants
 
 
+def generate_url_variants(original_url: str, target_date: date) -> list[str]:
+    """
+    Generate alternative URLs by substituting *target_date* using every
+    supported date-format pattern.
+
+    Used by the pattern detector to recover from HTTP 404 responses caused
+    by parish websites changing their URL date format.
+
+    The function:
+    1. Detects which date token is present in the URL (patterns A–E).
+    2. Generates a replacement string for each other format.
+    3. Returns up to 10 unique alternative URLs (excluding the original).
+
+    Returns an empty list when no recognisable date is found.
+    """
+    parsed = urlparse(original_url)
+    path = unquote(parsed.path)
+
+    matched_token: str | None = None
+
+    # Try DDMMYYYY (8 consecutive digits) — Pattern A'
+    for m in _DDMMYYYY_RE.finditer(path):
+        try:
+            d = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+            if abs((d - target_date).days) < 14:
+                matched_token = m.group(0)
+                break
+        except ValueError:
+            pass
+
+    # Try DDMMYY (6 consecutive digits) — Pattern A
+    if matched_token is None:
+        for m in _DDMMYY_RE.finditer(path):
+            try:
+                d = date(2000 + int(m.group(3)), int(m.group(2)), int(m.group(1)))
+                if abs((d - target_date).days) < 14:
+                    matched_token = m.group(0)
+                    break
+            except ValueError:
+                pass
+
+    # Try ISO YYYY-MM-DD — Pattern C
+    if matched_token is None:
+        for m in _ISO_RE.finditer(path):
+            try:
+                d = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                if abs((d - target_date).days) < 14:
+                    matched_token = m.group(0)
+                    break
+            except ValueError:
+                pass
+
+    # Try D-M-YY (dashed) — Pattern B
+    if matched_token is None:
+        for m in _D_M_YY_RE.finditer(path):
+            try:
+                d = date(2000 + int(m.group(3)), int(m.group(2)), int(m.group(1)))
+                if abs((d - target_date).days) < 14:
+                    matched_token = m.group(0)
+                    break
+            except ValueError:
+                pass
+
+    # Try DD-Month-YYYY slug — Pattern D
+    if matched_token is None:
+        for m in _SLUG_DATE_RE.finditer(path):
+            try:
+                old_month = _MONTH_MAP.get(m.group(2).lower())
+                if old_month:
+                    d = date(int(m.group(3)), old_month, int(m.group(1)))
+                    if abs((d - target_date).days) < 14:
+                        matched_token = m.group(0)
+                        break
+            except ValueError:
+                pass
+
+    # Try [YYYY-M-D] bracketed — Pattern E
+    if matched_token is None:
+        for m in _BRACKETED_ISO_RE.finditer(path):
+            try:
+                d = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                if abs((d - target_date).days) < 14:
+                    matched_token = m.group(0)
+                    break
+            except ValueError:
+                pass
+
+    if matched_token is None:
+        return []
+
+    td = target_date
+    dd = f"{td.day:02d}"
+    d_str = str(td.day)
+    mm = f"{td.month:02d}"
+    m_str = str(td.month)
+    yy = f"{td.year % 100:02d}"
+    yyyy = str(td.year)
+    month_name = _MONTH_NAMES[td.month].capitalize()
+
+    format_candidates = [
+        f"{dd}{mm}{yy}",                       # A:  DDMMYY
+        f"{dd}{mm}{yyyy}",                     # A': DDMMYYYY
+        f"{yyyy}-{mm}-{dd}",                   # C:  YYYY-MM-DD
+        f"{d_str}-{m_str}-{yy}",               # B:  D-M-YY
+        f"{dd}-{month_name}-{yyyy}",           # D:  DD-Month-YYYY
+        f"[{yyyy}-{m_str}-{d_str}]",           # E:  [YYYY-M-D]
+    ]
+
+    _MAX_VARIANTS = 10
+    variants: list[str] = []
+    seen = {original_url}
+
+    for fmt in format_candidates:
+        if len(variants) >= _MAX_VARIANTS:
+            break
+        new_path = path.replace(matched_token, fmt, 1)
+        if new_path == path:
+            continue
+        new_url = parsed._replace(path=new_path).geturl()
+        if new_url not in seen:
+            variants.append(new_url)
+            seen.add(new_url)
+
+    return variants
+
+
 def rewrite_date_url(url: str, target: date) -> str:
     """
     Rewrite a URL's date component(s) to use the *target* date.

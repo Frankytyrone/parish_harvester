@@ -35,6 +35,7 @@ from .config import (
     TOTAL_TIMEOUT_S,
 )
 from .replay import RecipeReplayError, recipe_path_for, replay_recipe
+from .pattern_detector import detect_pattern, save_pattern_change
 from .utils import (
     extract_date_from_slug,
     extract_date_from_string,
@@ -889,6 +890,7 @@ async def _fetch_entry(
 
     # Non-html entries keep URL prediction first.
     if entry.content_type != "html_link":
+        _primary_is_404 = False
         try:
             candidate_encoded = target_url.replace(" ", "%20")
             if entry.content_type == "image":
@@ -917,10 +919,34 @@ async def _fetch_entry(
                     )
         except Exception as exc:
             last_err = str(exc)
+            _primary_is_404 = "404" in last_err
             print(f"  ↩️  {key}: {target_url} failed: {last_err}")
         finally:
             if dest.exists() and not _is_real_pdf(dest, key):
                 dest.unlink(missing_ok=True)
+
+        # Pattern detection: when primary URL returns HTTP 404, try alternative
+        # date-format variants before falling back to scraping.
+        if _primary_is_404 and entry.content_type == "pdf":
+            print(f"  Primary pattern failed (HTTP 404)")
+            new_url = await detect_pattern(key, target_url, target, browser)
+            if new_url:
+                print(f"  ✨ New pattern detected! Downloading from new URL...")
+                try:
+                    await _download_pdf(new_url.replace(" ", "%20"), dest, browser)
+                    if _is_real_pdf(dest, key):
+                        save_pattern_change(key, target_url, new_url, target)
+                        return FetchResult(
+                            key=key, display_name=entry.display_name,
+                            status="ok", url=new_url,
+                            file_path=dest, file_type="pdf",
+                        )
+                except Exception as exc:
+                    last_err = str(exc)
+                    print(f"  ↩️  {key}: new pattern URL failed: {last_err}")
+                finally:
+                    if dest.exists() and not _is_real_pdf(dest, key):
+                        dest.unlink(missing_ok=True)
 
     # Prediction failed, or entry is html_link: scrape bulletin pages.
     for scrape_url in _scrape_seed_urls(entry, target_url):
