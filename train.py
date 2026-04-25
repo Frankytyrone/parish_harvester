@@ -359,17 +359,23 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                     user_data_dir=user_data_dir,
                     headless=False,
                     accept_downloads=True,
+                    no_viewport=True,
                     args=[
                         f"--disable-extensions-except={extension_dir}",
                         f"--load-extension={extension_dir}",
                         "--enable-features=SidePanelPinning",
                         "--side-panel-options=always-show",
+                        "--start-maximized",
+                        "--window-size=1400,900",
                     ],
                 )
                 page = context.pages[0] if context.pages else await context.new_page()
             else:
-                browser = await pw.chromium.launch(headless=False)
-                context = await browser.new_context(accept_downloads=True)
+                browser = await pw.chromium.launch(
+                    headless=False,
+                    args=["--start-maximized", "--window-size=1400,900"],
+                )
+                context = await browser.new_context(accept_downloads=True, no_viewport=True)
                 page = await context.new_page()
 
             def handle_navigate(frame) -> None:
