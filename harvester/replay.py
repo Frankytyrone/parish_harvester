@@ -210,6 +210,32 @@ async def _find_pdfemb_url(page: Page) -> str | None:
     return None
 
 
+async def _find_iframe_pdf_url(page: Page) -> str | None:
+    """Return the first iframe src that is (or contains) a direct PDF URL.
+
+    Handles two cases:
+    1. The iframe ``src`` ends in ``.pdf`` or contains ``.pdf`` — treat as a
+       direct PDF URL.
+    2. The iframe ``src`` is a Google Docs viewer URL — extract the real PDF
+       URL from the ``url=`` query parameter.
+    """
+    srcs = await page.eval_on_selector_all(
+        "iframe[src]",
+        "(els) => els.map(el => el.getAttribute('src')).filter(Boolean)",
+    )
+    for src in srcs:
+        if not isinstance(src, str) or not src.strip():
+            continue
+        resolved = urljoin(page.url, src.strip())
+        # Unwrap Google Docs viewer URLs first
+        unwrapped = _unwrap_docs_viewer_url(resolved)
+        lower_unwrapped = unwrapped.lower()
+        lower_resolved = resolved.lower()
+        if ".pdf" in lower_unwrapped or ".pdf" in lower_resolved:
+            return unwrapped if unwrapped != resolved else resolved
+    return None
+
+
 async def _replay_click(page: Page, step: dict) -> None:
     selectors: list[str] = []
     selector = (step.get("selector") or "").strip()
@@ -289,6 +315,12 @@ async def replay_recipe(
                 pdfemb_url = await _find_pdfemb_url(page)
                 if pdfemb_url:
                     source_url, file_type = await _download_document_url(page, pdfemb_url, dest)
+                    return dest, file_type, source_url
+
+                # Check iframes for direct PDF sources
+                iframe_pdf_url = await _find_iframe_pdf_url(page)
+                if iframe_pdf_url:
+                    source_url, file_type = await _download_document_url(page, iframe_pdf_url, dest)
                     return dest, file_type, source_url
 
                 pattern = (step.get("url_pattern") or "*.pdf").strip() or "*.pdf"

@@ -487,17 +487,29 @@
 
     row.appendChild(makeBtn("Mark Page as HTML", () => {
       if (window.ph_mark_html) {
-        window.ph_mark_html({ url: window.location.href });
+        try {
+          window.ph_mark_html({ url: window.location.href });
+          showStatus("✅ Marked as HTML");
+        } catch (e) {
+          showStatus("❌ Could not communicate with page. Try refreshing.", "error");
+        }
       } else {
         console.warn("Parish Trainer: ph_mark_html binding is unavailable.");
+        showStatus("❌ Could not communicate with page. Try refreshing.", "error");
       }
     }));
 
     row.appendChild(makeBtn("Mark Current URL as File", () => {
       if (window.ph_mark_download_url) {
-        window.ph_mark_download_url({ url: window.location.href });
+        try {
+          window.ph_mark_download_url({ url: window.location.href });
+          showStatus("✅ Marked as File");
+        } catch (e) {
+          showStatus("❌ Could not communicate with page. Try refreshing.", "error");
+        }
       } else {
         console.warn("Parish Trainer: ph_mark_download_url binding is unavailable.");
+        showStatus("❌ Could not communicate with page. Try refreshing.", "error");
       }
     }));
 
@@ -508,6 +520,37 @@
     }));
 
     bar.appendChild(row);
+
+    // Status message bar
+    const statusBar = document.createElement("div");
+    statusBar.style.cssText = [
+      "display: none",
+      "padding: 4px 10px 6px",
+      "font-size: 11px",
+      "border-radius: 0 0 8px 8px",
+      "text-align: center",
+      "transition: opacity 0.3s",
+    ].join(";");
+    bar.appendChild(statusBar);
+
+    let statusTimer = null;
+    const showStatus = (message, type) => {
+      clearTimeout(statusTimer);
+      statusBar.textContent = message;
+      statusBar.style.display = "block";
+      statusBar.style.opacity = "1";
+      if (type === "error") {
+        statusBar.style.background = "#7f1d1d";
+        statusBar.style.color = "#fca5a5";
+      } else {
+        statusBar.style.background = "#14532d";
+        statusBar.style.color = "#86efac";
+      }
+      statusTimer = setTimeout(() => {
+        statusBar.style.opacity = "0";
+        setTimeout(() => { statusBar.style.display = "none"; }, 300);
+      }, 4000);
+    };
 
     // Drag behaviour
     let isDragging = false;

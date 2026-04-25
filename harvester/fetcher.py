@@ -49,8 +49,8 @@ from .utils import (
 
 # Seconds to wait after all tasks finish before closing the browser
 _PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
-# Number of attempts (1 original + 1 retry)
-_MAX_ATTEMPTS: int = 2
+# Number of attempts (1 original + 2 retries)
+_MAX_ATTEMPTS: int = 3
 # Seconds to wait between retry attempts
 _RETRY_DELAY_S: float = 3.0
 _HEADER_DASH_CLASS = r"[-\u2013\u2014]"
@@ -361,6 +361,35 @@ async def _find_pdfemb_url(page) -> str | None:
     return None
 
 
+async def _find_iframe_pdf_url(page) -> str | None:
+    """Return the first iframe src that is (or contains) a direct PDF URL.
+
+    Handles two cases:
+    1. The iframe ``src`` ends in ``.pdf`` or contains ``.pdf`` — treat as a
+       direct PDF URL.
+    2. The iframe ``src`` is a Google Docs viewer URL
+       (``docs.google.com/viewer?url=…``) — extract the real PDF URL from the
+       ``url=`` query parameter.
+    """
+    srcs = await page.eval_on_selector_all(
+        "iframe[src]",
+        "(els) => els.map(el => el.getAttribute('src')).filter(Boolean)",
+    )
+    for src in srcs:
+        if not isinstance(src, str) or not src.strip():
+            continue
+        resolved = urljoin(page.url, src.strip())
+        # Unwrap Google Docs viewer URLs first
+        unwrapped = _unwrap_docs_viewer_url(resolved)
+        lower_unwrapped = unwrapped.lower()
+        lower_resolved = resolved.lower()
+        # Direct PDF iframe
+        if ".pdf" in lower_unwrapped or ".pdf" in lower_resolved:
+            return unwrapped if unwrapped != resolved else resolved
+        # Google Docs viewer that wasn't unwrapped to a PDF — skip
+    return None
+
+
 def _unwrap_docs_viewer_url(url: str) -> str:
     """Extract the real file URL from a Google Docs viewer URL when present."""
     parsed = urlparse(url)
@@ -508,6 +537,27 @@ async def _scrape_and_download(
             except Exception as exc:
                 last_err = str(exc)
                 print(f"  ↩️  {key}: pdfemb candidate failed {preferred_pdfemb}: {last_err}")
+            finally:
+                if dest.exists() and not _is_real_pdf(dest, key):
+                    dest.unlink(missing_ok=True)
+
+        # Check iframes for direct PDF sources before generic link scanning.
+        iframe_pdf_url = await _find_iframe_pdf_url(page)
+        if iframe_pdf_url:
+            try:
+                file_type = await _download_candidate(iframe_pdf_url, dest, browser)
+                if _is_real_pdf(dest, key):
+                    return FetchResult(
+                        key=key,
+                        display_name=entry.display_name,
+                        status="ok",
+                        url=iframe_pdf_url,
+                        file_path=dest,
+                        file_type=file_type,
+                    )
+            except Exception as exc:
+                last_err = str(exc)
+                print(f"  ↩️  {key}: iframe PDF candidate failed {iframe_pdf_url}: {last_err}")
             finally:
                 if dest.exists() and not _is_real_pdf(dest, key):
                     dest.unlink(missing_ok=True)
