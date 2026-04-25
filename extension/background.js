@@ -16,8 +16,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.action.onClicked.addListener((tab) => {
-  if (!tab?.windowId) {
+  if (!tab?.id) {
     return;
   }
-  chrome.sidePanel.open({ windowId: tab.windowId });
+  chrome.tabs.sendMessage(tab.id, { type: "toggle_toolbar" });
 });

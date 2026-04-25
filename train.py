@@ -246,7 +246,7 @@ def _extract_int(payload: dict[str, Any], keys: tuple[str, ...], default: int = 
 
 
 def _has_trainer_extension(extension_dir: Path) -> bool:
-    required = {"manifest.json", "sidepanel.html", "sidepanel.js", "content.js", "background.js"}
+    required = {"manifest.json", "content.js", "background.js"}
     return extension_dir.is_dir() and all((extension_dir / name).is_file() for name in required)
 
 
@@ -328,7 +328,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     print("A browser window will open.\n")
     print("Step 1: Navigate to the parish bulletin page")
     print("Step 2: Click through to find the PDF bulletin")
-    print("Step 3: Use the extension side panel/context menu to mark image/HTML/file bulletins if needed")
+    print("Step 3: Use the extension floating toolbar or context menu to mark image/HTML/file bulletins if needed")
     print("Step 4: When done, press ENTER here\n")
     print("Opening browser...")
 
@@ -363,8 +363,6 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                     args=[
                         f"--disable-extensions-except={extension_dir}",
                         f"--load-extension={extension_dir}",
-                        "--enable-features=SidePanelPinning",
-                        "--side-panel-options=always-show",
                         "--start-maximized",
                         "--window-size=1400,900",
                     ],
