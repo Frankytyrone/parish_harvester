@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from harvester.fetcher import parse_evidence_file
+from harvester.stitcher import _MAX_BULLETIN_PAGES, stitch_mega_pdf
 from train import _CLICK_TRACKER_JS, _build_mark_step, _match_parish
 
 
@@ -170,6 +172,117 @@ https://www.antrimparish.com
         self.assertIn("browser.new_context(", train_source)
         self.assertIn("new_context(accept_downloads=True, no_viewport=True)", train_source)
         self.assertIn("tempfile.mkdtemp(", train_source)
+
+    def test_train_auto_shows_toolbar_via_postmessage(self) -> None:
+        train_source = (Path(__file__).resolve().parent / "train.py").read_text(encoding="utf-8")
+        # Must post a window message to trigger the floating toolbar
+        self.assertIn("window.postMessage", train_source)
+        self.assertIn("toggle_toolbar", train_source)
+        self.assertIn("from-isolated", train_source)
+        # Must NOT try to open a Chrome side-panel (old incorrect approach)
+        self.assertNotIn("chrome.sidePanel.open", train_source)
+        # Must print a confirmation message
+        self.assertIn("Parish Trainer toolbar ready", train_source)
+
+    def test_content_js_auto_shows_toolbar_on_training_bindings(self) -> None:
+        repo_root = Path(__file__).resolve().parent
+        content_js = (repo_root / "extension" / "content.js").read_text(encoding="utf-8")
+        # Auto-show helper must check for the Playwright training bindings
+        self.assertIn("ph_mark_html", content_js)
+        self.assertIn("ph_mark_download_url", content_js)
+        self.assertIn("ph_mark_crop", content_js)
+        self.assertIn("_tryAutoShowToolbar", content_js)
+        # Must print the confirmation message when toolbar is auto-shown
+        self.assertIn("Parish Trainer toolbar ready", content_js)
+
+    def test_background_js_shows_toolbar_on_tab_complete(self) -> None:
+        repo_root = Path(__file__).resolve().parent
+        background_js = (repo_root / "extension" / "background.js").read_text(encoding="utf-8")
+        # Must listen for tab updates to show toolbar after page navigation
+        self.assertIn("tabs.onUpdated", background_js)
+        self.assertIn("show_toolbar", background_js)
+
+    def test_bulletin_page_limit_constant(self) -> None:
+        self.assertEqual(_MAX_BULLETIN_PAGES, 4)
+
+    def test_stitch_mega_pdf_skips_oversized_bulletins(self) -> None:
+        """PDFs with more than _MAX_BULLETIN_PAGES pages must be excluded from the mega PDF."""
+        try:
+            import PyPDF2
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas as rl_canvas
+        except ImportError:
+            self.skipTest("reportlab or PyPDF2 not available")
+
+        def _make_pdf(n_pages: int) -> bytes:
+            buf = io.BytesIO()
+            c = rl_canvas.Canvas(buf, pagesize=A4)
+            for i in range(n_pages):
+                c.drawString(72, 750, f"Page {i + 1} of {n_pages} — parish bulletin content here.")
+                c.showPage()
+            c.save()
+            buf.seek(0)
+            return buf.read()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            current_dir = root / "current"
+            bulletins_dir = root / "bulletins"
+            current_dir.mkdir()
+            bulletins_dir.mkdir()
+
+            # Write a 2-page PDF (should be included) and a 5-page PDF (should be excluded)
+            ok_pdf = current_dir / "ok_parish.pdf"
+            ok_pdf.write_bytes(_make_pdf(2))
+            big_pdf = current_dir / "big_parish.pdf"
+            big_pdf.write_bytes(_make_pdf(5))
+
+            from datetime import date
+            from harvester.fetcher import FetchResult
+
+            results = [
+                FetchResult(
+                    key="ok_parish",
+                    display_name="OK Parish",
+                    status="ok",
+                    url="https://ok.example.org/",
+                    file_path=ok_pdf,
+                    file_type="pdf",
+                ),
+                FetchResult(
+                    key="big_parish",
+                    display_name="Big Parish",
+                    status="ok",
+                    url="https://big.example.org/",
+                    file_path=big_pdf,
+                    file_type="pdf",
+                ),
+            ]
+
+            import contextlib
+            import io as _io
+            captured = _io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                stitch_mega_pdf(
+                    results,
+                    current_dir=current_dir,
+                    bulletins_dir=bulletins_dir,
+                    target=date(2026, 4, 27),
+                )
+
+            output = captured.getvalue()
+            # The oversized PDF should have been skipped with a warning
+            self.assertIn("big_parish", output)
+            self.assertIn("5 pages", output)
+
+            # The mega PDF must exist and contain only pages from the 2-page bulletin
+            mega = bulletins_dir / "all_bulletins_2026-04-27.pdf"
+            self.assertTrue(mega.exists())
+            reader = PyPDF2.PdfReader(str(mega))
+            # Mega PDF should have pages from the ok bulletin only (≤ 4 pages)
+            # plus possibly a summary page for big_parish which was excluded
+            ok_page_count = 2  # both pages have real text
+            self.assertLessEqual(len(reader.pages), ok_page_count + 2)
 
 
 if __name__ == "__main__":

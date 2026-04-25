@@ -21,3 +21,12 @@ chrome.action.onClicked.addListener((tab) => {
   }
   chrome.tabs.sendMessage(tab.id, { type: "toggle_toolbar" });
 });
+
+// Automatically show the toolbar when a page finishes loading.
+// content.js will only display it when Playwright training bindings are
+// present, so this does not affect normal browsing sessions.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === "complete") {
+    chrome.tabs.sendMessage(tabId, { type: "show_toolbar" }).catch(() => {});
+  }
+});

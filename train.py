@@ -496,13 +496,19 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
             try:
                 await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
                 if use_extension:
-                    print("🗂️  Side panel: click the Parish Trainer icon in the toolbar to open the trainer panel")
+                    await asyncio.sleep(0.3)
                     try:
                         await page.evaluate(
-                            "chrome.sidePanel && chrome.sidePanel.open && chrome.sidePanel.open({})"
+                            "window.postMessage("
+                            "{direction: 'from-isolated', message: {type: 'toggle_toolbar'}}, '*'"
+                            ")"
                         )
+                        print("✅ Parish Trainer toolbar ready")
                     except Exception:
-                        pass
+                        print(
+                            "⚠️  Could not auto-show toolbar. "
+                            "Click the Parish Trainer icon in the Chrome toolbar to show it."
+                        )
                 if not use_extension:
                     await asyncio.sleep(0.8)
                     try:
