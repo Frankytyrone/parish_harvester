@@ -157,8 +157,13 @@ https://www.antrimparish.com
     def test_training_uses_persistent_context_with_extension_args(self) -> None:
         train_source = (Path(__file__).resolve().parent / "train.py").read_text(encoding="utf-8")
         self.assertIn("launch_persistent_context", train_source)
+        self.assertIn("no_viewport=True", train_source)
         self.assertIn("--disable-extensions-except=", train_source)
         self.assertIn("--load-extension=", train_source)
+        self.assertIn("--start-maximized", train_source)
+        self.assertIn("--window-size=1400,900", train_source)
+        self.assertIn("browser.new_context(", train_source)
+        self.assertIn("new_context(accept_downloads=True, no_viewport=True)", train_source)
         self.assertIn("tempfile.mkdtemp(", train_source)
 
 
