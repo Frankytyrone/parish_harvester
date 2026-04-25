@@ -27,8 +27,12 @@ try:
 except Exception:
     _TargetClosedError = Exception  # type: ignore[assignment,misc]
 
+from PyPDF2 import PdfReader
+
 from .config import (
     CONCURRENCY,
+    MAX_BULLETIN_PAGES,
+    MAX_BULLETIN_SIZE_MB,
     MIN_PDF_BYTES,
     PAGE_LOAD_TIMEOUT_MS,
     PARISHES_DIR,
@@ -463,9 +467,13 @@ async def _download_candidate(url: str, dest: Path, browser: Browser) -> str:
     encoded = url.replace(" ", "%20")
     if _is_docx_url(url):
         await _download_docx_as_pdf(encoded, dest, browser)
-        return "docx_to_pdf"
-    await _download_pdf(encoded, dest, browser)
-    return "pdf"
+        file_type = "docx_to_pdf"
+    else:
+        await _download_pdf(encoded, dest, browser)
+        file_type = "pdf"
+    if dest.exists():
+        _verify_bulletin_pdf(dest)
+    return file_type
 
 
 def _scrape_seed_urls(entry: ParishEntry, target_url: str) -> list[str]:
@@ -667,6 +675,28 @@ async def _scrape_and_download(
             pass
 
 
+def _verify_bulletin_pdf(dest: Path) -> None:
+    """Check that a downloaded PDF does not exceed MAX_BULLETIN_PAGES.
+
+    Deletes *dest* and raises ``ValueError`` when the page count is too high so
+    that the caller's normal cleanup/retry logic treats the file as a failure.
+    Silently returns when the PDF cannot be opened — ``_is_real_pdf`` will
+    catch corrupt files separately.
+    """
+    try:
+        reader = PdfReader(str(dest))
+        page_count = len(reader.pages)
+    except Exception:
+        return  # unreadable — let _is_real_pdf handle it
+
+    if page_count > MAX_BULLETIN_PAGES:
+        dest.unlink(missing_ok=True)
+        raise ValueError(
+            f"❌ Too many pages: {page_count} pages (max {MAX_BULLETIN_PAGES})"
+        )
+    print(f"  Verifying pages... {page_count} pages ✓")
+
+
 async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
     """Download a PDF via a headless page."""
     # Convert Google Drive viewer links to direct-download URLs
@@ -674,6 +704,25 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
 
     context = await browser.new_context()
     try:
+        # Pre-download size check via HEAD request
+        try:
+            size_page = await context.new_page()
+            head_resp = await size_page.request.head(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+            content_length = head_resp.headers.get("content-length")
+            if content_length:
+                size_bytes = int(content_length)
+                size_mb = size_bytes / 1_000_000
+                if size_bytes > MAX_BULLETIN_SIZE_MB * 1_000_000:
+                    raise ValueError(
+                        f"❌ File too large: {size_mb:.1f} MB (max {MAX_BULLETIN_SIZE_MB} MB)"
+                    )
+                print(f"  Checking file size... {size_mb:.1f} MB ✓")
+            await size_page.close()
+        except ValueError:
+            raise
+        except Exception:
+            pass  # HEAD not supported or other error — proceed with download
+
         # Attempt 1: navigate and expect a file download (Content-Disposition: attachment)
         _nav_response = None
         try:

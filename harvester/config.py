@@ -29,6 +29,12 @@ CONCURRENCY: int = 10                # parallel asyncio tasks
 # ---------------------------------------------------------------------------
 MIN_PDF_BYTES: int = 20_000          # 20 KB minimum PDF size
 
+# ---------------------------------------------------------------------------
+# Bulletin size / page limits
+# ---------------------------------------------------------------------------
+MAX_BULLETIN_PAGES: int = 4          # reject PDFs with more than 4 pages
+MAX_BULLETIN_SIZE_MB: int = 5        # reject files larger than 5 MB (pre-download)
+
 
 # ---------------------------------------------------------------------------
 # Target date helpers
