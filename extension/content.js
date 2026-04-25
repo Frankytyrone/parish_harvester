@@ -59,7 +59,7 @@
     } else {
       console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
     }
-    chrome.runtime.sendMessage({ type: "crop_done", ...payload });
+    window.postMessage({ direction: "from-main", message: { type: "crop_done", ...payload } }, "*");
   };
 
   const removeCropOverlay = () => {
@@ -592,63 +592,68 @@
     return bar;
   };
 
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === "toggle_toolbar") {
-      if (!toolbar) {
-        toolbar = createToolbar();
-        document.documentElement.appendChild(toolbar);
-      } else if (toolbar.dataset.phHidden === "true") {
-        toolbar.dataset.phHidden = "false";
-        toolbar.style.display = "flex";
-      } else {
-        toolbar.dataset.phHidden = "true";
-        toolbar.style.display = "none";
-      }
-      return;
-    }
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) return;
+    if (event.data && event.data.direction === "from-isolated") {
+      const message = event.data.message;
 
-    const type = message?.type;
-    if (type === "mark_html") {
-      if (!window.ph_mark_html) {
-        console.warn("Parish Trainer: ph_mark_html binding is unavailable.");
+      if (message?.type === "toggle_toolbar") {
+        if (!toolbar) {
+          toolbar = createToolbar();
+          document.documentElement.appendChild(toolbar);
+        } else if (toolbar.dataset.phHidden === "true") {
+          toolbar.dataset.phHidden = "false";
+          toolbar.style.display = "flex";
+        } else {
+          toolbar.dataset.phHidden = "true";
+          toolbar.style.display = "none";
+        }
         return;
       }
-      window.ph_mark_html({ url: window.location.href });
-      return;
-    }
-    if (type === "mark_file") {
-      if (!window.ph_mark_download_url) {
-        console.warn("Parish Trainer: ph_mark_download_url binding is unavailable.");
+
+      const type = message?.type;
+      if (type === "mark_html") {
+        if (!window.ph_mark_html) {
+          console.warn("Parish Trainer: ph_mark_html binding is unavailable.");
+          return;
+        }
+        window.ph_mark_html({ url: window.location.href });
         return;
       }
-      window.ph_mark_download_url({ url: window.location.href });
-      return;
-    }
-    if (type === "mark_image" && message?.url) {
-      if (!window.ph_mark_image) {
-        console.warn("Parish Trainer: ph_mark_image binding is unavailable.");
+      if (type === "mark_file") {
+        if (!window.ph_mark_download_url) {
+          console.warn("Parish Trainer: ph_mark_download_url binding is unavailable.");
+          return;
+        }
+        window.ph_mark_download_url({ url: window.location.href });
         return;
       }
-      window.ph_mark_image({ url: message.url });
-      return;
-    }
-    if (type === "start_crop") {
-      startCrop();
-      return;
-    }
-    if (type === "mark_crop") {
-      const payload = message?.x != null ? message : null;
-      if (!payload) {
+      if (type === "mark_image" && message?.url) {
+        if (!window.ph_mark_image) {
+          console.warn("Parish Trainer: ph_mark_image binding is unavailable.");
+          return;
+        }
+        window.ph_mark_image({ url: message.url });
         return;
       }
-      if (cropSignature(payload) === lastCropSignature) {
+      if (type === "start_crop") {
+        startCrop();
         return;
       }
-      if (!window.ph_mark_crop) {
-        console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
-        return;
+      if (type === "mark_crop") {
+        const payload = message?.x != null ? message : null;
+        if (!payload) {
+          return;
+        }
+        if (cropSignature(payload) === lastCropSignature) {
+          return;
+        }
+        if (!window.ph_mark_crop) {
+          console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
+          return;
+        }
+        window.ph_mark_crop(payload);
       }
-      window.ph_mark_crop(payload);
     }
   });
 
