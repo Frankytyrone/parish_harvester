@@ -333,6 +333,51 @@ async def replay_recipe(
                 return dest, "html_link", html_url
 
             if action == "crop_screenshot":
+                sections = step.get("sections")
+                if isinstance(sections, list) and sections:
+                    # Multi-section crop: capture each section and stack vertically.
+                    try:
+                        from PIL import Image as PILImage
+                    except ImportError as exc:
+                        raise RecipeReplayError(
+                            "Pillow is required for crop-screenshot bulletin conversion. Install with: pip install Pillow"
+                        ) from exc
+
+                    # Take one full-page screenshot shared across all sections.
+                    screenshot_bytes = await page.screenshot(full_page=True)
+
+                    try:
+                        full_img = PILImage.open(io.BytesIO(screenshot_bytes))
+                        cropped_parts: list = []
+                        for sec in sections:
+                            sx = int(sec.get("page_x", sec.get("x", 0)) or 0)
+                            sy = int(sec.get("page_y", sec.get("y", 0)) or 0)
+                            sw = int(sec.get("width", 0) or 0)
+                            sh = int(sec.get("height", 0) or 0)
+                            if sw <= 0 or sh <= 0:
+                                continue
+                            part = full_img.crop((sx, sy, sx + sw, sy + sh)).convert("RGB")
+                            cropped_parts.append(part)
+
+                        if not cropped_parts:
+                            raise RecipeReplayError("No valid sections found in multi-section crop")
+
+                        total_width = max(p.width for p in cropped_parts)
+                        total_height = sum(p.height for p in cropped_parts)
+                        combined = PILImage.new("RGB", (total_width, total_height), (255, 255, 255))
+                        y_offset = 0
+                        for part in cropped_parts:
+                            combined.paste(part, (0, y_offset))
+                            y_offset += part.height
+
+                        combined.save(str(dest), "PDF", resolution=150)
+                    except RecipeReplayError:
+                        raise
+                    except Exception as exc:
+                        raise RecipeReplayError(f"Multi-section crop screenshot failed: {exc}") from exc
+
+                    return dest, "crop_screenshot_to_pdf", page.url
+
                 x = int(step.get("x", 0) or 0)
                 y = int(step.get("y", 0) or 0)
                 page_x = int(step.get("page_x", x) or x)

@@ -437,6 +437,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
             async def handle_mark_crop(_source, payload: dict) -> None:
                 nonlocal crop_step, marked_step, final_document_url
+                raw_sections = payload.get("sections")
                 crop_step = {
                     "action": "crop_screenshot",
                     "x": _extract_int(payload, ("x",)),
@@ -447,12 +448,30 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                     "page_y": _extract_int(payload, ("pageY", "page_y", "y")),
                     "element_selector": str(payload.get("element_selector", "") or ""),
                 }
+                if isinstance(raw_sections, list) and raw_sections:
+                    crop_step["sections"] = [
+                        {
+                            "x": _extract_int(s, ("x",)),
+                            "y": _extract_int(s, ("y",)),
+                            "width": _extract_int(s, ("width",)),
+                            "height": _extract_int(s, ("height",)),
+                            "page_x": _extract_int(s, ("pageX", "page_x", "x")),
+                            "page_y": _extract_int(s, ("pageY", "page_y", "y")),
+                        }
+                        for s in raw_sections
+                        if isinstance(s, dict)
+                    ]
                 marked_step = None
                 final_document_url = None
-                print(
-                    f"\n✂️ Crop recorded: x={crop_step['x']}, y={crop_step['y']}, "
-                    f"w={crop_step['width']}, h={crop_step['height']}"
-                )
+                if crop_step.get("sections"):
+                    print(
+                        f"\n✂️ Multi-section crop recorded: {len(crop_step['sections'])} sections"
+                    )
+                else:
+                    print(
+                        f"\n✂️ Crop recorded: x={crop_step['x']}, y={crop_step['y']}, "
+                        f"w={crop_step['width']}, h={crop_step['height']}"
+                    )
 
             await page.expose_binding("ph_record_click", handle_record_click)
             await page.expose_binding("ph_mark_image", handle_mark_image)
