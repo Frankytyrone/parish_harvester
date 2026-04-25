@@ -1,0 +1,98 @@
+Parish Bulletin Harvest Report — 2026-04-19
+==================================================
+Downloaded : 21
+HTML links : 19
+Failed     : 11
+
+Downloaded bulletins:
+
+  ✅ Ballymena — ballymenaparish.pdf
+  ✅ Ballymoney — ballymoneyparish.pdf
+  ✅ Bright — parishofbright.pdf
+  ✅ Glenariffe — glenariffeparish.pdf
+  ✅ Loughshore — loughshoreparishes.pdf
+  ✅ Hannahstown — parishofhannahstown.pdf
+  ✅ Holy Cross Belfast — holycrossparishbelfast.pdf
+  ✅ Kilmore and Killyleagh — kilmoreandkillyleagh.pdf
+  ✅ Our Lady Queen of Peace — ourladyqueenofpeacekilwee.pdf
+  ✅ St MacNissi Randalstown — stmacnissirandalstown.pdf
+  ✅ Sacred Heart Belfast — sacredheartparishbelfast.pdf
+  ✅ Saul and Ballee — saulandballeeparish.pdf
+  ✅ St Bernadettes — stbernadettesparish.pdf
+  ✅ St Colmcilles — st-colmcilles.pdf
+  ✅ St Michael the Archangel — saintmichaelthearchangel.pdf
+  ✅ St Oliver Plunkett — stoliverplunkettparish.pdf
+  ✅ Holy Family — holy-familyparish.pdf
+  ✅ Port Glenone — stmarysportglenone.pdf
+  ✅ Saint Malachy's — saintmalachysparish.pdf
+  ✅ St Mary's on the Hill — stmarysonthehill.pdf
+  ✅ St Patrick's Downpatrick — stpatricksdownpatrick.pdf
+
+HTML-only parishes (clickable links in mega PDF):
+
+  🔗 Aghagallon and Ballinderry — https://www.aghagallonandballinderryparish.ie
+  🔗 Antrim — https://www.antrimparish.com
+  🔗 Ballyclare and Ballygowan — https://ballyclareballygowan.com/notice%20board.htm
+  🔗 Bangor — https://www.bangorparish.com
+  🔗 Carrickfergus — https://www.carrickparish.org
+  🔗 Dunsford and Ardglass — https://www.dunsfordandardglassparish.com/?page_id=623
+  🔗 Glenavy and Killead — https://www.glenavyandkilleadparish.com
+  🔗 Holy Rosary Belfast — https://www.holyrosaryparishbelfast.net/weekly-bulletin
+  🔗 Lisburn — https://parishoflisburn.org
+  🔗 Maghera — https://www.parishofmaghera.com/copy-of-sunday-missalette
+  🔗 Portaferry — https://portaferryparish.com/bulletin
+  🔗 Portstewart — https://portstewartparish.website/mdocs-posts/
+  🔗 St Agnes Belfast — https://www.stagnesbelfast.com/
+  🔗 Saint Annes — https://www.saintannesparish.net
+  🔗 St Brigids Belfast — https://stbrigidsparishbelfast.org
+  🔗 St Gerards — https://stgerardsparish.org/parish-news-events/
+  🔗 St Patricks Belfast — https://www.stpatricksbelfast.org/category/weekly-bulletins/
+  🔗 St Teresas — https://stteresasparish.church/parish-news/
+  🔗 Christ the Redeemer — https://www.christtheredeemer.co.uk/parish-bulletin
+
+Failed parishes:
+
+  ❌ Ballycastle — Page.goto: net::ERR_ABORTED at https://www.ballycastleparish.com/s/12th-April-2026.pdf
+Call log:
+  - navigating to "https://www.ballycastleparish.com/s/12th-April-2026.pdf", waiting until "domcontentloaded"
+
+  ❌ Derriaghy — Page.goto: Timeout 20000ms exceeded.
+Call log:
+  - navigating to "https://derriaghycatholicparish.com/", waiting until "domcontentloaded"
+
+  ❌ Saint Anthony — Page.goto: Timeout 20000ms exceeded.
+Call log:
+  - navigating to "http://www.saintanthony.co.uk/", waiting until "domcontentloaded"
+
+  ❌ St Mary's Belfast — Page.goto: net::ERR_CERT_COMMON_NAME_INVALID at https://www.stmarysbelfast.org/news
+Call log:
+  - navigating to "https://www.stmarysbelfast.org/news", waiting until "domcontentloaded"
+
+  ❌ Corpus Christi Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.corpuschristiparishbelfast.com/news
+Call log:
+  - navigating to "https://www.corpuschristiparishbelfast.com/news", waiting until "domcontentloaded"
+
+  ❌ Drumbo and Carryduff — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.drumbocarryduff.ie/#sbp-bulletin
+Call log:
+  - navigating to "https://www.drumbocarryduff.ie/#sbp-bulletin", waiting until "domcontentloaded"
+
+  ❌ Holy Trinity Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://holytrinityparishbelfast.com/newsletters/
+Call log:
+  - navigating to "https://holytrinityparishbelfast.com/newsletters/", waiting until "domcontentloaded"
+
+  ❌ Nativity — Page.goto: net::ERR_CONNECTION_RESET at https://www.nativityparish.com/news
+Call log:
+  - navigating to "https://www.nativityparish.com/news", waiting until "domcontentloaded"
+
+  ❌ St Luke's Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.stlukesparishbelfast.com/news
+Call log:
+  - navigating to "https://www.stlukesparishbelfast.com/news", waiting until "domcontentloaded"
+
+  ❌ St Matthew's — Page.goto: net::ERR_CONNECTION_RESET at https://www.stmatthewsparish.com/news
+Call log:
+  - navigating to "https://www.stmatthewsparish.com/news", waiting until "domcontentloaded"
+
+  ❌ St Vincent de Paul Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.stvincentdepaulparishbelfast.com/news
+Call log:
+  - navigating to "https://www.stvincentdepaulparishbelfast.com/news", waiting until "domcontentloaded"
+
