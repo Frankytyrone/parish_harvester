@@ -692,20 +692,19 @@
   );
 
   // Auto-show the toolbar when Playwright training bindings are detected.
-  // These bindings (ph_mark_html, ph_mark_download_url, ph_mark_crop) are
-  // only present when train.py is driving the browser, so the toolbar will
-  // not appear during normal browsing.
+  // These bindings are only present when train.py is driving the browser,
+  // so the toolbar will not appear during normal browsing.
+  const _TRAINING_BINDINGS = ["ph_mark_html", "ph_mark_download_url", "ph_mark_crop"];
+  const _AUTO_SHOW_DELAYS_MS = [0, 300, 1000, 2500];
+
   const _tryAutoShowToolbar = () => {
     if (toolbar) return;
-    if (window.ph_mark_html || window.ph_mark_download_url || window.ph_mark_crop) {
+    if (_TRAINING_BINDINGS.some((b) => typeof window[b] === "function")) {
       toolbar = createToolbar();
       document.documentElement.appendChild(toolbar);
       console.log("✅ Parish Trainer toolbar ready");
     }
   };
 
-  _tryAutoShowToolbar();
-  setTimeout(_tryAutoShowToolbar, 300);
-  setTimeout(_tryAutoShowToolbar, 1000);
-  setTimeout(_tryAutoShowToolbar, 2500);
+  _AUTO_SHOW_DELAYS_MS.forEach((delay) => setTimeout(_tryAutoShowToolbar, delay));
 })();
