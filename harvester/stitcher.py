@@ -32,6 +32,10 @@ _FILLER_PATTERN = re.compile(
 # catches truly blank pages (0 chars), dot/dash separator pages,
 # near-blank pages with only a page number, and control-character-only pages.
 _MIN_MEANINGFUL_CHARS = 30
+# Parish bulletins are never longer than 4 pages.  Any PDF with more pages
+# is almost certainly a full document (parish magazine, booklet, etc.) that
+# was accidentally downloaded instead of the weekly bulletin.
+_MAX_BULLETIN_PAGES = 4
 
 _HEADER_BANNER_HEIGHT = 18
 _HEADER_TOP_MARGIN = 8
@@ -179,6 +183,14 @@ def stitch_mega_pdf(
                 else:
                     link_url = None
                 reader = PyPDF2.PdfReader(str(pdf_path))
+                page_count = len(reader.pages)
+                if page_count > _MAX_BULLETIN_PAGES:
+                    print(
+                        f"    ⚠️  Skipping {parish_key}: {page_count} pages exceeds "
+                        f"the {_MAX_BULLETIN_PAGES}-page bulletin limit (likely a full document)"
+                    )
+                    missing_entries.append((display_name, parish_url, website))
+                    continue
                 for idx, page in enumerate(reader.pages):
                     if idx == 0:
                         page_w = float(page.mediabox.width)

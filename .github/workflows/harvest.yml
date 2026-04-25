@@ -132,7 +132,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Bulletins/ || true
+          git add -f Bulletins/ || true
           git diff --cached --quiet || git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
           git push || true
 

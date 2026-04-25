@@ -611,6 +611,18 @@
         return;
       }
 
+      if (message?.type === "show_toolbar") {
+        if (!toolbar) {
+          toolbar = createToolbar();
+          document.documentElement.appendChild(toolbar);
+          console.log("✅ Parish Trainer toolbar ready");
+        } else if (toolbar.dataset.phHidden === "true") {
+          toolbar.dataset.phHidden = "false";
+          toolbar.style.display = "flex";
+        }
+        return;
+      }
+
       const type = message?.type;
       if (type === "mark_html") {
         if (!window.ph_mark_html) {
@@ -678,4 +690,22 @@
     },
     true
   );
+
+  // Auto-show the toolbar when Playwright training bindings are detected.
+  // These bindings (ph_mark_html, ph_mark_download_url, ph_mark_crop) are
+  // only present when train.py is driving the browser, so the toolbar will
+  // not appear during normal browsing.
+  const _tryAutoShowToolbar = () => {
+    if (toolbar) return;
+    if (window.ph_mark_html || window.ph_mark_download_url || window.ph_mark_crop) {
+      toolbar = createToolbar();
+      document.documentElement.appendChild(toolbar);
+      console.log("✅ Parish Trainer toolbar ready");
+    }
+  };
+
+  _tryAutoShowToolbar();
+  setTimeout(_tryAutoShowToolbar, 300);
+  setTimeout(_tryAutoShowToolbar, 1000);
+  setTimeout(_tryAutoShowToolbar, 2500);
 })();
