@@ -464,6 +464,36 @@
     header.appendChild(closeBtn);
     bar.appendChild(header);
 
+    // Status message bar (created before buttons so showStatus is in scope)
+    const statusBar = document.createElement("div");
+    statusBar.style.cssText = [
+      "display: none",
+      "padding: 4px 10px 6px",
+      "font-size: 11px",
+      "border-radius: 0 0 8px 8px",
+      "text-align: center",
+      "transition: opacity 0.3s",
+    ].join(";");
+
+    let statusTimer = null;
+    const showStatus = (message, type) => {
+      clearTimeout(statusTimer);
+      statusBar.textContent = message;
+      statusBar.style.display = "block";
+      statusBar.style.opacity = "1";
+      if (type === "error") {
+        statusBar.style.background = "#7f1d1d";
+        statusBar.style.color = "#fca5a5";
+      } else {
+        statusBar.style.background = "#14532d";
+        statusBar.style.color = "#86efac";
+      }
+      statusTimer = setTimeout(() => {
+        statusBar.style.opacity = "0";
+        setTimeout(() => { statusBar.style.display = "none"; }, 300);
+      }, 4000);
+    };
+
     // Buttons row
     const row = document.createElement("div");
     row.style.cssText = "display:flex;gap:6px;padding:8px;flex-wrap:wrap;";
@@ -520,37 +550,7 @@
     }));
 
     bar.appendChild(row);
-
-    // Status message bar
-    const statusBar = document.createElement("div");
-    statusBar.style.cssText = [
-      "display: none",
-      "padding: 4px 10px 6px",
-      "font-size: 11px",
-      "border-radius: 0 0 8px 8px",
-      "text-align: center",
-      "transition: opacity 0.3s",
-    ].join(";");
     bar.appendChild(statusBar);
-
-    let statusTimer = null;
-    const showStatus = (message, type) => {
-      clearTimeout(statusTimer);
-      statusBar.textContent = message;
-      statusBar.style.display = "block";
-      statusBar.style.opacity = "1";
-      if (type === "error") {
-        statusBar.style.background = "#7f1d1d";
-        statusBar.style.color = "#fca5a5";
-      } else {
-        statusBar.style.background = "#14532d";
-        statusBar.style.color = "#86efac";
-      }
-      statusTimer = setTimeout(() => {
-        statusBar.style.opacity = "0";
-        setTimeout(() => { statusBar.style.display = "none"; }, 300);
-      }, 4000);
-    };
 
     // Drag behaviour
     let isDragging = false;
