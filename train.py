@@ -233,8 +233,20 @@ def _build_mark_step(action: str, url: str) -> dict[str, Any] | None:
     return {"action": action, "url": normalized}
 
 
+def _extract_int(payload: dict[str, Any], keys: tuple[str, ...], default: int = 0) -> int:
+    """Return the first payload value from *keys* that can be coerced to int."""
+    for key in keys:
+        value = payload.get(key)
+        if value is not None:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                continue
+    return default
+
+
 def _has_trainer_extension(extension_dir: Path) -> bool:
-    required = {"manifest.json", "popup.html", "popup.js", "content.js", "background.js"}
+    required = {"manifest.json", "sidepanel.html", "sidepanel.js", "content.js", "background.js"}
     return extension_dir.is_dir() and all((extension_dir / name).is_file() for name in required)
 
 
@@ -316,7 +328,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     print("A browser window will open.\n")
     print("Step 1: Navigate to the parish bulletin page")
     print("Step 2: Click through to find the PDF bulletin")
-    print("Step 3: Use the extension popup/context menu to mark image/HTML/file bulletins if needed")
+    print("Step 3: Use the extension side panel/context menu to mark image/HTML/file bulletins if needed")
     print("Step 4: When done, press ENTER here\n")
     print("Opening browser...")
 
@@ -325,6 +337,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     nav_urls: list[str] = []
     final_document_url: str | None = None
     marked_step: dict[str, Any] | None = None
+    crop_step: dict[str, Any] | None = None
 
     extension_dir = Path(__file__).resolve().parent / "extension"
     use_extension = _has_trainer_extension(extension_dir)
@@ -350,6 +363,8 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                     args=[
                         f"--disable-extensions-except={extension_dir}",
                         f"--load-extension={extension_dir}",
+                        "--enable-features=SidePanelPinning",
+                        "--side-panel-options=always-show",
                         "--start-maximized",
                         "--window-size=1400,900",
                     ],
@@ -422,10 +437,30 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                 marked_step = None
                 print(f"\n📄 Marked bulletin file URL: {url}")
 
+            async def handle_mark_crop(_source, payload: dict) -> None:
+                nonlocal crop_step, marked_step, final_document_url
+                crop_step = {
+                    "action": "crop_screenshot",
+                    "x": _extract_int(payload, ("x",)),
+                    "y": _extract_int(payload, ("y",)),
+                    "width": _extract_int(payload, ("width",)),
+                    "height": _extract_int(payload, ("height",)),
+                    "page_x": _extract_int(payload, ("pageX", "page_x", "x")),
+                    "page_y": _extract_int(payload, ("pageY", "page_y", "y")),
+                    "element_selector": str(payload.get("element_selector", "") or ""),
+                }
+                marked_step = None
+                final_document_url = None
+                print(
+                    f"\n✂️ Crop recorded: x={crop_step['x']}, y={crop_step['y']}, "
+                    f"w={crop_step['width']}, h={crop_step['height']}"
+                )
+
             await page.expose_binding("ph_record_click", handle_record_click)
             await page.expose_binding("ph_mark_image", handle_mark_image)
             await page.expose_binding("ph_mark_html", handle_mark_html)
             await page.expose_binding("ph_mark_download_url", handle_mark_download_url)
+            await page.expose_binding("ph_mark_crop", handle_mark_crop)
             if not use_extension:
                 await page.add_init_script(_CLICK_TRACKER_JS)
 
@@ -443,6 +478,14 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
             try:
                 await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
+                if use_extension:
+                    print("🗂️  Side panel: click the Parish Trainer icon in the toolbar to open the trainer panel")
+                    try:
+                        await page.evaluate(
+                            "chrome.sidePanel && chrome.sidePanel.open && chrome.sidePanel.open({})"
+                        )
+                    except Exception:
+                        pass
                 if not use_extension:
                     await asyncio.sleep(0.8)
                     try:
@@ -489,18 +532,20 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
     if marked_step:
         steps.append(marked_step)
-    elif not final_document_url and nav_urls:
+    if crop_step:
+        steps.append(crop_step)
+    elif not marked_step and not final_document_url and nav_urls:
         for url in reversed(nav_urls):
             lowered = url.lower()
             if lowered.endswith(".pdf") or lowered.endswith(".docx"):
                 final_document_url = url
                 break
 
-    if not marked_step and final_document_url:
+    if not marked_step and not crop_step and final_document_url:
         lower = final_document_url.lower()
         pattern = "*.docx" if lower.endswith(".docx") else "*.pdf"
         steps.append({"action": "download", "url_pattern": pattern, "captured_url": final_document_url})
-    elif not marked_step:
+    elif not marked_step and not crop_step:
         steps.append({"action": "download", "url_pattern": "*.pdf"})
 
     recipe = {
@@ -527,6 +572,11 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
             print(f"{idx}. Image: {step.get('url', '')}")
         elif action == "html":
             print(f"{idx}. HTML link: {step.get('url', '')}")
+        elif action == "crop_screenshot":
+            print(
+                f"{idx}. Crop screenshot: x={step.get('x', 0)}, y={step.get('y', 0)}, "
+                f"w={step.get('width', 0)}, h={step.get('height', 0)}"
+            )
 
     print(f"\nSaved to: {recipe_path}")
     print("\nThis will be replayed automatically during harvests.")

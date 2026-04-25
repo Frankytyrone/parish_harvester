@@ -1,4 +1,11 @@
 (() => {
+  let cropOverlay = null;
+  let lastCropSignature = "";
+
+  // Build a stable key so the same crop payload isn't submitted twice.
+  const cropSignature = (payload) =>
+    `${payload.x},${payload.y},${payload.width},${payload.height},${payload.pageX},${payload.pageY},${payload.element_selector || ""}`;
+
   const cssPath = (el) => {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return "";
     const parts = [];
@@ -21,6 +28,124 @@
       current = current.parentElement;
     }
     return parts.join(" > ");
+  };
+
+  const nearestElementSelector = (x, y) => {
+    const candidates = document.elementsFromPoint(x, y);
+    for (const el of candidates) {
+      if (!(el instanceof Element)) {
+        continue;
+      }
+      const img = el.closest("img");
+      if (img) {
+        return cssPath(img);
+      }
+      const container = el.closest("figure,article,section,main,div");
+      if (container) {
+        return cssPath(container);
+      }
+      return cssPath(el);
+    }
+    return "";
+  };
+
+  const emitCrop = (payload) => {
+    lastCropSignature = cropSignature(payload);
+    if (window.ph_mark_crop) {
+      window.ph_mark_crop(payload);
+    } else {
+      console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
+    }
+    chrome.runtime.sendMessage({ type: "crop_done", ...payload });
+  };
+
+  const removeCropOverlay = () => {
+    if (cropOverlay && cropOverlay.parentNode) {
+      cropOverlay.parentNode.removeChild(cropOverlay);
+    }
+    cropOverlay = null;
+  };
+
+  const startCrop = () => {
+    removeCropOverlay();
+
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.zIndex = "2147483647";
+    overlay.style.cursor = "crosshair";
+    overlay.style.background = "rgba(37,99,235,0.02)";
+    overlay.style.userSelect = "none";
+
+    const rect = document.createElement("div");
+    rect.style.position = "fixed";
+    rect.style.border = "2px dashed #3b82f6";
+    rect.style.background = "rgba(59,130,246,0.2)";
+    rect.style.pointerEvents = "none";
+    rect.style.display = "none";
+    overlay.appendChild(rect);
+
+    let startX = 0;
+    let startY = 0;
+    let dragging = false;
+
+    const onMove = (event) => {
+      if (!dragging) return;
+      const currentX = event.clientX;
+      const currentY = event.clientY;
+      const left = Math.min(startX, currentX);
+      const top = Math.min(startY, currentY);
+      const width = Math.abs(currentX - startX);
+      const height = Math.abs(currentY - startY);
+      rect.style.display = "block";
+      rect.style.left = `${left}px`;
+      rect.style.top = `${top}px`;
+      rect.style.width = `${width}px`;
+      rect.style.height = `${height}px`;
+    };
+
+    const finish = (event) => {
+      if (!dragging) {
+        removeCropOverlay();
+        return;
+      }
+      dragging = false;
+      const endX = event.clientX;
+      const endY = event.clientY;
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const width = Math.abs(endX - startX);
+      const height = Math.abs(endY - startY);
+      const pageX = x + window.scrollX;
+      const pageY = y + window.scrollY;
+      const element_selector = nearestElementSelector(x + width / 2, y + height / 2);
+      removeCropOverlay();
+      if (width < 5 || height < 5) {
+        return;
+      }
+      emitCrop({ x, y, width, height, pageX, pageY, element_selector });
+    };
+
+    overlay.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      startX = event.clientX;
+      startY = event.clientY;
+      dragging = true;
+      rect.style.display = "none";
+    });
+    overlay.addEventListener("mousemove", onMove);
+    overlay.addEventListener("mouseup", finish);
+    overlay.addEventListener("mouseleave", (event) => {
+      if (dragging) {
+        finish(event);
+      }
+    });
+
+    cropOverlay = overlay;
+    document.documentElement.appendChild(overlay);
   };
 
   chrome.runtime.onMessage.addListener((message) => {
@@ -47,6 +172,25 @@
         return;
       }
       window.ph_mark_image({ url: message.url });
+      return;
+    }
+    if (type === "start_crop") {
+      startCrop();
+      return;
+    }
+    if (type === "mark_crop") {
+      const payload = message?.x != null ? message : null;
+      if (!payload) {
+        return;
+      }
+      if (cropSignature(payload) === lastCropSignature) {
+        return;
+      }
+      if (!window.ph_mark_crop) {
+        console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
+        return;
+      }
+      window.ph_mark_crop(payload);
     }
   });
 
