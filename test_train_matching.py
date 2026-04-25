@@ -125,12 +125,10 @@ https://www.antrimparish.com
         self.assertNotIn("createElement('div')", _CLICK_TRACKER_JS)
         self.assertNotIn("attachShadow", _CLICK_TRACKER_JS)
 
-    def test_extension_manifest_and_sidepanel_are_present(self) -> None:
+    def test_extension_manifest_and_toolbar_are_present(self) -> None:
         repo_root = Path(__file__).resolve().parent
         extension_dir = repo_root / "extension"
         manifest_path = extension_dir / "manifest.json"
-        sidepanel_html = (extension_dir / "sidepanel.html").read_text(encoding="utf-8")
-        sidepanel_js = (extension_dir / "sidepanel.js").read_text(encoding="utf-8")
         content_js = (extension_dir / "content.js").read_text(encoding="utf-8")
         background_js = (extension_dir / "background.js").read_text(encoding="utf-8")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -138,18 +136,17 @@ https://www.antrimparish.com
         self.assertEqual(manifest["manifest_version"], 3)
         self.assertEqual(
             manifest["permissions"],
-            ["activeTab", "scripting", "contextMenus", "sidePanel"],
+            ["activeTab", "scripting", "contextMenus"],
         )
-        self.assertEqual(manifest["side_panel"]["default_path"], "sidepanel.html")
+        self.assertNotIn("sidePanel", manifest.get("permissions", []))
+        self.assertNotIn("side_panel", manifest)
         self.assertEqual(manifest["action"]["default_title"], "Parish Trainer")
         self.assertIn('"world": "MAIN"', manifest_path.read_text(encoding="utf-8"))
-        self.assertIn("<h1>Parish Trainer</h1>", sidepanel_html)
-        self.assertIn("Mark Page as HTML", sidepanel_html)
-        self.assertIn("Mark Current URL as File", sidepanel_html)
-        self.assertIn("Crop Bulletin Image", sidepanel_html)
-        self.assertIn('type: "mark_html"', sidepanel_js)
-        self.assertIn('type: "mark_file"', sidepanel_js)
-        self.assertIn('type: "start_crop"', sidepanel_js)
+        self.assertIn("Mark Page as HTML", content_js)
+        self.assertIn("Mark Current URL as File", content_js)
+        self.assertIn("Crop Bulletin Image", content_js)
+        self.assertIn("toggle_toolbar", content_js)
+        self.assertIn("createToolbar", content_js)
         self.assertIn('type === "mark_html"', content_js)
         self.assertIn('type === "mark_file"', content_js)
         self.assertIn('type === "mark_image"', content_js)
@@ -157,7 +154,8 @@ https://www.antrimparish.com
         self.assertIn('window.ph_mark_crop', content_js)
         self.assertIn("chrome.contextMenus.create", background_js)
         self.assertIn('id: "mark-bulletin-image"', background_js)
-        self.assertIn("chrome.sidePanel.open", background_js)
+        self.assertIn("toggle_toolbar", background_js)
+        self.assertNotIn("chrome.sidePanel.open", background_js)
 
     def test_training_uses_persistent_context_with_extension_args(self) -> None:
         train_source = (Path(__file__).resolve().parent / "train.py").read_text(encoding="utf-8")
@@ -165,8 +163,8 @@ https://www.antrimparish.com
         self.assertIn("no_viewport=True", train_source)
         self.assertIn("--disable-extensions-except=", train_source)
         self.assertIn("--load-extension=", train_source)
-        self.assertIn("--enable-features=SidePanelPinning", train_source)
-        self.assertIn("--side-panel-options=always-show", train_source)
+        self.assertNotIn("--enable-features=SidePanelPinning", train_source)
+        self.assertNotIn("--side-panel-options=always-show", train_source)
         self.assertIn("--start-maximized", train_source)
         self.assertIn("--window-size=1400,900", train_source)
         self.assertIn("browser.new_context(", train_source)

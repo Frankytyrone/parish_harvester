@@ -1,6 +1,7 @@
 (() => {
   let cropOverlay = null;
   let lastCropSignature = "";
+  let toolbar = null;
 
   // Build a stable key so the same crop payload isn't submitted twice.
   const cropSignature = (payload) =>
@@ -148,7 +149,165 @@
     document.documentElement.appendChild(overlay);
   };
 
+  const createToolbar = () => {
+    const bar = document.createElement("div");
+    bar.id = "ph-floating-toolbar";
+    bar.style.cssText = [
+      "position: fixed",
+      "top: 10px",
+      "left: 50%",
+      "transform: translateX(-50%)",
+      "z-index: 2147483646",
+      "background: #111827",
+      "color: #f9fafb",
+      "font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+      "font-size: 12px",
+      "border-radius: 8px",
+      "box-shadow: 0 4px 16px rgba(0,0,0,0.55)",
+      "display: flex",
+      "flex-direction: column",
+      "min-width: 0",
+      "user-select: none",
+      "pointer-events: auto",
+    ].join(";");
+
+    // Header / drag handle
+    const header = document.createElement("div");
+    header.style.cssText = [
+      "display: flex",
+      "align-items: center",
+      "justify-content: space-between",
+      "padding: 5px 8px",
+      "background: #1f2937",
+      "border-radius: 8px 8px 0 0",
+      "cursor: grab",
+      "gap: 8px",
+    ].join(";");
+
+    const title = document.createElement("span");
+    title.textContent = "⠿ Parish Trainer";
+    title.style.cssText = "font-weight:600;font-size:11px;opacity:0.9;white-space:nowrap;";
+    header.appendChild(title);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "✕";
+    closeBtn.title = "Hide toolbar";
+    closeBtn.style.cssText = [
+      "background: none",
+      "border: none",
+      "color: #9ca3af",
+      "cursor: pointer",
+      "font-size: 12px",
+      "line-height: 1",
+      "padding: 0 2px",
+    ].join(";");
+    closeBtn.addEventListener("click", () => {
+      bar.dataset.phHidden = "true";
+      bar.style.display = "none";
+    });
+    header.appendChild(closeBtn);
+    bar.appendChild(header);
+
+    // Buttons row
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:6px;padding:8px;flex-wrap:wrap;";
+
+    const makeBtn = (label, handler) => {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.style.cssText = [
+        "border: none",
+        "border-radius: 6px",
+        "padding: 5px 8px",
+        "background: #2563eb",
+        "color: #fff",
+        "cursor: pointer",
+        "font-size: 11px",
+        "white-space: nowrap",
+      ].join(";");
+      btn.addEventListener("click", handler);
+      return btn;
+    };
+
+    row.appendChild(makeBtn("Mark Page as HTML", () => {
+      if (window.ph_mark_html) {
+        window.ph_mark_html({ url: window.location.href });
+      } else {
+        console.warn("Parish Trainer: ph_mark_html binding is unavailable.");
+      }
+    }));
+
+    row.appendChild(makeBtn("Mark Current URL as File", () => {
+      if (window.ph_mark_download_url) {
+        window.ph_mark_download_url({ url: window.location.href });
+      } else {
+        console.warn("Parish Trainer: ph_mark_download_url binding is unavailable.");
+      }
+    }));
+
+    row.appendChild(makeBtn("Crop Bulletin Image", () => {
+      bar.dataset.phHidden = "true";
+      bar.style.display = "none";
+      startCrop();
+    }));
+
+    bar.appendChild(row);
+
+    // Drag behaviour
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    header.addEventListener("mousedown", (event) => {
+      if (event.button !== 0) return;
+      isDragging = true;
+      // Switch from centered transform to explicit left/top
+      const rect = bar.getBoundingClientRect();
+      bar.style.transform = "none";
+      bar.style.left = `${rect.left}px`;
+      bar.style.top = `${rect.top}px`;
+      dragOffsetX = event.clientX - rect.left;
+      dragOffsetY = event.clientY - rect.top;
+      header.style.cursor = "grabbing";
+      event.preventDefault();
+    });
+
+    document.addEventListener("mousemove", (event) => {
+      if (!isDragging) return;
+      // If the button was released outside the browser window, cancel drag.
+      if (!event.buttons) {
+        isDragging = false;
+        header.style.cursor = "grab";
+        return;
+      }
+      bar.style.left = `${event.clientX - dragOffsetX}px`;
+      bar.style.top = `${event.clientY - dragOffsetY}px`;
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (!isDragging) return;
+      isDragging = false;
+      header.style.cursor = "grab";
+    });
+
+    return bar;
+  };
+
   chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === "toggle_toolbar") {
+      if (!toolbar) {
+        toolbar = createToolbar();
+        document.documentElement.appendChild(toolbar);
+      } else if (toolbar.dataset.phHidden === "true") {
+        toolbar.dataset.phHidden = "false";
+        toolbar.style.display = "flex";
+      } else {
+        toolbar.dataset.phHidden = "true";
+        toolbar.style.display = "none";
+      }
+      return;
+    }
+
     const type = message?.type;
     if (type === "mark_html") {
       if (!window.ph_mark_html) {
