@@ -15,6 +15,12 @@
       "js": ["content.js"],
       "run_at": "document_start",
       "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["isolated.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
     }
   ]
 }
