@@ -24,6 +24,7 @@ from harvester.config import (
     target_sunday,
 )
 from harvester.fetcher import fetch_all, parse_evidence_file
+from harvester.harvest_log import log_result, print_summary
 from harvester.report import generate_report
 from harvester.stitcher import stitch_mega_pdf
 from train import run_training
@@ -123,6 +124,10 @@ def main() -> int:
     html_count = sum(1 for r in results if r.status == "html_link")
     err_count = sum(1 for r in results if r.status == "error")
 
+    # Log every result to harvest_log.json
+    for r in results:
+        log_result(r, r.key, r.display_name)
+
     print(f"  ✅ Downloaded  : {ok_count}")
     print(f"  🔗 HTML links  : {html_count}")
     print(f"  💥 Failed      : {err_count}")
@@ -166,6 +171,9 @@ def main() -> int:
         )
     except Exception as exc:
         print(f"  ⚠️  Mega PDF generation failed (non-fatal): {exc}")
+
+    # Print harvest log summary
+    print_summary()
 
     return 0
 
