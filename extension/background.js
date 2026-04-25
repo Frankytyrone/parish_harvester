@@ -14,3 +14,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
   }
 });
+
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab?.windowId) {
+    return;
+  }
+  chrome.sidePanel.open({ windowId: tab.windowId });
+});

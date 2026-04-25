@@ -47,10 +47,13 @@ python main.py --train "Hannahstown"
 python train.py "Hannahstown"
 ```
 
-Training mode now uses a Chrome extension popup so you can mark:
+Training mode now uses a Chrome extension side panel so you can mark:
 - static HTML bulletin pages (**Mark Page as HTML**),
 - the current URL as a bulletin file (**Mark Current URL as File**),
-- image bulletins (right-click an image → **Mark as Bulletin Image**).
+- image bulletins (right-click an image → **Mark as Bulletin Image**),
+- image regions to convert to PDF (**Crop Bulletin Image**).
+
+The fetcher also auto-detects WordPress PDF Embedder links (`a.pdfemb-viewer`) and prefers those URLs first.
 
 ---
 
