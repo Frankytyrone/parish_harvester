@@ -40,7 +40,7 @@ def _format_date_long(date_str: str) -> str:
     """Convert 'YYYY-MM-DD' to e.g. 'Sunday, April 26, 2026'."""
     try:
         d = date.fromisoformat(date_str)
-        return d.strftime("%A, %B %-d, %Y")
+        return d.strftime("%A, %B ") + str(d.day) + d.strftime(", %Y")
     except Exception:
         return date_str
 
@@ -50,7 +50,8 @@ def _next_sunday(date_str: str) -> str:
     try:
         d = date.fromisoformat(date_str)
         days_until_next_sunday = (6 - d.weekday()) % 7 or 7
-        return (d + timedelta(days=days_until_next_sunday)).strftime("%A, %B %-d, %Y")
+        nd = d + timedelta(days=days_until_next_sunday)
+        return nd.strftime("%A, %B ") + str(nd.day) + nd.strftime(", %Y")
     except Exception:
         return "next Sunday"
 
@@ -59,6 +60,15 @@ def _pct(count: int, total: int) -> str:
     if total == 0:
         return "0%"
     return f"{round(count / total * 100)}%"
+
+
+def _format_duration(seconds: float) -> str:
+    """Format a duration in seconds as a human-readable string."""
+    mins = int(seconds // 60)
+    secs = int(seconds % 60)
+    if mins > 0:
+        return f"{mins} minute{'s' if mins != 1 else ''} {secs} second{'s' if secs != 1 else ''}"
+    return f"{secs} second{'s' if secs != 1 else ''}"
 
 
 def generate_email_html(report: dict, duration_seconds: float | None = None) -> str:
@@ -77,12 +87,7 @@ def generate_email_html(report: dict, duration_seconds: float | None = None) -> 
 
     duration_str = ""
     if duration_seconds is not None:
-        mins = int(duration_seconds // 60)
-        secs = int(duration_seconds % 60)
-        if mins > 0:
-            duration_str = f"{mins} minute{'s' if mins != 1 else ''} {secs} second{'s' if secs != 1 else ''}"
-        else:
-            duration_str = f"{secs} second{'s' if secs != 1 else ''}"
+        duration_str = _format_duration(duration_seconds)
 
     failure_section = _generate_failure_section_html(failed)
 
@@ -195,10 +200,7 @@ def generate_email_plain(report: dict, duration_seconds: float | None = None) ->
 
     duration_str = ""
     if duration_seconds is not None:
-        mins = int(duration_seconds // 60)
-        secs = int(duration_seconds % 60)
-        if mins > 0:
-            duration_str = f"\nDuration: {mins} minute{'s' if mins != 1 else ''} {secs} second{'s' if secs != 1 else ''}"
+        duration_str = f"\nDuration: {_format_duration(duration_seconds)}"
 
     lines = [
         "────────────────────────────────────────────────",
