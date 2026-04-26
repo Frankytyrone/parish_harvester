@@ -46,6 +46,7 @@ from harvester.config import (
     REPORT_TXT,
     target_sunday,
 )
+from harvester.email_notifier import send_harvest_notification
 from harvester.fetcher import fetch_all, parse_evidence_file
 from harvester.harvest_log import log_result, print_summary
 from harvester.report import generate_report
@@ -128,6 +129,11 @@ def run_harvest(diocese: str = "derry_diocese") -> None:
 
     end = datetime.now(timezone.utc)
     duration = (end - start).total_seconds()
+
+    # Send email notification
+    print("\n── Notification ────────────────────────────────────────────")
+    send_harvest_notification(REPORT_JSON, duration_seconds=duration)
+
     print(f"\n✅ Scheduled harvest finished at {end.strftime('%Y-%m-%d %H:%M:%S UTC')} "
           f"(took {duration:.0f}s)")
 
