@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import logging
 import sys
+import time
 from datetime import date, datetime
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from harvester.config import (
     REPORT_TXT,
     target_sunday,
 )
+from harvester.email_notifier import send_harvest_notification
 from harvester.fetcher import fetch_all, parse_evidence_file
 from harvester.harvest_log import log_result, print_summary
 from harvester.report import generate_report
@@ -72,6 +74,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     logging.basicConfig(level=logging.WARNING)
+    harvest_start = time.monotonic()
 
     if args.train:
         try:
@@ -174,6 +177,10 @@ def main() -> int:
 
     # Print harvest log summary
     print_summary()
+
+    # Send email notification
+    print("\n── Notification ────────────────────────────────────────────")
+    send_harvest_notification(REPORT_JSON, duration_seconds=time.monotonic() - harvest_start)
 
     return 0
 

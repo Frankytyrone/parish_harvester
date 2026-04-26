@@ -40,6 +40,17 @@ jobs:
 
       - name: Run Bulletin Harvester
         run: python main.py --diocese ${{ github.event.inputs.diocese || 'derry_diocese' }}
+        env:
+          HARVEST_EMAIL_TO: ${{ secrets.HARVEST_EMAIL_TO }}
+          HARVEST_EMAIL_FROM: ${{ secrets.HARVEST_EMAIL_FROM }}
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+          MAILGUN_DOMAIN: ${{ secrets.MAILGUN_DOMAIN }}
 
       - name: Post GitHub Issue summary
         if: always()

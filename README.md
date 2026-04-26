@@ -252,3 +252,48 @@ The workflow runs every Sunday at 12:00 UTC and:
 2. Creates the mega PDF
 3. Posts a summary issue to the repository
 4. Uploads the Bulletins folder as an artifact
+
+---
+
+## Email Notifications
+
+The harvester can send an email summary after each harvest. This is optional — if `HARVEST_EMAIL_TO` is not set, the harvester runs normally without sending any email.
+
+### Quick setup
+
+```bash
+export HARVEST_EMAIL_TO="your-email@example.com"
+export SMTP_HOST="smtp.gmail.com"
+export SMTP_PORT="587"
+export SMTP_USER="your-email@gmail.com"
+export SMTP_PASSWORD="your-app-password"   # Gmail: use an App Password
+```
+
+### Email providers
+
+| Provider | Environment variables required |
+|----------|-------------------------------|
+| **SMTP** (default) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` |
+| **SendGrid** | `EMAIL_PROVIDER=sendgrid`, `SENDGRID_API_KEY` |
+| **Mailgun** | `EMAIL_PROVIDER=mailgun`, `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` |
+
+Set `HARVEST_EMAIL_FROM` to customise the sender address (optional).
+
+### GitHub Actions setup
+
+Add repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `HARVEST_EMAIL_TO` | Recipient email address |
+| `HARVEST_EMAIL_FROM` | Sender address (optional) |
+| `EMAIL_PROVIDER` | `smtp` (default), `sendgrid`, or `mailgun` |
+| `SMTP_HOST` | SMTP server (e.g. `smtp.gmail.com`) |
+| `SMTP_PORT` | SMTP port (e.g. `587`) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASSWORD` | SMTP password / app password |
+| `SENDGRID_API_KEY` | SendGrid API key (if using SendGrid) |
+| `MAILGUN_API_KEY` | Mailgun API key (if using Mailgun) |
+| `MAILGUN_DOMAIN` | Mailgun sending domain (if using Mailgun) |
+
+The harvest workflow already passes these secrets to the harvester automatically.
