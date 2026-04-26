@@ -24,6 +24,7 @@ from harvester.config import (
     REPORT_TXT,
     target_sunday,
 )
+from harvester.dashboard_generator import generate_dashboard
 from harvester.email_notifier import send_harvest_notification
 from harvester.fetcher import fetch_all, parse_evidence_file
 from harvester.harvest_log import log_result, print_summary
@@ -161,6 +162,18 @@ def main() -> int:
     )
     print(f"  📄 Report JSON : {REPORT_JSON}")
     print(f"  📄 Report TXT  : {REPORT_TXT}")
+
+    # Generate dashboard
+    print("\n── Dashboard ───────────────────────────────────────────────")
+    dashboard_path = BULLETINS_DIR / "dashboard.html"
+    try:
+        generate_dashboard(
+            report_path=REPORT_JSON,
+            log_path=Path("harvest_log.json"),
+            output_path=dashboard_path,
+        )
+    except Exception as exc:
+        print(f"  ⚠️  Dashboard generation failed (non-fatal): {exc}")
 
     # Stitch mega PDF
     print("\n── Stitch Mega PDF ─────────────────────────────────────────")
