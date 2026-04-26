@@ -154,3 +154,11 @@ jobs:
           name: bulletins-${{ github.run_id }}
           path: Bulletins/
           retention-days: 30
+
+      - name: Upload dashboard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harvest-dashboard-${{ github.run_id }}
+          path: Bulletins/dashboard.html
+          retention-days: 30
