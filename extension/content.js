@@ -63,11 +63,13 @@
       .replace(/\s+/g, " ")
       .slice(0, 80);
     const role = el.getAttribute("role") || "";
+    // Escape backslashes first, then double-quotes, for a valid Playwright selector
+    const escapeForSelector = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
     if (text && text.length >= 3 && text.length <= 60) {
-      return `${tag}:has-text("${text.replace(/"/g, '\\"')}")`;
+      return `${tag}:has-text("${escapeForSelector(text)}")`;
     }
     if (role) {
-      return `[role="${role}"]:has-text("${text.replace(/"/g, '\\"')}")`;
+      return `[role="${role}"]:has-text("${escapeForSelector(text)}")`;
     }
     return cssPath(el);
   };
@@ -75,16 +77,20 @@
   // Returns true if the URL looks like a downloadable document.
   const isDocumentUrl = (url) => {
     if (!url) return false;
-    const lower = url.toLowerCase().split("?")[0];
-    const docExts = [".pdf", ".docx", ".doc", ".pptx", ".ppt", ".odt", ".ods"];
-    if (docExts.some((ext) => lower.endsWith(ext))) return true;
+    // Check Google Drive / Docs patterns on the full URL (including query string)
+    // before stripping query parameters, since these patterns often live in the query.
+    const lowerFull = url.toLowerCase();
     if (
-      lower.includes("drive.google.com/file") ||
-      lower.includes("docs.google.com/viewer") ||
-      lower.includes("drive.google.com/uc?") ||
-      lower.includes("drive.google.com/open?")
+      lowerFull.includes("drive.google.com/file") ||
+      lowerFull.includes("docs.google.com/viewer") ||
+      lowerFull.includes("drive.google.com/uc?") ||
+      lowerFull.includes("drive.google.com/open?")
     )
       return true;
+    // Check file extensions on the path (before the query string)
+    const lowerPath = lowerFull.split("?")[0];
+    const docExts = [".pdf", ".docx", ".doc", ".pptx", ".ppt", ".odt", ".ods"];
+    if (docExts.some((ext) => lowerPath.endsWith(ext))) return true;
     return false;
   };
 
@@ -297,7 +303,7 @@
     const onKeyDown = (e) => {
       if (e.key === "Escape") {
         stopPickLinkMode();
-        if (showStatus) showStatus("❌ Link selection cancelled.", "error");
+        if (showStatus) showStatus("❌ Link selection cancelled.", "info");
       }
     };
 
@@ -1185,10 +1191,24 @@
     identifyBtn.addEventListener("click", () => {
       const result = detectPageType();
       identifyResult.style.display = "block";
-      identifyResult.innerHTML =
-        `<span style="font-size:15px;">${result.emoji}</span> ` +
-        `<strong style="color:#f9fafb;">${result.summary}</strong><br>` +
-        `<span style="color:#9ca3af;">${result.advice}</span>`;
+      identifyResult.innerHTML = "";
+
+      const emojiSpan = document.createElement("span");
+      emojiSpan.style.cssText = "font-size:15px;";
+      emojiSpan.textContent = result.emoji;
+
+      const summaryStrong = document.createElement("strong");
+      summaryStrong.style.cssText = "color:#f9fafb;";
+      summaryStrong.textContent = result.summary;
+
+      const adviceSpan = document.createElement("span");
+      adviceSpan.style.cssText = "color:#9ca3af;display:block;margin-top:2px;";
+      adviceSpan.textContent = result.advice;
+
+      identifyResult.appendChild(emojiSpan);
+      identifyResult.appendChild(document.createTextNode(" "));
+      identifyResult.appendChild(summaryStrong);
+      identifyResult.appendChild(adviceSpan);
     });
 
     body.appendChild(identifyBtn);
