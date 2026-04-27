@@ -473,11 +473,37 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                         f"w={crop_step['width']}, h={crop_step['height']}"
                     )
 
+            async def handle_undo_step(_source, payload: dict[str, Any]) -> None:
+                """Remove the most-recently recorded step of the given type.
+
+                Called by the extension's "Undo Last Step" button so the UI and
+                the Python-side state stay in sync.
+                """
+                nonlocal marked_step, final_document_url, crop_step
+                step_type = str(payload.get("step_type", ""))
+                if step_type == "click" and click_steps:
+                    removed = click_steps.pop()
+                    print(f"\n↩ Undo: removed click step {removed.get('selector', '')!r}")
+                elif step_type in ("mark_html", "mark_image") and marked_step:
+                    print(f"\n↩ Undo: removed mark step ({marked_step.get('action', '')})")
+                    marked_step = None
+                elif step_type == "mark_file":
+                    if final_document_url:
+                        print(f"\n↩ Undo: removed file URL {final_document_url!r}")
+                        final_document_url = None
+                elif step_type == "crop":
+                    if crop_step:
+                        print("\n↩ Undo: removed crop step")
+                        crop_step = None
+                else:
+                    print(f"\n↩ Undo requested for step_type={step_type!r} — nothing to remove")
+
             await page.expose_binding("ph_record_click", handle_record_click)
             await page.expose_binding("ph_mark_image", handle_mark_image)
             await page.expose_binding("ph_mark_html", handle_mark_html)
             await page.expose_binding("ph_mark_download_url", handle_mark_download_url)
             await page.expose_binding("ph_mark_crop", handle_mark_crop)
+            await page.expose_binding("ph_undo_step", handle_undo_step)
             if not use_extension:
                 await page.add_init_script(_CLICK_TRACKER_JS)
 

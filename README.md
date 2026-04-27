@@ -47,13 +47,43 @@ python main.py --train "Hannahstown"
 python train.py "Hannahstown"
 ```
 
-Training mode now uses a Chrome extension side panel so you can mark:
+Training mode now uses a Chrome extension floating toolbar so you can mark:
 - static HTML bulletin pages (**Mark Page as HTML**),
 - the current URL as a bulletin file (**Mark Current URL as File**),
 - image bulletins (right-click an image → **Mark as Bulletin Image**),
 - image regions to convert to PDF (**Crop Bulletin Image**).
 
 The fetcher also auto-detects WordPress PDF Embedder links (`a.pdfemb-viewer`) and prefers those URLs first.
+
+---
+
+## Guided Mode Training
+
+The Parish Trainer extension now includes **Guided Mode** (on by default) to make training more foolproof for non-technical users.
+
+### How it works
+
+When you open a parish page during training, the floating toolbar automatically appears and presents a simple wizard:
+
+**Step 1: Do you see the bulletin on screen?**
+
+| Choice | What it does |
+|--------|-------------|
+| ✅ Yes, it's a PDF | Validates the current URL looks like a document, then records it as the bulletin file URL. Non-document URLs require an explicit "Mark Anyway" confirmation. |
+| 🖼️ Yes, it's an image | Hides the toolbar and opens the crop tool — draw a rectangle around the bulletin. |
+| 📄 No — I need to click a link first | Enters **Pick Link Mode**: hover over any link to highlight it, click to select it. Shows a confirmation step with "Looks right / Pick again" before recording. |
+| 📐 It's embedded in a frame / viewer | Opens the **Iframe Picker**: lists all iframes on the page, automatically unwraps Google Docs viewer URLs, and marks the resolved PDF URL. |
+
+### Other features
+
+- **🔍 Help me identify this page** — runs lightweight detection and explains what type of page you are on (direct PDF, HTML with links, iframe embed, image bulletin) with a plain-English recommendation.
+- **📋 Recipe Preview** — shows all recorded steps for the current session. Click the header to expand it.
+- **↩ Undo Last Step** — removes the most recently recorded step from both the UI and the training session.
+- **Advanced Options** — collapses the original buttons (Mark Page as HTML / Mark Current URL as File / Crop Bulletin Image) for power users or edge cases. Accessible via "I'm stuck — show all options".
+
+### Safety checks
+
+Before recording a URL as a bulletin file, the toolbar checks whether it looks like a document (PDF, DOCX, Google Drive file). If not, a warning is shown with an explicit "⚠️ Mark Anyway" confirmation button, preventing accidental recording of generic HTML listing pages.
 
 ---
 
