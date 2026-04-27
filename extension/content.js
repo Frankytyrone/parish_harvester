@@ -1026,10 +1026,28 @@
         "line-height:1.4",
         "font-size:10px",
       ].join(";");
-      preview.innerHTML =
-        `<strong>Text:</strong> ${text || "(no text)"}<br>` +
-        `<strong>Href:</strong> ${(href || "(none)").slice(0, 70)}<br>` +
-        `<strong>Selector:</strong> <code style="font-size:9px;">${selector}</code>`;
+
+      const makePreviewRow = (label, value) => {
+        const row = document.createElement("div");
+        const strong = document.createElement("strong");
+        strong.textContent = label + ": ";
+        const span = document.createElement("span");
+        span.textContent = value;
+        row.appendChild(strong);
+        row.appendChild(span);
+        return row;
+      };
+      preview.appendChild(makePreviewRow("Text", text || "(no text)"));
+      preview.appendChild(makePreviewRow("Href", (href || "(none)").slice(0, 70)));
+      const selectorRow = document.createElement("div");
+      const selectorLabel = document.createElement("strong");
+      selectorLabel.textContent = "Selector: ";
+      const selectorCode = document.createElement("code");
+      selectorCode.style.cssText = "font-size:9px;";
+      selectorCode.textContent = selector;
+      selectorRow.appendChild(selectorLabel);
+      selectorRow.appendChild(selectorCode);
+      preview.appendChild(selectorRow);
       guidedPanel.appendChild(preview);
 
       const btnRow = document.createElement("div");
