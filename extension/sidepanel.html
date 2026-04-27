@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Parish Trainer</title>
     <style>
-      :root {
-        color-scheme: dark;
-      }
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         background: #111827;
@@ -15,48 +14,70 @@
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
         font-size: 12px;
       }
-      .wrap {
-        padding: 12px;
-      }
-      h1 {
-        margin: 0 0 8px;
-        font-size: 16px;
+      .wrap { padding: 10px 12px; }
+      h1 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+      .guided-badge {
+        background: #16a34a; color: #fff; border-radius: 4px;
+        padding: 1px 5px; font-size: 9px; font-weight: 600;
       }
       #status {
-        margin: 0 0 10px;
-        opacity: 0.92;
-        line-height: 1.35;
+        margin: 0 0 8px; opacity: 0.92; line-height: 1.35; font-size: 11px;
+        padding: 4px 6px; border-radius: 4px; display: none;
       }
-      .row {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
+      #status.ok  { background: #14532d; color: #86efac; display: block; }
+      #status.err { background: #7f1d1d; color: #fca5a5; display: block; }
+      #status.info { background: #1e3a5f; color: #93c5fd; display: block; }
+      .section {
+        background: #1e293b; border: 1px solid #374151; border-radius: 6px;
+        padding: 7px 8px; margin-bottom: 7px;
       }
+      .section-title {
+        font-size: 10px; font-weight: 600; color: #93c5fd; margin-bottom: 5px;
+      }
+      .btn-col { display: flex; flex-direction: column; gap: 5px; }
       button {
-        border: none;
-        border-radius: 8px;
-        padding: 6px 8px;
-        background: #2563eb;
-        color: #fff;
-        cursor: pointer;
-        font-size: 12px;
+        border: none; border-radius: 6px; padding: 6px 10px;
+        background: #2563eb; color: #fff; cursor: pointer;
+        font-size: 11px; text-align: left; line-height: 1.3;
+        font-family: inherit; width: 100%;
       }
-      .note {
-        margin: 10px 0 0;
-        line-height: 1.35;
-      }
+      button:hover { filter: brightness(1.15); }
+      button.green { background: #16a34a; }
+      button.grey  { background: #374151; }
+      .note { margin: 8px 0 0; line-height: 1.35; font-size: 10px; color: #6b7280; }
+      details summary { cursor: pointer; font-size: 10px; color: #6b7280; margin-top: 6px; }
+      details .inner { margin-top: 5px; }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <h1>Parish Trainer</h1>
-      <p id="status">Draw a rectangle around the bulletin when using crop.</p>
-      <div class="row">
-        <button id="mark-html" type="button">Mark Page as HTML</button>
-        <button id="mark-file" type="button">Mark Current URL as File</button>
-        <button id="crop-btn" type="button">Crop Bulletin Image</button>
+      <h1>Parish Trainer <span class="guided-badge">Guided ✓</span></h1>
+
+      <p id="status">Ready.</p>
+
+      <!-- Guided mode wizard -->
+      <div class="section">
+        <div class="section-title">Step 1: Do you see the bulletin?</div>
+        <div class="btn-col">
+          <button id="wizard-pdf"   class="green">✅ Yes, it's a PDF — mark this URL</button>
+          <button id="wizard-image">🖼️ Yes, it's an image — crop it</button>
+          <button id="wizard-link" >📄 No — I need to click a link first</button>
+          <button id="wizard-iframe">📐 It's embedded in a frame / viewer</button>
+        </div>
       </div>
-      <p class="note">To mark a bulletin image by URL, right-click an image on the page and choose "Mark as Bulletin Image"</p>
+
+      <!-- Advanced (fallback) options -->
+      <details>
+        <summary>⚙️ Advanced / fallback options</summary>
+        <div class="inner section">
+          <div class="btn-col">
+            <button id="mark-html" type="button">Mark Page as HTML</button>
+            <button id="mark-file" type="button">Mark Current URL as File</button>
+            <button id="crop-btn"  type="button">Crop Bulletin Image</button>
+          </div>
+          <p class="note">Right-click an image on the page → "Mark as Bulletin Image"</p>
+        </div>
+      </details>
     </div>
     <script src="sidepanel.js"></script>
   </body>
