@@ -28,9 +28,9 @@ https://www.aghagallonandballinderryparish.ie
 
 # --- Antrim ---
 # page: https://www.antrimparish.com/bulletinpage/
-# Pattern D
+# iframe embedded PDF — requires training
 # html_link
-https://www.antrimparish.com
+https://www.antrimparish.com/bulletinpage/
 
 # --- Ballycastle ---
 # page: https://www.ballycastleparish.com/bulletins
