@@ -97,13 +97,59 @@
   // Detect what kind of bulletin page we are on and give plain-language guidance.
   const detectPageType = () => {
     const url = window.location.href.toLowerCase();
+
+    // 1. Current page IS a PDF
     if (url.endsWith(".pdf") || url.includes(".pdf?") || url.includes("/pdf/")) {
       return {
         emoji: "📄",
         summary: "This page IS a PDF document.",
         advice: "Click \"Yes, it's a PDF\" to record this URL as the bulletin file.",
+        type: "direct_pdf",
       };
     }
+
+    // 2. WordPress PDF Embedder plugin — check original <a> tags AND viewer elements
+    const pdfembEls = Array.from(
+      document.querySelectorAll(
+        'a.pdfemb-viewer, a[class*="pdfemb"], [id^="pdfemb-embed-"], [class*="pdfemb-embed"]'
+      )
+    );
+    // Filter to those that have a usable href or contain a child PDF iframe/embed
+    const pdfembLinks = pdfembEls.filter((el) => {
+      const href =
+        el.getAttribute("href") ||
+        el.getAttribute("data-url") ||
+        el.getAttribute("data-pdfurl") ||
+        "";
+      if (href.length > 0) return true;
+      // For viewer wrapper divs, look for a nested iframe/embed with a PDF src
+      const inner =
+        el.querySelector && el.querySelector("iframe[src], embed[src]");
+      return (
+        inner && (inner.getAttribute("src") || "").toLowerCase().includes(".pdf")
+      );
+    });
+    if (pdfembEls.length > 0 || pdfembLinks.length > 0) {
+      const count = Math.max(pdfembEls.length, pdfembLinks.length);
+      // Collect anchor elements only (need href for "Pick newest" feature)
+      const anchors = pdfembEls.filter(
+        (el) =>
+          el.tagName === "A" &&
+          (el.getAttribute("href") ||
+            el.getAttribute("data-url") ||
+            el.getAttribute("data-pdfurl"))
+      );
+      return {
+        emoji: "🔗",
+        summary: `PDF listing page — found ${count} PDF Embedder link(s) (WordPress plugin).`,
+        advice:
+          'Use "No — I need to click a link" or "Pick newest bulletin" below to record the right bulletin link.',
+        type: "pdfemb",
+        links: anchors,
+      };
+    }
+
+    // 3. iframes with PDF or viewer content
     const iframes = Array.from(document.querySelectorAll("iframe[src]"));
     const pdfIframes = iframes.filter((f) => {
       const src = (f.getAttribute("src") || "").toLowerCase();
@@ -111,6 +157,7 @@
         src.endsWith(".pdf") ||
         src.includes(".pdf?") ||
         src.includes("docs.google.com/viewer") ||
+        src.includes("docs.google.com/gview") ||
         src.includes("drive.google.com/file")
       );
     });
@@ -119,49 +166,196 @@
         emoji: "🖼️",
         summary: `This page embeds ${pdfIframes.length} PDF frame(s).`,
         advice: "Click \"It's embedded in a frame\" to choose the correct frame.",
+        type: "iframe",
       };
     }
-    const pdfLinks = document.querySelectorAll('a[href*=".pdf"]');
-    if (pdfLinks.length > 0) {
+    if (iframes.length > 0) {
       return {
-        emoji: "🔗",
-        summary: `Found ${pdfLinks.length} PDF link(s) on this page.`,
-        advice: "Click \"No, I need to click a link\" to select the correct one.",
+        emoji: "🖼️",
+        summary: `Found ${iframes.length} frame(s) — may contain a PDF viewer.`,
+        advice:
+          "Click \"It's embedded in a frame\" to inspect the frames, or use \"Deep Detect\" if the PDF loads in the background.",
+        type: "iframe_maybe",
       };
     }
-    const images = document.querySelectorAll("img");
-    const bulletinImages = Array.from(images).filter((img) => {
+
+    // 4. <embed> or <object> with PDF content
+    const pdfEmbeds = Array.from(
+      document.querySelectorAll("embed[src],object[data]")
+    ).filter((el) => {
       const src = (
-        (img.getAttribute("src") || "") +
-        " " +
-        (img.getAttribute("alt") || "")
+        el.getAttribute("src") ||
+        el.getAttribute("data") ||
+        ""
       ).toLowerCase();
       return (
-        src.includes("bulletin") ||
-        src.includes("newsletter") ||
-        src.includes("notice")
+        src.includes(".pdf") || el.getAttribute("type") === "application/pdf"
       );
     });
+    if (pdfEmbeds.length > 0) {
+      return {
+        emoji: "📎",
+        summary: `Found ${pdfEmbeds.length} embedded PDF object(s).`,
+        advice:
+          'If the bulletin is showing here, use "Yes, it\'s a PDF". Otherwise try "Deep Detect".',
+        type: "embed",
+      };
+    }
+
+    // 5. Generic PDF / document links
+    const pdfLinks = Array.from(document.querySelectorAll("a[href]")).filter(
+      (a) => {
+        const href = (a.getAttribute("href") || "").toLowerCase();
+        return (
+          href.includes(".pdf") ||
+          href.includes(".docx") ||
+          href.includes("/wp-content/uploads/")
+        );
+      }
+    );
+    if (pdfLinks.length > 0) {
+      const bulletinLinks = pdfLinks.filter((a) => {
+        const text = (
+          (a.innerText || a.textContent || "") +
+          " " +
+          (a.getAttribute("href") || "")
+        ).toLowerCase();
+        return /bulletin|newsletter|notice|\b\d{1,2}(st|nd|rd|th)?.{0,8}(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(
+          text
+        );
+      });
+      return {
+        emoji: "🔗",
+        summary: `Found ${pdfLinks.length} PDF link(s)${
+          bulletinLinks.length > 0
+            ? ` (${bulletinLinks.length} look like weekly bulletins)`
+            : ""
+        }.`,
+        advice:
+          "Click \"No — I need to click a link\" to select the correct bulletin.",
+        type: "pdf_links",
+        links: pdfLinks,
+        bulletinLinks,
+      };
+    }
+
+    // 6. Image bulletins
+    const bulletinImages = Array.from(document.querySelectorAll("img")).filter(
+      (img) => {
+        const src = (
+          (img.getAttribute("src") || "") +
+          " " +
+          (img.getAttribute("alt") || "")
+        ).toLowerCase();
+        return (
+          src.includes("bulletin") ||
+          src.includes("newsletter") ||
+          src.includes("notice")
+        );
+      }
+    );
     if (bulletinImages.length > 0) {
       return {
         emoji: "🖼️",
         summary: `Found ${bulletinImages.length} possible image bulletin(s).`,
         advice: "Click \"Yes, it's an image\" to crop or mark the image bulletin.",
+        type: "image",
       };
     }
+
     const allLinks = document.querySelectorAll("a[href],button");
     if (allLinks.length > 0) {
       return {
         emoji: "📋",
-        summary: "HTML listing page — no direct PDF detected.",
-        advice: "Click \"No, I need to click a link\" to point to the bulletin link.",
+        summary: "HTML page — no PDF or document links detected.",
+        advice:
+          'Try "Deep Detect" to listen for background PDF loads, or "No — I need to click a link" to navigate to the bulletin.',
+        type: "html",
       };
     }
     return {
       emoji: "❓",
       summary: "Page type not automatically detected.",
-      advice: "Try navigating to the bulletin page first, then use Guided Mode.",
+      advice:
+        "Navigate to the parish bulletin page first, then try again.",
+      type: "unknown",
     };
+  };
+
+  // ── Deep Detect: monitor network requests for document URLs ──────────────
+
+  const startDeepDetect = (onDetected, showStatus, durationMs = 10000) => {
+    const detectedUrls = new Map();
+    const origXHR = window.XMLHttpRequest;
+    const origFetch = window.fetch;
+
+    const trackUrl = (rawUrl) => {
+      if (!rawUrl) return;
+      try {
+        const abs = new URL(String(rawUrl), window.location.href).href;
+        if (isDocumentUrl(abs) && !detectedUrls.has(abs)) {
+          detectedUrls.set(abs, true);
+        }
+      } catch (_e) {
+        // ignore unparseable URLs
+      }
+    };
+
+    // Patch XMLHttpRequest
+    function PatchedXHR() {
+      const xhr = new origXHR();
+      const origOpen = xhr.open.bind(xhr);
+      xhr.open = function (method, url, ...rest) {
+        trackUrl(url);
+        return origOpen(method, url, ...rest);
+      };
+      return xhr;
+    }
+    Object.setPrototypeOf(PatchedXHR, origXHR);
+    PatchedXHR.prototype = origXHR.prototype;
+    window.XMLHttpRequest = PatchedXHR;
+
+    // Patch fetch
+    window.fetch = function (input, ...rest) {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof Request
+          ? input.url
+          : "";
+      trackUrl(url);
+      return origFetch.call(this, input, ...rest);
+    };
+
+    // Scan already-loaded resources via Performance API
+    try {
+      (window.performance.getEntriesByType("resource") || []).forEach((e) =>
+        trackUrl(e.name)
+      );
+    } catch (_e) {}
+
+    // Watch new resource loads via PerformanceObserver
+    let observer = null;
+    try {
+      observer = new PerformanceObserver((list) =>
+        list.getEntries().forEach((e) => trackUrl(e.name))
+      );
+      observer.observe({ entryTypes: ["resource"] });
+    } catch (_e) {}
+
+    if (showStatus) {
+      showStatus(
+        "🔍 Deep Detect active — interact with the page for 10 s…",
+        "info"
+      );
+    }
+
+    setTimeout(() => {
+      window.XMLHttpRequest = origXHR;
+      window.fetch = origFetch;
+      if (observer) observer.disconnect();
+      onDetected(Array.from(detectedUrls.keys()));
+    }, durationMs);
   };
 
   // ── Session step tracking ─────────────────────────────────────────────────
@@ -361,7 +555,11 @@
   const buildIframePickerPanel = (showStatus) => {
     const iframes = Array.from(document.querySelectorAll("iframe[src]"));
     if (iframes.length === 0) {
-      if (showStatus) showStatus("ℹ️ No iframes found on this page.", "info");
+      if (showStatus)
+        showStatus(
+          "ℹ️ No iframes on this page. Try \"Pick Bulletin Link\" for PDF links.",
+          "info"
+        );
       return null;
     }
 
@@ -1227,6 +1425,138 @@
       identifyResult.appendChild(document.createTextNode(" "));
       identifyResult.appendChild(summaryStrong);
       identifyResult.appendChild(adviceSpan);
+
+      // "Pick newest bulletin" shortcut for pdfemb / pdf_links pages
+      const pickableLinks = result.links || [];
+      if (
+        (result.type === "pdfemb" || result.type === "pdf_links") &&
+        pickableLinks.length > 0
+      ) {
+        const pickNewestBtn = makeSmallBtn(
+          `🎯 Pick newest bulletin (${pickableLinks.length} link${
+            pickableLinks.length !== 1 ? "s" : ""
+          } found)`,
+          "#16a34a",
+          () => {
+            // Score each link by date recency: year (most important) → month → day
+            // A higher score means a more recent (or more date-complete) link.
+            const YEAR_WEIGHT  = 10000;
+            const MONTH_WEIGHT = 100;
+            const DAY_WEIGHT   = 1;
+            const scored = pickableLinks.map((el) => {
+              const combined = (
+                (el.innerText || el.textContent || "") +
+                " " +
+                (el.getAttribute("href") || "")
+              ).toLowerCase();
+              // Extract the last 4-digit year starting with "20"
+              const yearMatches = combined.match(/20\d{2}/g) || [];
+              const yearVal = yearMatches.length
+                ? parseInt(yearMatches[yearMatches.length - 1])
+                : 0;
+              // Match a written month name to avoid false positives from
+              // unrelated numbers (e.g. "12th Sunday" would otherwise score month=12)
+              const MONTH_NAMES =
+                "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
+              const monthMatch = combined.match(
+                new RegExp("\\b(" + MONTH_NAMES + ")[a-z]*\\b")
+              );
+              const MONTH_MAP = {
+                jan: 1, feb: 2,  mar: 3,  apr: 4,
+                may: 5, jun: 6,  jul: 7,  aug: 8,
+                sep: 9, oct: 10, nov: 11, dec: 12,
+              };
+              const monthVal = monthMatch ? (MONTH_MAP[monthMatch[1]] || 0) : 0;
+              // Extract a 1-or-2-digit day near the month name
+              const dayMatch = combined.match(
+                /\b([12]?\d|3[01])(st|nd|rd|th)?\b/
+              );
+              const dayVal = dayMatch ? parseInt(dayMatch[1]) : 0;
+              return {
+                el,
+                score:
+                  yearVal * YEAR_WEIGHT +
+                  monthVal * MONTH_WEIGHT +
+                  dayVal * DAY_WEIGHT,
+              };
+            });
+            scored.sort((a, b) => b.score - a.score);
+            showPickConfirmation(scored[0].el);
+          },
+          "Automatically selects the most recent bulletin link for you to confirm"
+        );
+        pickNewestBtn.style.marginTop = "6px";
+        identifyResult.appendChild(pickNewestBtn);
+      }
+
+      // "Deep Detect" button for pages with no obvious document content
+      if (
+        result.type === "html" ||
+        result.type === "unknown" ||
+        result.type === "embed" ||
+        result.type === "iframe_maybe"
+      ) {
+        const deepBtn = makeSmallBtn(
+          "🕵️ Deep Detect (10 s) — watch for hidden PDF loads",
+          "#4b5563",
+          () => {
+            deepBtn.disabled = true;
+            deepBtn.style.opacity = "0.5";
+            startDeepDetect(
+              (urls) => {
+                deepBtn.disabled = false;
+                deepBtn.style.opacity = "1";
+                if (urls.length === 0) {
+                  showStatus(
+                    "Deep Detect: no document URLs detected in 10 s.",
+                    "info"
+                  );
+                  return;
+                }
+                identifyResult.innerHTML = "";
+                const heading = document.createElement("div");
+                heading.style.cssText =
+                  "font-weight:600;color:#93c5fd;margin-bottom:5px;font-size:10px;";
+                heading.textContent = `🕵️ Detected ${urls.length} document URL(s):`;
+                identifyResult.appendChild(heading);
+                urls.forEach((url) => {
+                  const row = document.createElement("div");
+                  row.style.cssText =
+                    "display:flex;gap:5px;margin-bottom:3px;align-items:center;";
+                  const preview = document.createElement("span");
+                  preview.style.cssText =
+                    "flex:1;font-size:9px;word-break:break-all;color:#d1d5db;";
+                  preview.textContent =
+                    url.length > 70 ? url.slice(0, 67) + "…" : url;
+                  const useBtn = document.createElement("button");
+                  useBtn.textContent = "Use";
+                  useBtn.style.cssText = [
+                    "border:none",
+                    "border-radius:3px",
+                    "padding:2px 6px",
+                    "background:#16a34a",
+                    "color:#fff",
+                    "cursor:pointer",
+                    "font-size:9px",
+                    "font-family:inherit",
+                    "flex-shrink:0",
+                  ].join(";");
+                  useBtn.addEventListener("click", () =>
+                    markDownloadUrlSafe(url, showStatus, isDocumentUrl(url))
+                  );
+                  row.appendChild(preview);
+                  row.appendChild(useBtn);
+                  identifyResult.appendChild(row);
+                });
+              },
+              showStatus
+            );
+          },
+          "Listens for any PDF/DOCX requests the page makes in the background — interact with the page to trigger loads"
+        );
+        deepBtn.style.marginTop = "6px";
+        identifyResult.appendChild(deepBtn);
+      }
     });
 
     body.appendChild(identifyBtn);
