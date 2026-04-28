@@ -1262,7 +1262,7 @@
 
     const wizardQ = document.createElement("div");
     wizardQ.style.cssText = "font-size:11px;font-weight:600;margin-bottom:6px;color:#93c5fd;";
-    wizardQ.textContent = "Step 1: Do you see the bulletin on screen?";
+    wizardQ.textContent = "What do you see on screen?";
 
     const wizardBtns = document.createElement("div");
     wizardBtns.style.cssText = "display:flex;flex-direction:column;gap:5px;";
@@ -1390,51 +1390,33 @@
       }
     };
 
-    // Wizard buttons (Guided Mode ON by default)
+    // Wizard buttons (Guided Mode — 3 simple choices)
     wizardBtns.appendChild(
       makeSmallBtn(
-        "✅ Yes, it's a PDF — mark this URL",
+        "📄 Get a PDF (recommended)",
         "#16a34a",
         () => markDownloadUrlSafe(window.location.href, showStatus, false),
-        "The browser is showing a PDF — record this URL as the bulletin file"
+        "The bulletin is a PDF — record this URL as the bulletin file"
       )
     );
     wizardBtns.appendChild(
       makeSmallBtn(
-        "🖼️ Yes, it's an image — crop it",
+        "🖼️ Get an image (newsletter screenshot)",
         "#2563eb",
         () => {
           bar.dataset.phHidden = "true";
           bar.style.display = "none";
           startCrop();
         },
-        "The bulletin is shown as an image — draw a crop rectangle"
+        "The bulletin is an image on screen — draw a rectangle to capture it"
       )
     );
     wizardBtns.appendChild(
       makeSmallBtn(
-        "📄 No — I need to click a link first",
+        "🔗 I need to click something first",
         "#2563eb",
         () => startPickLinkMode(showPickConfirmation, showStatus),
-        "Hover over links and click one to record a navigation step"
-      )
-    );
-    wizardBtns.appendChild(
-      makeSmallBtn(
-        "📐 It's embedded in a frame / viewer",
-        "#2563eb",
-        () => {
-          const pickerPanel = buildIframePickerPanel(showStatus);
-          if (pickerPanel) {
-            guidedPanel.innerHTML = "";
-            const backBtn = makeSmallBtn("← Back", "#374151", resetGuidedPanel);
-            backBtn.style.width = "auto";
-            backBtn.style.marginBottom = "6px";
-            guidedPanel.appendChild(backBtn);
-            guidedPanel.appendChild(pickerPanel);
-          }
-        },
-        "The bulletin is inside an iframe or Google Docs viewer — pick the frame"
+        "Click a link or button to navigate to the bulletin"
       )
     );
 
@@ -1644,8 +1626,7 @@
       }
     });
 
-    body.appendChild(identifyBtn);
-    body.appendChild(identifyResult);
+    // identifyBtn and identifyResult are added to the Advanced section below.
 
     // ── RECIPE PREVIEW ─────────────────────────────────────────────────────
     const recipeSection = document.createElement("div");
@@ -1824,7 +1805,63 @@
     );
 
     advancedBodyEl.appendChild(row);
-    advancedSection.appendChild(advancedHeaderEl);
+
+    // ── Iframe picker in Advanced ─────────────────────────────────────────
+    const iframePickerBtn = makeBtn("📐 It's in a frame / viewer", () => {
+      const pickerPanel = buildIframePickerPanel(showStatus);
+      if (pickerPanel) {
+        guidedPanel.innerHTML = "";
+        const backBtn = makeSmallBtn("← Back", "#374151", resetGuidedPanel);
+        backBtn.style.width = "auto";
+        backBtn.style.marginBottom = "6px";
+        guidedPanel.appendChild(backBtn);
+        guidedPanel.appendChild(pickerPanel);
+        advancedSection.style.display = "none";
+      }
+    });
+    iframePickerBtn.style.marginTop = "5px";
+    advancedBodyEl.appendChild(iframePickerBtn);
+
+    // ── Capture newsletter column (auto) ──────────────────────────────────
+    const CONTENT_SELECTORS = [
+      "article",
+      ".entry-content",
+      ".post-content",
+      ".content-area",
+      ".inside-article",
+      ".site-content",
+      '[role="main"]',
+      "main",
+    ];
+    const captureAreaBtn = makeBtn("📰 Capture newsletter column (auto)", () => {
+      let found = null;
+      for (const sel of CONTENT_SELECTORS) {
+        const el = document.querySelector(sel);
+        if (el) { found = el; break; }
+      }
+      if (!found) {
+        showStatus("ℹ️ No main content column detected — try crop manually.", "info");
+        return;
+      }
+      const prevOutline = found.style.outline;
+      found.style.outline = "3px solid #f59e0b";
+      found.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      showStatus(
+        "📰 Content column highlighted in orange. Use crop (or Add More) to capture it.",
+        "info"
+      );
+      setTimeout(() => {
+        if (found.style.outline === "3px solid #f59e0b") {
+          found.style.outline = prevOutline;
+        }
+      }, 5000);
+    });
+    advancedBodyEl.appendChild(captureAreaBtn);
+
+    // ── Identify page (moved from main body to Advanced) ──────────────────
+    identifyBtn.style.marginTop = "5px";
+    advancedBodyEl.appendChild(identifyBtn);
+    advancedBodyEl.appendChild(identifyResult);
     advancedSection.appendChild(advancedBodyEl);
     body.appendChild(advancedSection);
 
