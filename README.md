@@ -76,7 +76,16 @@ When you open a parish page during training, the floating toolbar automatically 
 
 ### Other features
 
-- **🔍 Help me identify this page** — runs lightweight detection and explains what type of page you are on (direct PDF, HTML with links, iframe embed, image bulletin) with a plain-English recommendation.
+- **🔍 Help me identify this page** — runs lightweight detection and explains what type of page you are on. Correctly identifies:
+  - Direct PDF pages
+  - **WordPress PDF Embedder pages** (`a.pdfemb-viewer` links) — shown as "PDF listing page" not "HTML only"
+  - Embedded PDF iframes (including Google Docs viewer)
+  - `<embed>`/`<object>` PDF elements
+  - Generic PDF/DOCX links (ranks weekly-bulletin-looking links first)
+  - Image bulletins
+  - HTML-only pages
+- **🎯 Pick newest bulletin** — appears automatically after identification when PDF Embedder or PDF links are found. Scores links by date and picks the most recent one for you to confirm.
+- **🕵️ Deep Detect (10 s)** — appears for HTML/unknown/embed pages. Patches `XMLHttpRequest` and `fetch` for 10 seconds and watches `PerformanceObserver`, then lists any PDF/DOCX URLs it detected in the background. Useful when the PDF loads hidden behind a viewer plugin.
 - **📋 Recipe Preview** — shows all recorded steps for the current session. Click the header to expand it.
 - **↩ Undo Last Step** — removes the most recently recorded step from both the UI and the training session.
 - **Advanced Options** — collapses the original buttons (Mark Page as HTML / Mark Current URL as File / Crop Bulletin Image) for power users or edge cases. Accessible via "I'm stuck — show all options".
