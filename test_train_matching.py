@@ -285,5 +285,113 @@ https://www.antrimparish.com
             self.assertLessEqual(len(reader.pages), ok_page_count + 2)
 
 
+class UrlDateParsingAndScoringTests(unittest.TestCase):
+    """Unit tests for URL date extraction and candidate ranking helpers."""
+
+    def test_extract_date_iso_format(self) -> None:
+        from harvester.utils import extract_date_from_string
+        from datetime import date as _date
+        self.assertEqual(extract_date_from_string("2026-04-26"), _date(2026, 4, 26))
+        self.assertEqual(extract_date_from_string("2026-05-03"), _date(2026, 5, 3))
+        self.assertEqual(extract_date_from_string("2025-12-28"), _date(2025, 12, 28))
+
+    def test_extract_date_iso_nodash(self) -> None:
+        from harvester.utils import extract_date_from_string
+        from datetime import date as _date
+        self.assertEqual(extract_date_from_string("20260426"), _date(2026, 4, 26))
+        self.assertEqual(extract_date_from_string("20260503"), _date(2026, 5, 3))
+
+    def test_extract_date_ddmmyyyy(self) -> None:
+        from harvester.utils import extract_date_from_string
+        from datetime import date as _date
+        self.assertEqual(extract_date_from_string("26042026"), _date(2026, 4, 26))
+
+    def test_extract_date_slug_ordinal(self) -> None:
+        from harvester.utils import extract_date_from_slug
+        from datetime import date as _date
+        # Antrim-style: "26th-April-2026" and "3rd-May-2026"
+        self.assertEqual(extract_date_from_slug("26th-April-2026"), _date(2026, 4, 26))
+        self.assertEqual(extract_date_from_slug("3rd-May-2026"), _date(2026, 5, 3))
+        self.assertEqual(extract_date_from_slug("1st-January-2026"), _date(2026, 1, 1))
+        self.assertEqual(extract_date_from_slug("22nd-November-2026"), _date(2026, 11, 22))
+
+    def test_extract_date_slug_plain_dash(self) -> None:
+        from harvester.utils import extract_date_from_slug
+        from datetime import date as _date
+        self.assertEqual(extract_date_from_slug("26-april-2026"), _date(2026, 4, 26))
+        self.assertEqual(extract_date_from_slug("3-may-2026"), _date(2026, 5, 3))
+
+    def test_extract_date_slug_underscore(self) -> None:
+        from harvester.utils import extract_date_from_slug
+        from datetime import date as _date
+        self.assertEqual(extract_date_from_slug("5_april_2026"), _date(2026, 4, 5))
+
+    def test_extract_candidate_date_combines_parsers(self) -> None:
+        """_extract_candidate_date delegates to both extract_date_from_string and slug."""
+        from harvester.fetcher import _extract_candidate_date
+        from datetime import date as _date
+        # ISO in a decoded URL path
+        self.assertEqual(
+            _extract_candidate_date("https://example.com/uploads/2026-04-26/bulletin.pdf"),
+            _date(2026, 4, 26),
+        )
+        # Ordinal slug in filename
+        self.assertEqual(
+            _extract_candidate_date("https://antrimparish.com/wp-content/uploads/2026/04/26th-April-2026.pdf"),
+            _date(2026, 4, 26),
+        )
+        # No date → None
+        self.assertIsNone(_extract_candidate_date("https://example.com/bulletin.pdf"))
+
+    def test_candidate_score_prefers_target_week_over_older(self) -> None:
+        """A URL matching the target date must score higher than an older URL."""
+        from harvester.fetcher import _candidate_score
+        from datetime import date as _date
+        target = _date(2026, 5, 3)
+        may3_url = "https://antrimparish.com/wp-content/uploads/2026/05/3rd-May-2026.pdf"
+        apr26_url = "https://antrimparish.com/wp-content/uploads/2026/04/26th-April-2026.pdf"
+        self.assertGreater(
+            _candidate_score(target, may3_url, "", 0),
+            _candidate_score(target, apr26_url, "", 1),
+        )
+
+    def test_candidate_score_current_week_beats_undated(self) -> None:
+        """A URL with a date in the current week outranks a URL with no date."""
+        from harvester.fetcher import _candidate_score
+        from datetime import date as _date
+        target = _date(2026, 4, 26)
+        dated_url = "https://example.com/wp-content/uploads/2026/04/26th-April-2026.pdf"
+        undated_url = "https://example.com/bulletin.pdf"
+        self.assertGreater(
+            _candidate_score(target, dated_url, "", 0),
+            _candidate_score(target, undated_url, "", 1),
+        )
+
+    def test_candidate_score_stale_dates_ranked_below_undated(self) -> None:
+        """A URL with a clearly stale date scores lower than an undated URL."""
+        from harvester.fetcher import _candidate_score
+        from datetime import date as _date
+        target = _date(2026, 5, 3)
+        stale_url = "https://example.com/wp-content/uploads/2026/01/1st-January-2026.pdf"
+        undated_url = "https://example.com/bulletin.pdf"
+        # not_known_stale component makes stale rank below undated
+        self.assertGreater(
+            _candidate_score(target, undated_url, "", 1),
+            _candidate_score(target, stale_url, "", 0),
+        )
+
+    def test_candidate_score_may3_over_apr26_realistic_urls(self) -> None:
+        """Realistic Antrim-style URL: May 3rd ranks above April 26th on 3rd May."""
+        from harvester.fetcher import _candidate_score
+        from datetime import date as _date
+        target = _date(2026, 5, 3)
+        urls = [
+            "https://www.antrimparish.com/wp-content/uploads/2026/04/26th-April-2026.pdf",
+            "https://www.antrimparish.com/wp-content/uploads/2026/05/3rd-May-2026.pdf",
+        ]
+        scores = [_candidate_score(target, u, "", i) for i, u in enumerate(urls)]
+        self.assertGreater(scores[1], scores[0], "May 3rd URL must outscore April 26th URL")
+
+
 if __name__ == "__main__":
     unittest.main()
