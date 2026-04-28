@@ -74,6 +74,81 @@
     return cssPath(el);
   };
 
+  // ── URL date extraction and candidate scoring ──────────────────────────────
+
+  // Month abbreviation (first 3 letters, lowercase) → month number
+  const _MONTH_ABBR_MAP = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+  };
+
+  /**
+   * Extract the best date from a URL / filename string.
+   * Returns {year, month, day} or null.
+   * month and/or day may be 0 when not found (partial date).
+   * Handles: ISO (2026-04-26), WP path (/2026/04/26/), ordinal slug
+   * (26th-April-2026), ISO-nodash (20260426), DDMMYYYY (26042026),
+   * year-month path (/2026/04/), and bare year (2026).
+   */
+  const extractDateFromUrl = (text) => {
+    let s;
+    try { s = decodeURIComponent(text).toLowerCase(); } catch (_e) { s = text.toLowerCase(); }
+
+    // ISO: 2026-04-26
+    let m = s.match(/\b(20\d{2})-(0[1-9]|1[0-2])-([0-2]\d|3[01])\b/);
+    if (m) return { year: +m[1], month: +m[2], day: +m[3] };
+
+    // WP path: /2026/04/26/
+    m = s.match(/\/(20\d{2})\/(0[1-9]|1[0-2])\/([0-2]\d|3[01])\//);
+    if (m) return { year: +m[1], month: +m[2], day: +m[3] };
+
+    // Ordinal / plain slug: 26th-april-2026, 3rd-may-2026, 26-april-2026, 26_april_2026
+    m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?[-_]([a-z]{3,9})[-_](20\d{2})\b/);
+    if (m) {
+      const mo = _MONTH_ABBR_MAP[m[2].slice(0, 3)];
+      if (mo) return { year: +m[3], month: mo, day: +m[1] };
+    }
+
+    // ISO nodash: 20260426 (8 consecutive digits)
+    m = s.match(/(?<!\d)(20\d{2})(0[1-9]|1[0-2])([0-2]\d|3[01])(?!\d)/);
+    if (m) return { year: +m[1], month: +m[2], day: +m[3] };
+
+    // DDMMYYYY: 26042026 (last resort — inherently ambiguous, restrict to 2020-2039 to reduce false positives)
+    m = s.match(/(?<!\d)([0-2]\d|3[01])(0[1-9]|1[0-2])(20[2-3]\d)(?!\d)/);
+    if (m) return { year: +m[3], month: +m[2], day: +m[1] };
+
+    // WP year/month path: /2026/04/ (partial — no day)
+    m = s.match(/\/(20\d{2})\/(0[1-9]|1[0-2])\//);
+    if (m) return { year: +m[1], month: +m[2], day: 0 };
+
+    // Bare year only (fallback — match any 20xx year)
+    m = s.match(/\b(20\d{2})\b/);
+    if (m) return { year: +m[1], month: 0, day: 0 };
+
+    return null;
+  };
+
+  /**
+   * Score a URL+label candidate for bulletin date ranking.
+   * Higher total = better candidate (newer date, better keywords, pdf preferred).
+   * Returns {dateScore, tieBreaker, hasDate, hasFullDate, total}.
+   */
+  const scoreUrlCandidateStr = (url, label, domIdx) => {
+    let decoded;
+    try { decoded = decodeURIComponent((url || "") + " " + (label || "")).toLowerCase(); }
+    catch (_e) { decoded = ((url || "") + " " + (label || "")).toLowerCase(); }
+    const d = extractDateFromUrl(decoded);
+    const dateScore = d ? d.year * 10000 + d.month * 100 + d.day : 0;
+    const hasFullDate = d !== null && d.month > 0 && d.day > 0;
+    const hasDate = d !== null && d.year > 0;
+    const keywordBonus = /\b(bulletin|newsletter|notice)\b/.test(decoded) ? 5 : 0;
+    const pdfBonus = /\.pdf(\?|$)/.test(decoded) ? 3 : 0;
+    const docxBonus = /\.docx(\?|$)/.test(decoded) ? 1 : 0;
+    const uploadsBonus = decoded.includes("/uploads/") || decoded.includes("/wp-content/") ? 2 : 0;
+    const tieBreaker = keywordBonus + pdfBonus + docxBonus + uploadsBonus - (domIdx || 0) * 0.001;
+    return { dateScore, tieBreaker, hasDate, hasFullDate, total: dateScore * 100 + tieBreaker };
+  };
+
   // Returns true if the URL looks like a downloadable document.
   const isDocumentUrl = (url) => {
     if (!url) return false;
@@ -1407,6 +1482,78 @@
       }
     };
 
+    // Show a "please choose" panel when the top candidate is ambiguous.
+    const showPickMultipleChoice = (candidates, hasAnyDate) => {
+      guidedPanel.innerHTML = "";
+
+      const heading = document.createElement("div");
+      heading.style.cssText = "font-weight:600;color:#fbbf24;margin-bottom:6px;font-size:11px;";
+      heading.textContent = hasAnyDate
+        ? "Multiple dated bulletins found — please pick one:"
+        : "No dates detected — please pick the correct bulletin:";
+      guidedPanel.appendChild(heading);
+
+      candidates.forEach(({ el, url, label }) => {
+        const row = document.createElement("div");
+        row.style.cssText = [
+          "display:flex",
+          "align-items:center",
+          "gap:5px",
+          "padding:4px",
+          "margin-bottom:4px",
+          "background:#0f172a",
+          "border-radius:4px",
+        ].join(";");
+
+        const info = document.createElement("div");
+        info.style.cssText = [
+          "flex:1",
+          "font-size:9px",
+          "word-break:break-all",
+          "color:#d1d5db",
+          "line-height:1.35",
+          "white-space:pre-wrap",
+        ].join(";");
+        const shortUrl = (url || "").length > 55 ? (url || "").slice(0, 52) + "…" : (url || "");
+        const shortLabel = (label || "").slice(0, 40);
+        info.textContent = shortLabel ? shortLabel + "\n" + shortUrl : shortUrl;
+
+        const pickBtn = document.createElement("button");
+        pickBtn.textContent = "Use this";
+        pickBtn.style.cssText = [
+          "border:none",
+          "border-radius:3px",
+          "padding:3px 7px",
+          "background:#2563eb",
+          "color:#fff",
+          "cursor:pointer",
+          "font-size:9px",
+          "font-family:inherit",
+          "flex-shrink:0",
+        ].join(";");
+        pickBtn.addEventListener("click", () => showPickConfirmation(el));
+        row.appendChild(info);
+        row.appendChild(pickBtn);
+        guidedPanel.appendChild(row);
+      });
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "↩ Cancel";
+      cancelBtn.style.cssText = [
+        "border:none",
+        "border-radius:3px",
+        "padding:3px 8px",
+        "background:#374151",
+        "color:#d1d5db",
+        "cursor:pointer",
+        "font-size:9px",
+        "font-family:inherit",
+        "margin-top:4px",
+      ].join(";");
+      cancelBtn.addEventListener("click", resetGuidedPanel);
+      guidedPanel.appendChild(cancelBtn);
+    };
+
     // Wizard buttons (Guided Mode — 3 simple choices)
     wizardBtns.appendChild(
       makeSmallBtn(
@@ -1522,50 +1669,27 @@
           } found)`,
           "#16a34a",
           () => {
-            // Score each link by date recency: year (most important) → month → day
-            // A higher score means a more recent (or more date-complete) link.
-            const YEAR_WEIGHT  = 10000;
-            const MONTH_WEIGHT = 100;
-            const DAY_WEIGHT   = 1;
-            const scored = pickableLinks.map((el) => {
-              const combined = (
-                (el.innerText || el.textContent || "") +
-                " " +
-                (el.getAttribute("href") || "")
-              ).toLowerCase();
-              // Extract the last 4-digit year starting with "20"
-              const yearMatches = combined.match(/20\d{2}/g) || [];
-              const yearVal = yearMatches.length
-                ? parseInt(yearMatches[yearMatches.length - 1])
-                : 0;
-              // Match a written month name to avoid false positives from
-              // unrelated numbers (e.g. "12th Sunday" would otherwise score month=12)
-              const MONTH_NAMES =
-                "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
-              const monthMatch = combined.match(
-                new RegExp("\\b(" + MONTH_NAMES + ")[a-z]*\\b")
-              );
-              const MONTH_MAP = {
-                jan: 1, feb: 2,  mar: 3,  apr: 4,
-                may: 5, jun: 6,  jul: 7,  aug: 8,
-                sep: 9, oct: 10, nov: 11, dec: 12,
-              };
-              const monthVal = monthMatch ? (MONTH_MAP[monthMatch[1]] || 0) : 0;
-              // Extract a 1-or-2-digit day near the month name
-              const dayMatch = combined.match(
-                /\b([12]?\d|3[01])(st|nd|rd|th)?\b/
-              );
-              const dayVal = dayMatch ? parseInt(dayMatch[1]) : 0;
-              return {
-                el,
-                score:
-                  yearVal * YEAR_WEIGHT +
-                  monthVal * MONTH_WEIGHT +
-                  dayVal * DAY_WEIGHT,
-              };
+            // Score each link using extracted date + keyword/filetype tie-breakers.
+            const scored = pickableLinks.map((el, idx) => {
+              const url = el.getAttribute("href") || "";
+              const label = (el.innerText || el.textContent || "").trim();
+              const s = scoreUrlCandidateStr(url, label, idx);
+              return { el, url, label, ...s };
             });
-            scored.sort((a, b) => b.score - a.score);
-            showPickConfirmation(scored[0].el);
+            scored.sort((a, b) => b.total - a.total);
+
+            // Ambiguous: no dates found at all, or top two candidates share the
+            // same date score (cannot tell which is newer).
+            const hasAnyDate = scored.some((c) => c.hasDate);
+            const ambiguous =
+              !hasAnyDate ||
+              (scored.length > 1 && scored[0].dateScore === scored[1].dateScore);
+
+            if (!ambiguous) {
+              showPickConfirmation(scored[0].el);
+            } else {
+              showPickMultipleChoice(scored.slice(0, 3), hasAnyDate);
+            }
           },
           "Automatically selects the most recent bulletin link for you to confirm"
         );
@@ -1601,17 +1725,49 @@
                 const heading = document.createElement("div");
                 heading.style.cssText =
                   "font-weight:600;color:#93c5fd;margin-bottom:5px;font-size:10px;";
-                heading.textContent = `🕵️ Detected ${urls.length} document URL(s):`;
+
+                // Sort detected URLs by date score (newest first)
+                const scoredUrls = urls.map((url, idx) => ({
+                  url,
+                  ...scoreUrlCandidateStr(url, "", idx),
+                }));
+                scoredUrls.sort((a, b) => b.total - a.total);
+                const hasAnyUrlDate = scoredUrls.some((c) => c.hasDate);
+
+                heading.textContent = `🕵️ Detected ${urls.length} document URL(s) — sorted by recency:`;
                 identifyResult.appendChild(heading);
-                urls.forEach((url) => {
+
+                // Explain the recommendation or warn that no dates were found
+                const note = document.createElement("div");
+                note.style.cssText = "font-size:9px;margin-bottom:5px;";
+                if (hasAnyUrlDate) {
+                  note.style.color = "#6b7280";
+                  note.textContent = "⭐ marks the recommended pick (looks like the newest dated bulletin).";
+                } else {
+                  note.style.color = "#fbbf24";
+                  note.textContent = "⚠️ No dates detected in URLs — please review and pick manually.";
+                }
+                identifyResult.appendChild(note);
+
+                scoredUrls.forEach(({ url, hasDate }, rankIdx) => {
                   const row = document.createElement("div");
                   row.style.cssText =
                     "display:flex;gap:5px;margin-bottom:3px;align-items:center;";
+                  // Highlight the top recommended URL when we have date info
+                  if (rankIdx === 0 && hasDate) {
+                    row.style.cssText +=
+                      "background:#052e16;border-radius:3px;padding:2px 3px;";
+                  }
                   const preview = document.createElement("span");
                   preview.style.cssText =
-                    "flex:1;font-size:9px;word-break:break-all;color:#d1d5db;";
-                  preview.textContent =
-                    url.length > 70 ? url.slice(0, 67) + "…" : url;
+                    "flex:1;font-size:9px;word-break:break-all;line-height:1.35;white-space:pre-wrap;";
+                  preview.style.color = (rankIdx === 0 && hasDate) ? "#86efac" : "#d1d5db";
+                  let labelText = "";
+                  if (rankIdx === 0 && hasDate) {
+                    labelText = "⭐ Recommended (newest)\n";
+                  }
+                  labelText += url.length > 70 ? url.slice(0, 67) + "…" : url;
+                  preview.textContent = labelText;
                   const useBtn = document.createElement("button");
                   useBtn.textContent = "Use";
                   useBtn.style.cssText = [
