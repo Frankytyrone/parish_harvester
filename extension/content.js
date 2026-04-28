@@ -113,7 +113,7 @@
     m = s.match(/(?<!\d)(20\d{2})(0[1-9]|1[0-2])([0-2]\d|3[01])(?!\d)/);
     if (m) return { year: +m[1], month: +m[2], day: +m[3] };
 
-    // DDMMYYYY: 26042026 (last resort — ambiguous with above, validate year range)
+    // DDMMYYYY: 26042026 (last resort — inherently ambiguous, restrict to 2020-2039 to reduce false positives)
     m = s.match(/(?<!\d)([0-2]\d|3[01])(0[1-9]|1[0-2])(20[2-3]\d)(?!\d)/);
     if (m) return { year: +m[3], month: +m[2], day: +m[1] };
 
@@ -121,8 +121,8 @@
     m = s.match(/\/(20\d{2})\/(0[1-9]|1[0-2])\//);
     if (m) return { year: +m[1], month: +m[2], day: 0 };
 
-    // Bare year only (fallback)
-    m = s.match(/\b(20[2-3]\d)\b/);
+    // Bare year only (fallback — match any 20xx year)
+    m = s.match(/\b(20\d{2})\b/);
     if (m) return { year: +m[1], month: 0, day: 0 };
 
     return null;
