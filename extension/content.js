@@ -755,8 +755,34 @@
       });
       overlay.appendChild(rect);
 
+      // Scroll hint shown while the overlay is active
+      const scrollHint = document.createElement("div");
+      Object.assign(scrollHint.style, {
+        position: "fixed",
+        bottom: "14px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: "2147483647",
+        background: "rgba(30,41,59,0.92)",
+        color: "#93c5fd",
+        borderRadius: "6px",
+        padding: "5px 14px",
+        fontSize: "11px",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        pointerEvents: "none",
+        whiteSpace: "nowrap",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+      });
+      scrollHint.textContent =
+        "🖱 Scroll with mouse wheel · drag near top/bottom edge to auto-scroll · Add More for multi-section";
+      overlay.appendChild(scrollHint);
+
       let startX = 0;
       let startY = 0;
+      let scrollYAtDragStart = 0;
+      let lastMouseClientX = 0;
+      let lastMouseClientY = 0;
+      let autoScrollRAF = null;
       let dragging = false;
       let editMode = false;
       let cropBox = { left: 0, top: 0, width: 0, height: 0 };
@@ -967,13 +993,15 @@
 
       const onMove = (event) => {
         if (!dragging || editMode) return;
-        const currentX = event.clientX;
-        const currentY = event.clientY;
+        lastMouseClientX = event.clientX;
+        lastMouseClientY = event.clientY;
+        const scrollDelta = window.scrollY - scrollYAtDragStart;
+        const adjustedStartY = startY - scrollDelta;
         cropBox = {
-          left:   Math.min(startX, currentX),
-          top:    Math.min(startY, currentY),
-          width:  Math.abs(currentX - startX),
-          height: Math.abs(currentY - startY),
+          left:   Math.min(startX, event.clientX),
+          top:    Math.min(adjustedStartY, event.clientY),
+          width:  Math.abs(event.clientX - startX),
+          height: Math.abs(event.clientY - adjustedStartY),
         };
         syncRect();
       };
@@ -981,13 +1009,19 @@
       const finish = (event) => {
         if (!dragging) return;
         dragging = false;
+        if (autoScrollRAF !== null) {
+          cancelAnimationFrame(autoScrollRAF);
+          autoScrollRAF = null;
+        }
         const endX = event.clientX;
         const endY = event.clientY;
+        const scrollDelta = window.scrollY - scrollYAtDragStart;
+        const adjustedStartY = startY - scrollDelta;
         cropBox = {
           left:   Math.min(startX, endX),
-          top:    Math.min(startY, endY),
+          top:    Math.min(adjustedStartY, endY),
           width:  Math.abs(endX - startX),
-          height: Math.abs(endY - startY),
+          height: Math.abs(endY - adjustedStartY),
         };
         if (cropBox.width < MIN_CROP_SIZE || cropBox.height < MIN_CROP_SIZE) {
           if (sections.length === 0) removeCropOverlay();
@@ -997,14 +1031,65 @@
         showEditMode();
       };
 
+      // ── Auto-scroll while dragging near the top/bottom edge ──────────────
+      const AUTOSCROLL_EDGE_PX = 60;
+      const AUTOSCROLL_SPEED_PX = 8;
+
+      const autoScrollTick = () => {
+        if (!dragging || editMode) {
+          autoScrollRAF = null;
+          return;
+        }
+        let scrollDir = 0;
+        if (lastMouseClientY < AUTOSCROLL_EDGE_PX) {
+          scrollDir = -AUTOSCROLL_SPEED_PX;
+        } else if (lastMouseClientY > window.innerHeight - AUTOSCROLL_EDGE_PX) {
+          scrollDir = AUTOSCROLL_SPEED_PX;
+        }
+        if (scrollDir !== 0) {
+          window.scrollBy(0, scrollDir);
+          const scrollDelta = window.scrollY - scrollYAtDragStart;
+          const adjustedStartY = startY - scrollDelta;
+          cropBox = {
+            left:   Math.min(startX, lastMouseClientX),
+            top:    Math.min(adjustedStartY, lastMouseClientY),
+            width:  Math.abs(lastMouseClientX - startX),
+            height: Math.abs(lastMouseClientY - adjustedStartY),
+          };
+          syncRect();
+        }
+        autoScrollRAF = requestAnimationFrame(autoScrollTick);
+      };
+
       overlay.addEventListener("mousedown", (event) => {
         if (editMode) return;
         event.preventDefault();
         startX = event.clientX;
         startY = event.clientY;
+        scrollYAtDragStart = window.scrollY;
+        lastMouseClientX = event.clientX;
+        lastMouseClientY = event.clientY;
         dragging = true;
         rect.style.display = "none";
+        autoScrollRAF = requestAnimationFrame(autoScrollTick);
       });
+
+      // Allow mouse-wheel scrolling while the overlay is active.
+      overlay.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        window.scrollBy(0, event.deltaY);
+        if (dragging) {
+          const scrollDelta = window.scrollY - scrollYAtDragStart;
+          const adjustedStartY = startY - scrollDelta;
+          cropBox = {
+            left:   Math.min(startX, lastMouseClientX),
+            top:    Math.min(adjustedStartY, lastMouseClientY),
+            width:  Math.abs(lastMouseClientX - startX),
+            height: Math.abs(lastMouseClientY - adjustedStartY),
+          };
+          syncRect();
+        }
+      }, { passive: false });
       overlay.addEventListener("mousemove", onMove);
       overlay.addEventListener("mouseup", finish);
       overlay.addEventListener("mouseleave", (event) => {
