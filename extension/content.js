@@ -1267,14 +1267,31 @@
     const wizardBtns = document.createElement("div");
     wizardBtns.style.cssText = "display:flex;flex-direction:column;gap:5px;";
 
-    const stuckLink = document.createElement("div");
-    stuckLink.style.cssText =
-      "font-size:9px;color:#6b7280;margin-top:4px;cursor:pointer;text-decoration:underline;display:inline-block;";
+    const stuckLink = document.createElement("button");
+    stuckLink.type = "button";
+    stuckLink.style.cssText = [
+      "font-size:9px",
+      "color:#6b7280",
+      "margin-top:4px",
+      "cursor:pointer",
+      "text-decoration:underline",
+      "background:none",
+      "border:none",
+      "padding:0",
+      "font-family:inherit",
+      "display:inline-block",
+    ].join(";");
     stuckLink.textContent = "I'm stuck — show all options";
     stuckLink.title = "Open the advanced section with all manual controls";
     stuckLink.addEventListener("click", () => {
-      advancedSection.style.display =
-        advancedSection.style.display === "none" ? "block" : "none";
+      const isHidden = advancedSection.style.display === "none";
+      advancedSection.style.display = isHidden ? "block" : "none";
+      if (isHidden) {
+        // Auto-expand the body so content is immediately visible
+        advOpen = true;
+        advancedBodyEl.style.display = "block";
+        advancedToggleEl.textContent = "▼";
+      }
     });
 
     const resetGuidedPanel = () => {
