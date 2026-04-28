@@ -55,22 +55,22 @@
 
       <p id="status">Ready.</p>
 
-      <!-- Guided mode wizard -->
+      <!-- Guided mode wizard — 3 simple choices -->
       <div class="section">
-        <div class="section-title">Step 1: Do you see the bulletin?</div>
+        <div class="section-title">What do you see on screen?</div>
         <div class="btn-col">
-          <button id="wizard-pdf"   class="green">✅ Yes, it's a PDF — mark this URL</button>
-          <button id="wizard-image">🖼️ Yes, it's an image — crop it</button>
-          <button id="wizard-link" >📄 No — I need to click a link first</button>
-          <button id="wizard-iframe">📐 It's embedded in a frame / viewer</button>
+          <button id="wizard-pdf" class="green">📄 Get a PDF (recommended)</button>
+          <button id="wizard-image">🖼️ Get an image (newsletter screenshot)</button>
+          <button id="wizard-link">🔗 I need to click something first</button>
         </div>
       </div>
 
-      <!-- Advanced (fallback) options -->
+      <!-- Advanced / More options -->
       <details>
-        <summary>⚙️ Advanced / fallback options</summary>
+        <summary>⚙️ Advanced / More options</summary>
         <div class="inner section">
           <div class="btn-col">
+            <button id="wizard-iframe" type="button">📐 It's in a frame / viewer</button>
             <button id="mark-html" type="button">Mark Page as HTML</button>
             <button id="mark-file" type="button">Mark Current URL as File</button>
             <button id="crop-btn"  type="button">Crop Bulletin Image</button>

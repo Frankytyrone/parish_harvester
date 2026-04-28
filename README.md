@@ -59,24 +59,27 @@ The fetcher also auto-detects WordPress PDF Embedder links (`a.pdfemb-viewer`) a
 
 ## Guided Mode Training
 
-The Parish Trainer extension now includes **Guided Mode** (on by default) to make training more foolproof for non-technical users.
+The Parish Trainer extension includes **Guided Mode** (on by default) to make training as simple as possible.
 
 ### How it works
 
-When you open a parish page during training, the floating toolbar automatically appears and presents a simple wizard:
+When you open a parish page during training, the floating toolbar automatically appears and presents a simple 3-choice wizard:
 
-**Step 1: Do you see the bulletin on screen?**
+**What do you see on screen?**
 
 | Choice | What it does |
 |--------|-------------|
-| ✅ Yes, it's a PDF | Validates the current URL looks like a document, then records it as the bulletin file URL. Non-document URLs require an explicit "Mark Anyway" confirmation. |
-| 🖼️ Yes, it's an image | Hides the toolbar and opens the crop tool — draw a rectangle around the bulletin. **Scroll with the mouse wheel while the crop overlay is open. Drag near the top or bottom edge to auto-scroll.** Use **Add More** to stitch multiple sections into one. |
-| 📄 No — I need to click a link first | Enters **Pick Link Mode**: hover over any link to highlight it, click to select it. Shows a confirmation step with "Looks right / Pick again" before recording. |
-| 📐 It's embedded in a frame / viewer | Opens the **Iframe Picker**: lists all iframes on the page, automatically unwraps Google Docs viewer URLs, and marks the resolved PDF URL. |
+| 📄 Get a PDF (recommended) | Validates the current URL looks like a document, then records it as the bulletin file URL. Non-document URLs require an explicit "Mark Anyway" confirmation. |
+| 🖼️ Get an image (newsletter screenshot) | Hides the toolbar and opens the crop tool — draw a rectangle around the bulletin. **Scroll with the mouse wheel while the crop overlay is open. Drag near the top or bottom edge to auto-scroll.** Use **Add More** to stitch multiple sections into one. |
+| 🔗 I need to click something first | Enters **Pick Link Mode**: hover over any link to highlight it, click to select it. Shows a confirmation step with "Looks right / Pick again" before recording. |
 
 ### Other features
 
-- **🔍 Help me identify this page** — runs lightweight detection and explains what type of page you are on. Correctly identifies:
+Click **"I'm stuck — show all options"** (below the 3 buttons) or **"⚙️ Advanced / More options"** to reveal:
+
+- **📐 It's in a frame / viewer** — Opens the **Iframe Picker**: lists all iframes on the page, automatically unwraps Google Docs viewer URLs, and marks the resolved PDF URL.
+- **📰 Capture newsletter column (auto)** — Highlights the main article/content column (detects `article`, `.entry-content`, etc.) and shows a status message so you can crop it accurately.
+- **🔍 Help me identify this page** — Runs lightweight detection and explains what type of page you are on. Correctly identifies:
   - Direct PDF pages
   - **WordPress PDF Embedder pages** (`a.pdfemb-viewer` links) — shown as "PDF listing page" not "HTML only"
   - Embedded PDF iframes (including Google Docs viewer)
@@ -86,9 +89,9 @@ When you open a parish page during training, the floating toolbar automatically 
   - HTML-only pages
 - **🎯 Pick newest bulletin** — appears automatically after identification when PDF Embedder or PDF links are found. Scores links by date and picks the most recent one for you to confirm.
 - **🕵️ Deep Detect (10 s)** — appears for HTML/unknown/embed pages. Patches `XMLHttpRequest` and `fetch` for 10 seconds and watches `PerformanceObserver`, then lists any PDF/DOCX URLs it detected in the background. Useful when the PDF loads hidden behind a viewer plugin.
+- **Mark Page as HTML** — records this page as an HTML-only bulletin (kept for edge cases).
 - **📋 Recipe Preview** — shows all recorded steps for the current session. Click the header to expand it.
 - **↩ Undo Last Step** — removes the most recently recorded step from both the UI and the training session.
-- **Advanced Options** — collapses the original buttons (Mark Page as HTML / Mark Current URL as File / Crop Bulletin Image) for power users or edge cases. Accessible via "I'm stuck — show all options".
 
 ### Safety checks
 
