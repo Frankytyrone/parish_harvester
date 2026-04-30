@@ -434,5 +434,25 @@ class ToolbarImprovementsTests(unittest.TestCase):
         self.assertIn("ph-interstitial-banner", self.content_js)
 
 
+class PickImageModeTests(unittest.TestCase):
+    def setUp(self):
+        repo_root = Path(__file__).resolve().parent
+        self.content_js = (repo_root / "extension" / "content.js").read_text(encoding="utf-8")
+
+    def test_pick_image_mode_exists(self):
+        self.assertIn("startPickImageMode", self.content_js)
+        self.assertIn("stopPickImageMode", self.content_js)
+
+    def test_pick_image_button_in_wizard(self):
+        self.assertIn("Pick an image on this page", self.content_js)
+
+    def test_pick_image_confirmation(self):
+        self.assertIn("showPickImageConfirmation", self.content_js)
+        self.assertIn("Pick another image too", self.content_js)
+
+    def test_pick_image_cleans_up_on_close(self):
+        self.assertIn("stopPickImageMode", self.content_js)
+
+
 if __name__ == "__main__":
     unittest.main()
