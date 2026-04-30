@@ -422,10 +422,64 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                 if lowered.endswith(".pdf") or lowered.endswith(".docx"):
                     final_document_url = url
 
+            # Track real document URLs seen in network requests (to avoid blob: URLs)
+            _seen_document_urls: list[str] = []
+
             async def handle_download(download) -> None:
                 nonlocal final_document_url
                 try:
-                    final_document_url = download.url
+                    url = download.url
+
+                    # Reject blob URLs — they are temporary and cannot be replayed
+                    if url.startswith("blob:"):
+                        print(f"\n⚠️  Blob URL detected (temporary, cannot be replayed): {url}")
+                        # Try to substitute with the most recently seen real document URL
+                        if _seen_document_urls:
+                            real_url = _seen_document_urls[-1]
+                            final_document_url = real_url
+                            print(f"✅ Substituted with real network URL: {real_url}")
+                        else:
+                            suggested = download.suggested_filename or ""
+                            print(f"⚠️  Could not find real PDF URL automatically.")
+                            print(f"   Suggested filename was: {suggested!r}")
+                            print(f"   Please navigate directly to the PDF and use the toolbar to mark it.")
+                            print(f"   Or try: Advanced → 🕵️ Deep Detect to capture the URL.")
+                        return
+
+                    # Normal non-blob download URL
+                    lower = url.lower().split("?")[0]
+                    doc_exts = (".pdf", ".docx", ".doc", ".pptx", ".ppt", ".odt", ".jpg", ".jpeg", ".png", ".webp")
+                    if not any(lower.endswith(ext) for ext in doc_exts):
+                        print(f"\n⚠️  Download URL doesn't look like a document: {url}")
+
+                    final_document_url = url
+                    print(f"\n📄 Marked bulletin file URL: {url}")
+                except Exception:
+                    pass
+
+            def handle_request(request) -> None:
+                """Capture real PDF/document URLs from network traffic."""
+                url = request.url
+                if not url or url.startswith("blob:") or url.startswith("data:"):
+                    return
+                lower = url.lower().split("?")[0]
+                doc_exts = (".pdf", ".docx", ".doc", ".pptx", ".ppt", ".odt")
+                if any(lower.endswith(ext) for ext in doc_exts):
+                    if url not in _seen_document_urls:
+                        _seen_document_urls.append(url)
+                        print(f"\n🔍 Network: detected document URL: {url}")
+
+            async def handle_response(response) -> None:
+                """Capture PDF URLs from response headers (catches cases where URL has no extension)."""
+                try:
+                    url = response.url
+                    if not url or url.startswith("blob:") or url.startswith("data:"):
+                        return
+                    content_type = response.headers.get("content-type", "").lower()
+                    if "application/pdf" in content_type or "application/octet-stream" in content_type:
+                        if url not in _seen_document_urls:
+                            _seen_document_urls.append(url)
+                            print(f"\n🔍 Network: detected PDF response: {url}")
                 except Exception:
                     pass
 
@@ -561,6 +615,8 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
             page.on("framenavigated", handle_navigate)
             page.on("download", handle_download)
+            page.on("request", handle_request)
+            page.on("response", handle_response)
 
             try:
                 try:
@@ -661,9 +717,17 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
                 break
 
     if not marked_step and not crop_step and final_document_url:
-        lower = final_document_url.lower()
-        pattern = "*.docx" if lower.endswith(".docx") else "*.pdf"
-        steps.append({"action": "download", "url_pattern": pattern, "captured_url": final_document_url})
+        # Reject blob URLs — they cannot be replayed
+        if final_document_url.startswith("blob:"):
+            print(f"\n❌ ERROR: The recorded URL is a blob URL and cannot be replayed:")
+            print(f"   {final_document_url}")
+            print(f"   This recipe will NOT work during harvests.")
+            print(f"   Please re-train and use Deep Detect or navigate directly to the PDF.")
+            final_document_url = None
+        else:
+            lower = final_document_url.lower()
+            pattern = "*.docx" if lower.endswith(".docx") else "*.pdf"
+            steps.append({"action": "download", "url_pattern": pattern, "captured_url": final_document_url})
     elif not marked_step and not crop_step:
         steps.append({"action": "download", "url_pattern": "*.pdf"})
 
@@ -686,7 +750,10 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
             print(f"{idx}. Click: {step.get('selector', '')}")
         elif action == "download":
             shown = step.get("captured_url") or step.get("url_pattern", "*.pdf")
-            print(f"{idx}. Download: {shown}")
+            if shown and not shown.startswith("blob:"):
+                print(f"{idx}. Download: {shown}")
+            else:
+                print(f"{idx}. ⚠️  No valid document URL recorded.")
         elif action == "image":
             print(f"{idx}. Image: {step.get('url', '')}")
         elif action == "html":

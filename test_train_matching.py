@@ -503,5 +503,29 @@ class WixViewerTests(unittest.TestCase):
         self.assertIn("wix_viewer", self.content_js)
 
 
+class BlobUrlTests(unittest.TestCase):
+    def setUp(self):
+        repo_root = Path(__file__).resolve().parent
+        self.train_py = (repo_root / "train.py").read_text(encoding="utf-8")
+
+    def test_blob_url_rejected(self):
+        self.assertIn("blob:", self.train_py)
+        self.assertIn("Blob URL detected", self.train_py)
+
+    def test_network_request_monitor(self):
+        self.assertIn("_seen_document_urls", self.train_py)
+        self.assertIn('page.on("request"', self.train_py)
+
+    def test_response_monitor_for_pdf_content_type(self):
+        self.assertIn('page.on("response"', self.train_py)
+        self.assertIn("application/pdf", self.train_py)
+
+    def test_blob_url_substitution(self):
+        self.assertIn("Substituted with real network URL", self.train_py)
+
+    def test_blob_url_not_saved_to_recipe(self):
+        self.assertIn("cannot be replayed", self.train_py)
+
+
 if __name__ == "__main__":
     unittest.main()

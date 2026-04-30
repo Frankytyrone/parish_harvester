@@ -2040,6 +2040,11 @@
         guidedPanel.appendChild(pickerPanel);
       }
     });
+    window.addEventListener("ph-document-detected", (e) => {
+      const url = (e.detail && e.detail.url) || "";
+      const short = url.length > 50 ? url.slice(0, 47) + "…" : url;
+      showStatus(`🔍 Document detected in network: ${short}`, "info");
+    });
 
     // ── IDENTIFY PAGE ──────────────────────────────────────────────────────
     const identifyBtn = document.createElement("button");
@@ -2697,6 +2702,15 @@
           return;
         }
         window.ph_mark_crop(payload);
+      }
+      if (type === "document_url_detected") {
+        const url = message?.url || "";
+        if (toolbar) {
+          toolbar.dataset.phHidden = "false";
+          toolbar.style.display = "flex";
+        }
+        window.dispatchEvent(new CustomEvent("ph-document-detected", { detail: { url } }));
+        return;
       }
     }
   });
