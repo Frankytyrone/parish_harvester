@@ -481,6 +481,12 @@ class DeadUrlTests(unittest.TestCase):
     def test_dead_url_handler_in_mark_download(self):
         self.assertIn("dead_url", self.train_py)
 
+    def test_bare_timeout_not_in_dead_url_errors(self):
+        # "timeout" alone must NOT be a dead URL trigger (slow sites ≠ dead sites)
+        self.assertNotIn('"timeout"', self.train_py.replace("'timeout'", '"timeout"'))
+        # But the specific Chrome error code for timed-out connections must remain
+        self.assertIn("err_connection_timed_out", self.train_py)
+
 
 class WixViewerTests(unittest.TestCase):
     def setUp(self):

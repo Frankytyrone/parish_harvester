@@ -256,7 +256,6 @@ _DEAD_URL_NAV_ERRORS = (
     "err_connection_timed_out",
     "err_address_unreachable",
     "net::err",
-    "timeout",
     "name or service not known",
 )
 

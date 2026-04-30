@@ -20,7 +20,7 @@ REPORT_TXT = BULLETINS_DIR / "report.txt"
 # ---------------------------------------------------------------------------
 # Timeouts & concurrency
 # ---------------------------------------------------------------------------
-PAGE_LOAD_TIMEOUT_MS: int = 30_000   # 30 s per page request
+PAGE_LOAD_TIMEOUT_MS: int = 45_000   # 45 s per page request
 TOTAL_TIMEOUT_S: int = 60            # 60 s total per parish
 CONCURRENCY: int = 10                # parallel asyncio tasks
 
