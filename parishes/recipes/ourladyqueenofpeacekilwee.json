@@ -1,0 +1,25 @@
+{
+  "parish_key": "ourladyqueenofpeacekilwee",
+  "display_name": "Our Lady Queen of Peace",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.ourladyqueenofpeacekilwee.com/bulletins",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/bulletins"
+    },
+    {
+      "action": "click",
+      "selector": "a[href$='.pdf']",
+      "fallback_selectors": [
+        "a[href*='aaba'][href$='.pdf']",
+        "a[href*='.pdf']",
+        "div#comp-lmklyzlq > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

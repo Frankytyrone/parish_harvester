@@ -1,0 +1,25 @@
+{
+  "parish_key": "dunsfordandardglassparish",
+  "display_name": "Dunsford and Ardglass",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.dunsfordandardglassparish.com/?page_id=623",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.dunsfordandardglassparish.com/?page_id=623"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('read')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "article#post-2876 > div:nth-of-type(2) > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

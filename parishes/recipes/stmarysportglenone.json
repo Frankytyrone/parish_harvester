@@ -1,0 +1,35 @@
+{
+  "parish_key": "stmarysportglenone",
+  "display_name": "Port Glenone",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://stmarysportglenone.co.uk/?page_id=40",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stmarysportglenone.co.uk/?page_id=40"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Home')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "li#menu-item-19 > a"
+      ]
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "li#menu-item-44 > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "no_bulletin"
+    }
+  ]
+}

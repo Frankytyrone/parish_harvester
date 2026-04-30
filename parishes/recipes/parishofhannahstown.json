@@ -1,0 +1,25 @@
+{
+  "parish_key": "parishofhannahstown",
+  "display_name": "Hannahstown",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.parishofhannahstown.com/weekly-bulletins",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.parishofhannahstown.com/weekly-bulletins"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href$='.docx']",
+        "a[href*='.pdf']",
+        "div#comp-mmjgc4l9 > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

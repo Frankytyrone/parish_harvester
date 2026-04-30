@@ -1,0 +1,16 @@
+{
+  "parish_key": "drumbocarryduff",
+  "display_name": "Drumbo and Carryduff",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.drumbocarryduff.ie/#sbp-bulletin",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.drumbocarryduff.ie/#sbp-bulletin"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

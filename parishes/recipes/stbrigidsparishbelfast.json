@@ -1,0 +1,44 @@
+{
+  "parish_key": "stbrigidsparishbelfast",
+  "display_name": "St Brigids Belfast",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://stbrigidsparishbelfast.org/bulletins",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stbrigidsparishbelfast.org/bulletins"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Home')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div#navbarSupportedContent > ul > li:nth-of-type(1) > a"
+      ]
+    },
+    {
+      "action": "click",
+      "selector": ":has-text('View')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div > div:nth-of-type(3) > div > a > div > button"
+      ]
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href*='parish'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div > div > div:nth-of-type(1) > ul > li:nth-of-type(4) > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "parish_key": "antrimparish",
+  "display_name": "Antrim",
+  "recorded_date": "2026-04-28",
+  "start_url": "https://www.antrimparish.com/bulletinpage/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.antrimparish.com/bulletinpage/"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "https://www-static.antrimparish.com/wp-content/uploads/2026/04/26th-April-2026.pdf"
+    }
+  ]
+}

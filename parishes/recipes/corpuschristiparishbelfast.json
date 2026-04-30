@@ -1,0 +1,16 @@
+{
+  "parish_key": "corpuschristiparishbelfast",
+  "display_name": "Corpus Christi Belfast",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.corpuschristiparishbelfast.com/news",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.corpuschristiparishbelfast.com/news"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

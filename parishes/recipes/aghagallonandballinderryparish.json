@@ -1,0 +1,26 @@
+{
+  "parish_key": "aghagallonandballinderryparish",
+  "display_name": "Aghagallon and Ballinderry",
+  "recorded_date": "2026-04-28",
+  "start_url": "https://www.aghagallonandballinderryparish.ie/newsletter/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.aghagallonandballinderryparish.ie/newsletter/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Download')",
+      "fallback_selectors": [
+        "a[href*='bulletin'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "article#post-429 > div > div:nth-of-type(1) > a:nth-of-type(2)"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

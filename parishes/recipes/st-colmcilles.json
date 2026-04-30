@@ -1,0 +1,16 @@
+{
+  "parish_key": "st-colmcilles",
+  "display_name": "St Colmcilles",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

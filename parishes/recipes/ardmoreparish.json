@@ -1,0 +1,25 @@
+{
+  "parish_key": "ardmoreparish",
+  "display_name": "Ardmore",
+  "recorded_date": "2026-04-20",
+  "start_url": "http://www.ardmoreparish.com/news.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://www.ardmoreparish.com/news.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Sunday')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(1) > div > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "parish_key": "stagnesbelfast",
+  "display_name": "St Agnes Belfast",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.stagnesbelfast.com/?p=6069",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.stagnesbelfast.com/?p=6069"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "no_bulletin"
+    }
+  ]
+}

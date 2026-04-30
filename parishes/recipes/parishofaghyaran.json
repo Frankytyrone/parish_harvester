@@ -1,0 +1,26 @@
+{
+  "parish_key": "parishofaghyaran",
+  "display_name": "Aghyaran",
+  "recorded_date": "2026-04-20",
+  "start_url": "https://www.parishofaghyaran.com/news.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.parishofaghyaran.com/news.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Parish')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div#xlaANMzone_d56385 > h5 > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "https://www.parishofaghyaran.com/pdf/190426.pdf"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "parish_key": "derriaghycatholicparish",
+  "display_name": "Derriaghy",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://derriaghycatholicparish.com/?page_id=262",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://derriaghycatholicparish.com/?page_id=262"
+    },
+    {
+      "action": "image",
+      "url": "https://derriaghycatholicparish.com/wp-content/uploads/2026/04/fourth-Sunday-of-Easter-1-724x1024.png"
+    }
+  ]
+}

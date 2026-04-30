@@ -1,0 +1,27 @@
+{
+  "parish_key": "stteresasparish",
+  "display_name": "St Teresas",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://stteresasparish.church/parish-news/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stteresasparish.church/parish-news/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Parish')",
+      "fallback_selectors": [
+        "a[href*='ogilvietony'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "article:nth-of-type(1) > div > div > span > span:nth-of-type(2) > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "no_bulletin"
+    }
+  ]
+}

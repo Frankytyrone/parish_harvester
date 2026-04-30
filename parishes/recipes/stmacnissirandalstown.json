@@ -1,0 +1,26 @@
+{
+  "parish_key": "stmacnissirandalstown",
+  "display_name": "St MacNissi Randalstown",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.stmacnissirandalstown.com/bulletin",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.stmacnissirandalstown.com/bulletin"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('April')",
+      "fallback_selectors": [
+        "a[href*='fdddf'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div#comp-m9mqumm1 > p > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}

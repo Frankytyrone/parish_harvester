@@ -1,0 +1,25 @@
+{
+  "parish_key": "kilmoreandkillyleagh",
+  "display_name": "Kilmore and Killyleagh",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.kilmoreandkillyleagh.com/latest-notices--downloads.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.kilmoreandkillyleagh.com/latest-notices--downloads.html"
+    },
+    {
+      "action": "click",
+      "selector": "a[href$='.pdf']",
+      "fallback_selectors": [
+        "a[href*='april'][href$='.pdf']",
+        "a[href*='.pdf']",
+        "tbody > tr > td:nth-of-type(1) > div:nth-of-type(1) > div > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ]
+}
