@@ -482,5 +482,26 @@ class DeadUrlTests(unittest.TestCase):
         self.assertIn("dead_url", self.train_py)
 
 
+class WixViewerTests(unittest.TestCase):
+    def setUp(self):
+        repo_root = Path(__file__).resolve().parent
+        self.content_js = (repo_root / "extension" / "content.js").read_text(encoding="utf-8")
+
+    def test_wix_viewer_detected(self):
+        self.assertIn("wixlabs-pdf-dev.appspot.com", self.content_js)
+
+    def test_wix_download_instruction_correct(self):
+        # Must say TOP not bottom
+        self.assertIn("TOP of the viewer", self.content_js)
+        # Must NOT say "bottom of the viewer" for Wix
+        self.assertNotIn("bottom of the viewer", self.content_js)
+
+    def test_wix_url_extraction(self):
+        self.assertIn("wixPdfUrl", self.content_js)
+
+    def test_wix_viewer_type_in_detect(self):
+        self.assertIn("wix_viewer", self.content_js)
+
+
 if __name__ == "__main__":
     unittest.main()
