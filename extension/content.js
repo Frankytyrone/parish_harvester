@@ -132,25 +132,87 @@
     return null;
   };
 
+  // Approximate date scores for named liturgical events (used when no numeric date found).
+  const _NAMED_BULLETIN_SCORES = {
+    "easter sunday": { month: 4, day: 15 },
+    "palm sunday": { month: 4, day: 8 },
+    "good friday": { month: 4, day: 14 },
+    "ash wednesday": { month: 3, day: 5 },
+    "pentecost": { month: 5, day: 19 },
+    "corpus christi": { month: 6, day: 15 },
+    "christmas": { month: 12, day: 25 },
+  };
+
   /**
    * Score a URL+label candidate for bulletin date ranking.
    * Higher total = better candidate (newer date, better keywords, pdf preferred).
    * Returns {dateScore, tieBreaker, hasDate, hasFullDate, total}.
+   * NOTE: domIdx is accepted for API compatibility but is NOT included in tieBreaker —
+   * callers should store domIdx separately and use the date-first sort helper below.
    */
   const scoreUrlCandidateStr = (url, label, domIdx) => {
     let decoded;
     try { decoded = decodeURIComponent((url || "") + " " + (label || "")).toLowerCase(); }
     catch (_e) { decoded = ((url || "") + " " + (label || "")).toLowerCase(); }
-    const d = extractDateFromUrl(decoded);
-    const dateScore = d ? d.year * 10000 + d.month * 100 + d.day : 0;
-    const hasFullDate = d !== null && d.month > 0 && d.day > 0;
-    const hasDate = d !== null && d.year > 0;
+    let d = extractDateFromUrl(decoded);
     const keywordBonus = /\b(bulletin|newsletter|notice)\b/.test(decoded) ? 5 : 0;
     const pdfBonus = /\.pdf(\?|$)/.test(decoded) ? 3 : 0;
     const docxBonus = /\.docx(\?|$)/.test(decoded) ? 1 : 0;
     const uploadsBonus = decoded.includes("/uploads/") || decoded.includes("/wp-content/") ? 2 : 0;
-    const tieBreaker = keywordBonus + pdfBonus + docxBonus + uploadsBonus - (domIdx || 0) * 0.001;
+    // If no numeric date found, check for named liturgical events
+    if (!d) {
+      for (const [name, approx] of Object.entries(_NAMED_BULLETIN_SCORES)) {
+        if (decoded.includes(name)) {
+          const approxYear = new Date().getFullYear();
+          const dateScore = approxYear * 10000 + approx.month * 100 + approx.day;
+          const tieBreaker = keywordBonus + pdfBonus + docxBonus + uploadsBonus;
+          return {
+            dateScore,
+            tieBreaker,
+            hasDate: true,
+            hasFullDate: false,
+            total: dateScore * 100 + tieBreaker,
+          };
+        }
+      }
+    }
+    const dateScore = d ? d.year * 10000 + d.month * 100 + d.day : 0;
+    const hasFullDate = d !== null && d.month > 0 && d.day > 0;
+    const hasDate = d !== null && d.year > 0;
+    // tieBreaker does NOT include domIdx — position is handled by the sort comparator
+    const tieBreaker = keywordBonus + pdfBonus + docxBonus + uploadsBonus;
     return { dateScore, tieBreaker, hasDate, hasFullDate, total: dateScore * 100 + tieBreaker };
+  };
+
+  /**
+   * Comparator for scored bulletin candidates.
+   * When dates are available, date always wins (newest first).
+   * Falls back to inverted domIdx (later on page = better) only when no dates exist.
+   */
+  const _bulletinDateSortFn = (a, b) => {
+    if (a.hasFullDate && b.hasFullDate) return b.dateScore - a.dateScore;
+    if (a.hasFullDate) return -1;
+    if (b.hasFullDate) return 1;
+    if (a.hasDate && b.hasDate) return b.dateScore - a.dateScore;
+    if (a.hasDate) return -1;
+    if (b.hasDate) return 1;
+    // Neither has a date — later on page wins (many pages list newest at the bottom)
+    return (b.domIdx || 0) - (a.domIdx || 0);
+  };
+
+  /**
+   * Return a human-readable date string from a URL+label pair, or null if no date found.
+   */
+  const getDisplayDate = (url, label) => {
+    let decoded;
+    try { decoded = decodeURIComponent((url || "") + " " + (label || "")).toLowerCase(); }
+    catch (_e) { decoded = ((url || "") + " " + (label || "")).toLowerCase(); }
+    const d = extractDateFromUrl(decoded);
+    if (!d || !d.year) return null;
+    const months = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    if (d.month > 0 && d.day > 0) return `${d.day} ${months[d.month]} ${d.year}`;
+    if (d.month > 0) return `${months[d.month]} ${d.year}`;
+    return `${d.year}`;
   };
 
   // Returns true if the URL looks like a downloadable document.
@@ -1762,7 +1824,37 @@
         guidedPanel.appendChild(note);
       }
 
-      candidates.forEach(({ el, url, label }, idx) => {
+      // Warn if the page lists oldest first (newest candidate appeared last on page)
+      const looksReversed = candidates.length > 2 &&
+        candidates[0].hasFullDate &&
+        candidates[0].domIdx > candidates[candidates.length - 1].domIdx;
+      if (looksReversed) {
+        const reversedNote = document.createElement("div");
+        reversedNote.style.cssText = "color:#fbbf24;font-size:9px;margin-bottom:5px;padding:3px 5px;background:#451a03;border-radius:3px;";
+        reversedNote.textContent = "⚠️ This page lists oldest first — showing newest at top.";
+        guidedPanel.appendChild(reversedNote);
+      }
+
+      // Find candidate closest to today to highlight as "this week"
+      // Use real Date arithmetic so month boundaries work correctly
+      const today = new Date();
+      const todayMs = today.getTime();
+      const MS_PER_DAY = 86400000;
+      const thisWeekCandidate = candidates.find(c => {
+        if (!c.hasFullDate) return false;
+        const year = Math.floor(c.dateScore / 10000);
+        const month = Math.floor((c.dateScore % 10000) / 100);
+        const day = c.dateScore % 100;
+        const candidateMs = new Date(year, month - 1, day).getTime();
+        return Math.abs(todayMs - candidateMs) <= 7 * MS_PER_DAY;
+      }) || (candidates.length > 0 && candidates[0].hasFullDate ? candidates[0] : null);
+
+      // Split into dated and undated groups
+      const datedCandidates = candidates.filter(c => c.hasDate);
+      const undatedCandidates = candidates.filter(c => !c.hasDate);
+
+      const renderCandidate = (candidate, idx, isRecommended) => {
+        const { el, url, label } = candidate;
         const row = document.createElement("div");
         row.style.cssText = [
           "display:flex",
@@ -1774,6 +1866,12 @@
           "border-radius:4px",
         ].join(";");
 
+        // Highlight this week's candidate with a green border
+        if (candidate === thisWeekCandidate) {
+          row.style.border = "1px solid #16a34a";
+          row.style.background = "#052e16";
+        }
+
         const info = document.createElement("div");
         info.style.cssText = [
           "flex:1",
@@ -1781,12 +1879,24 @@
           "word-break:break-all",
           "color:#d1d5db",
           "line-height:1.35",
-          "white-space:pre-wrap",
         ].join(";");
+
+        // Date badge
+        const displayDate = getDisplayDate(url, label);
+        if (displayDate) {
+          const dateBadge = document.createElement("span");
+          dateBadge.style.cssText = "color:#fbbf24;font-size:9px;font-weight:600;display:block;margin-bottom:1px;";
+          dateBadge.textContent = `📅 ${displayDate}`;
+          info.appendChild(dateBadge);
+        }
+
+        const textSpan = document.createElement("span");
+        textSpan.style.cssText = "white-space:pre-wrap;";
         const shortUrl = (url || "").length > 55 ? (url || "").slice(0, 52) + "…" : (url || "");
         const shortLabel = (label || "").slice(0, 40);
-        const prefix = (idx === 0 && hasAnyDate) ? "⭐ Recommended (newest)\n" : "";
-        info.textContent = prefix + (shortLabel ? shortLabel + "\n" + shortUrl : shortUrl);
+        const prefix = isRecommended ? "⭐ Recommended (newest)\n" : "";
+        textSpan.textContent = prefix + (shortLabel ? shortLabel + "\n" + shortUrl : shortUrl);
+        info.appendChild(textSpan);
 
         const pickBtn = document.createElement("button");
         pickBtn.textContent = "Use this";
@@ -1805,7 +1915,17 @@
         row.appendChild(info);
         row.appendChild(pickBtn);
         guidedPanel.appendChild(row);
-      });
+      };
+
+      datedCandidates.forEach((c, idx) => renderCandidate(c, idx, idx === 0 && hasAnyDate));
+
+      if (undatedCandidates.length > 0) {
+        const sep = document.createElement("div");
+        sep.style.cssText = "color:#6b7280;font-size:9px;margin:4px 0 2px;border-top:1px solid #374151;padding-top:4px;";
+        sep.textContent = "⚠️ No date found — review manually:";
+        guidedPanel.appendChild(sep);
+        undatedCandidates.forEach((c, idx) => renderCandidate(c, idx, false));
+      }
 
       const cancelBtn = document.createElement("button");
       cancelBtn.type = "button";
@@ -2117,9 +2237,9 @@
               const url = el.getAttribute("href") || "";
               const label = (el.innerText || el.textContent || "").trim();
               const s = scoreUrlCandidateStr(url, label, idx);
-              return { el, url, label, ...s };
+              return { el, url, label, domIdx: idx, ...s };
             });
-            scored.sort((a, b) => b.total - a.total);
+            scored.sort(_bulletinDateSortFn);
 
             // Ambiguous: no dates found at all, or top two candidates share the
             // same date score (cannot tell which is newer).
@@ -2172,9 +2292,10 @@
                 // Sort detected URLs by date score (newest first)
                 const scoredUrls = urls.map((url, idx) => ({
                   url,
+                  domIdx: idx,
                   ...scoreUrlCandidateStr(url, "", idx),
                 }));
-                scoredUrls.sort((a, b) => b.total - a.total);
+                scoredUrls.sort(_bulletinDateSortFn);
                 const hasAnyUrlDate = scoredUrls.some((c) => c.hasDate);
 
                 heading.textContent = `🕵️ Detected ${urls.length} document URL(s) — sorted by recency:`;
