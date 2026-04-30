@@ -230,6 +230,51 @@
 
     // 3. iframes with PDF or viewer content
     const iframes = Array.from(document.querySelectorAll("iframe[src]"));
+
+    // 3a. Wix PDF viewer detection — must run BEFORE generic pdfIframes check
+    const wixViewerIframes = iframes.filter((f) => {
+      const src = f.getAttribute("src") || "";
+      try {
+        const hostname = new URL(src, window.location.href).hostname.toLowerCase();
+        return (
+          hostname === "wixlabs-pdf-dev.appspot.com" ||
+          hostname.startsWith("wixlabs-pdf")
+        );
+      } catch (_e) {
+        return false;
+      }
+    });
+
+    if (wixViewerIframes.length > 0) {
+      // Try to extract the real PDF URL from the Wix viewer src
+      let extractedPdfUrl = null;
+      for (const frame of wixViewerIframes) {
+        try {
+          const wixUrl = new URL(frame.getAttribute("src") || "", window.location.href);
+          const pdfParam =
+            wixUrl.searchParams.get("url") ||
+            wixUrl.searchParams.get("PDF_URL") ||
+            wixUrl.searchParams.get("pdf") ||
+            wixUrl.searchParams.get("file");
+          if (pdfParam) {
+            extractedPdfUrl = decodeURIComponent(pdfParam);
+            break;
+          }
+        } catch (_e) {}
+      }
+      return {
+        emoji: "📄",
+        summary: extractedPdfUrl
+          ? `Wix PDF viewer detected — found the PDF URL automatically.`
+          : `Wix PDF viewer detected (${wixViewerIframes.length} viewer(s)).`,
+        advice: extractedPdfUrl
+          ? `Click "It's in a frame / viewer" to record the extracted PDF URL directly.`
+          : `💡 Click the ↓ download icon at the TOP of the viewer. When a new tab opens with the PDF, come back and click 📄 Get a PDF.`,
+        type: "wix_viewer",
+        wixPdfUrl: extractedPdfUrl,
+      };
+    }
+
     const pdfIframes = iframes.filter((f) => {
       const src = (f.getAttribute("src") || "").toLowerCase();
       return (
@@ -760,6 +805,7 @@
       const lowerSrc = src.toLowerCase();
       let resolvedUrl = src;
       let isBulletin = false;
+      let isWixViewer = false;
 
       // Unwrap Google Docs viewer URL
       if (
@@ -774,6 +820,30 @@
           }
         } catch (_e) {
           // keep original src
+        }
+      } else if ((() => {
+          try {
+            const hostname = new URL(src, window.location.href).hostname.toLowerCase();
+            return hostname === "wixlabs-pdf-dev.appspot.com" || hostname.startsWith("wixlabs-pdf");
+          } catch (_e) { return false; }
+        })()) {
+        // Unwrap Wix PDF viewer URL
+        try {
+          const wixUrl = new URL(src, window.location.href);
+          const pdfParam =
+            wixUrl.searchParams.get("url") ||
+            wixUrl.searchParams.get("PDF_URL") ||
+            wixUrl.searchParams.get("pdf") ||
+            wixUrl.searchParams.get("file");
+          if (pdfParam) {
+            resolvedUrl = decodeURIComponent(pdfParam);
+            isBulletin = true;
+          } else {
+            // Can't extract URL — mark as Wix viewer so we show special instruction
+            isWixViewer = true;
+          }
+        } catch (_e) {
+          isWixViewer = true;
         }
       } else if (
         lowerSrc.endsWith(".pdf") ||
@@ -814,7 +884,12 @@
       const mainText = document.createElement("div");
       mainText.textContent = `${isBulletin ? "✅ " : ""}${hostname} — ${preview}`;
       info.appendChild(mainText);
-      if (!isBulletin) {
+      if (isWixViewer) {
+        const wixNote = document.createElement("div");
+        wixNote.style.cssText = "color:#93c5fd;font-size:9px;margin-top:2px;line-height:1.4;";
+        wixNote.textContent = "💡 Wix PDF viewer — click the ↓ download icon at the TOP of the viewer. When a new tab opens with the PDF, come back and click 📄 Get a PDF.";
+        info.appendChild(wixNote);
+      } else if (!isBulletin) {
         const warn = document.createElement("div");
         warn.style.cssText = "color:#f59e0b;font-size:9px;margin-top:2px;";
         warn.textContent = "⚠️ Not clearly a document — confirm before using";
@@ -2159,6 +2234,30 @@
         );
         deepBtn.style.marginTop = "6px";
         identifyResult.appendChild(deepBtn);
+      }
+
+      // Wix PDF viewer handling
+      if (result.type === "wix_viewer") {
+        if (result.wixPdfUrl) {
+          // We extracted the URL — offer a one-click record button
+          const useExtractedBtn = makeSmallBtn(
+            "📄 Use extracted PDF URL",
+            "#16a34a",
+            () => markDownloadUrlSafe(result.wixPdfUrl, showStatus, true),
+            "Record the PDF URL extracted from the Wix viewer"
+          );
+          useExtractedBtn.style.marginTop = "6px";
+          identifyResult.appendChild(useExtractedBtn);
+        }
+        // Always show the iframe picker button for Wix
+        const iframeBtn = makeSmallBtn(
+          "📐 Open frame picker",
+          "#2563eb",
+          () => window.dispatchEvent(new CustomEvent("ph-start-pick-iframe")),
+          "Open the iframe picker to select the Wix viewer"
+        );
+        iframeBtn.style.marginTop = "6px";
+        identifyResult.appendChild(iframeBtn);
       }
     });
 
