@@ -454,5 +454,33 @@ class PickImageModeTests(unittest.TestCase):
         self.assertIn("stopPickImageMode", self.content_js)
 
 
+class DeadUrlTests(unittest.TestCase):
+    def setUp(self):
+        repo_root = Path(__file__).resolve().parent
+        self.content_js = (repo_root / "extension" / "content.js").read_text(encoding="utf-8")
+        self.train_py = (repo_root / "train.py").read_text(encoding="utf-8")
+
+    def test_dead_page_overlay_exists(self):
+        self.assertIn("ph-dead-page-overlay", self.content_js)
+
+    def test_dead_overlay_shown_on_chrome_error(self):
+        self.assertIn("main-frame-error", self.content_js)
+        self.assertIn("_detectAndShowDeadOverlay", self.content_js)
+
+    def test_dead_url_button_in_overlay(self):
+        self.assertIn("Mark as Dead Website", self.content_js)
+
+    def test_train_writes_dead_recipe(self):
+        self.assertIn("_write_dead_recipe", self.train_py)
+        self.assertIn("dead_url", self.train_py)
+
+    def test_train_catches_navigation_errors(self):
+        self.assertIn("err_name_not_resolved", self.train_py)
+        self.assertIn("err_connection_refused", self.train_py)
+
+    def test_dead_url_handler_in_mark_download(self):
+        self.assertIn("dead_url", self.train_py)
+
+
 if __name__ == "__main__":
     unittest.main()

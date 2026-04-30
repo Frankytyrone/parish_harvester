@@ -250,6 +250,40 @@ def _has_trainer_extension(extension_dir: Path) -> bool:
     return extension_dir.is_dir() and all((extension_dir / name).is_file() for name in required)
 
 
+_DEAD_URL_NAV_ERRORS = (
+    "err_name_not_resolved",
+    "err_connection_refused",
+    "err_connection_timed_out",
+    "err_address_unreachable",
+    "net::err",
+    "timeout",
+    "name or service not known",
+)
+
+_CHROME_ERROR_TITLES = (
+    "err_name_not_resolved",
+    "err_connection_refused",
+    "err_connection_timed_out",
+    "err_address_unreachable",
+    "this site can't be reached",
+    "this webpage is not available",
+)
+
+_DEAD_URL_PROMPT = "   Press D then Enter to mark as dead and skip, or just Enter to try anyway: "
+
+# Harvester should skip parishes whose recipe contains "status": "dead_url"
+def _write_dead_recipe(recipe_path: Path, entry: "ParishEntry", start_url: str) -> None:
+    """Write a recipe file that marks this parish URL as dead/unreachable."""
+    recipe = {
+        "parish": entry.display_name,
+        "url": start_url,
+        "status": "dead_url",
+        "dead_reason": "URL unreachable during training — DNS failure, connection refused, or timeout.",
+    }
+    recipe_path.parent.mkdir(parents=True, exist_ok=True)
+    recipe_path.write_text(json.dumps(recipe, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 def _match_parish(parish_query: str, diocese: str | None, parishes_dir: Path) -> TrainingTarget:
     query = parish_query.strip()
     if not query:
@@ -421,6 +455,11 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
             async def handle_mark_download_url(_source, payload: dict[str, Any]) -> None:
                 nonlocal final_document_url, marked_step
+                if payload.get("url") == "dead_url" or payload.get("type") == "dead_url":
+                    _write_dead_recipe(recipe_path, entry, start_url)
+                    final_document_url = "dead_url"
+                    print(f"\n🔴 Parish marked as dead URL via toolbar button.")
+                    return
                 if payload.get("url") == "no_bulletin":
                     final_document_url = "no_bulletin"
                     print("🚫 Parish marked as having no bulletin — skipping.")
@@ -524,7 +563,34 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
             page.on("download", handle_download)
 
             try:
-                await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
+                try:
+                    await page.goto(start_url, wait_until="domcontentloaded", timeout=20_000)
+                except Exception as nav_err:
+                    err_str = str(nav_err).lower()
+                    is_dead = any(k in err_str for k in _DEAD_URL_NAV_ERRORS)
+                    if is_dead:
+                        print(f"\n🔴 Dead URL detected: {start_url}")
+                        print("   The website is unreachable (DNS failure, connection refused, or timeout).")
+                        answer = await asyncio.to_thread(input, _DEAD_URL_PROMPT)
+                        if answer.strip().lower() == "d":
+                            _write_dead_recipe(recipe_path, entry, start_url)
+                            print(f"✅ Marked as dead. Skipping {entry.display_name}.")
+                            return recipe_path
+                    else:
+                        raise
+
+                # Detect Chrome net-error pages even when goto() doesn't raise
+                page_title = await page.title()
+                page_url = page.url
+                if any(t in page_title.lower() for t in _CHROME_ERROR_TITLES) or page_url.startswith("chrome-error://"):
+                    print(f"\n🔴 Dead URL detected: {start_url}")
+                    print("   Chrome reports this website is unreachable.")
+                    answer = await asyncio.to_thread(input, _DEAD_URL_PROMPT)
+                    if answer.strip().lower() == "d":
+                        _write_dead_recipe(recipe_path, entry, start_url)
+                        print(f"✅ Marked as dead. Skipping {entry.display_name}.")
+                        return recipe_path
+
                 if use_extension:
                     await asyncio.sleep(0.3)
                     try:
