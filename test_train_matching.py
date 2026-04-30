@@ -527,5 +527,47 @@ class BlobUrlTests(unittest.TestCase):
         self.assertIn("cannot be replayed", self.train_py)
 
 
+class BulletinDateRankingTests(unittest.TestCase):
+    def setUp(self):
+        repo_root = Path(__file__).resolve().parent
+        self.content_js = (repo_root / "extension" / "content.js").read_text(encoding="utf-8")
+
+    def test_date_first_sort_not_position_sort(self):
+        # Must sort by dateScore when dates are available, not domIdx
+        self.assertIn("hasFullDate", self.content_js)
+        self.assertIn("dateScore", self.content_js)
+
+    def test_inverted_position_tiebreaker(self):
+        # When no dates, higher domIdx (later on page) should win
+        self.assertIn("domIdx", self.content_js)
+        self.assertIn("b.domIdx", self.content_js)
+
+    def test_date_badge_shown_in_picker(self):
+        self.assertIn("📅", self.content_js)
+
+    def test_reversed_page_warning(self):
+        self.assertIn("lists oldest first", self.content_js)
+
+    def test_undated_links_separated(self):
+        self.assertIn("No date found", self.content_js)
+
+    def test_named_bulletins_handled(self):
+        self.assertIn("easter sunday", self.content_js.lower())
+        self.assertIn("christmas", self.content_js.lower())
+
+    def test_bulletin_date_sort_fn_exists(self):
+        self.assertIn("_bulletinDateSortFn", self.content_js)
+
+    def test_get_display_date_helper_exists(self):
+        self.assertIn("getDisplayDate", self.content_js)
+
+    def test_this_week_candidate_highlight(self):
+        self.assertIn("thisWeekCandidate", self.content_js)
+
+    def test_dom_idx_stored_in_scored(self):
+        # scored objects must carry domIdx for the sort comparator to use
+        self.assertIn("domIdx: idx", self.content_js)
+
+
 if __name__ == "__main__":
     unittest.main()
