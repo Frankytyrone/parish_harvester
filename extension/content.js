@@ -7,6 +7,10 @@
   let pickLinkActive = false;
   let pickLinkHighlightEl = null;
   let pickLinkCancelListeners = [];
+  let pickImageActive = false;
+  let pickImageHighlightEl = null;
+  let pickImageCancelListeners = [];
+  let pickedImages = []; // accumulates {url, el} when picking multiple
   let _stepsListEl = null; // set by createToolbar
   let _refreshRecipeCount = null; // callback set by createToolbar
 
@@ -580,6 +584,106 @@
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKeyDown, true);
     pickLinkCancelListeners = [
+      { el: document, type: "mousemove", fn: onMouseMove },
+      { el: document, type: "click", fn: onClick },
+      { el: document, type: "keydown", fn: onKeyDown },
+    ];
+  };
+
+  // ── Pick Image Mode ───────────────────────────────────────────────────────
+
+  const stopPickImageMode = () => {
+    if (!pickImageActive) return;
+    pickImageActive = false;
+    if (pickImageHighlightEl && pickImageHighlightEl.parentNode) {
+      pickImageHighlightEl.parentNode.removeChild(pickImageHighlightEl);
+    }
+    pickImageHighlightEl = null;
+    pickImageCancelListeners.forEach(({ el, type, fn }) =>
+      el.removeEventListener(type, fn, true)
+    );
+    pickImageCancelListeners = [];
+    document.body.style.cursor = "";
+  };
+
+  const startPickImageMode = (onPick, showStatus) => {
+    if (pickImageActive) stopPickImageMode();
+    pickImageActive = true;
+    document.body.style.cursor = "crosshair";
+    if (showStatus) {
+      showStatus(
+        "🖼️ Hover over an image and click to select it. Press Escape to cancel.",
+        "info"
+      );
+    }
+
+    const highlight = document.createElement("div");
+    Object.assign(highlight.style, {
+      position: "fixed",
+      pointerEvents: "none",
+      border: "3px solid #f59e0b",
+      background: "rgba(245,158,11,0.15)",
+      borderRadius: "4px",
+      zIndex: "2147483645",
+      display: "none",
+      boxSizing: "border-box",
+    });
+    document.documentElement.appendChild(highlight);
+    pickImageHighlightEl = highlight;
+
+    const IMAGE_SELECTOR = "img[src]";
+
+    const onMouseMove = (e) => {
+      if (!pickImageActive) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (el && el.closest("#ph-floating-toolbar")) {
+        highlight.style.display = "none";
+        return;
+      }
+      const candidate = el
+        ? el.closest(IMAGE_SELECTOR) || (el.tagName === "IMG" ? el : null)
+        : null;
+      if (candidate) {
+        const r = candidate.getBoundingClientRect();
+        Object.assign(highlight.style, {
+          display: "block",
+          left: `${r.left - 3}px`,
+          top: `${r.top - 3}px`,
+          width: `${r.width + 6}px`,
+          height: `${r.height + 6}px`,
+        });
+      } else {
+        highlight.style.display = "none";
+      }
+    };
+
+    const onClick = (e) => {
+      if (!pickImageActive) return;
+      if (e.target instanceof Element && e.target.closest("#ph-floating-toolbar"))
+        return;
+      const el =
+        e.target instanceof Element
+          ? e.target.closest(IMAGE_SELECTOR) ||
+            (e.target.tagName === "IMG" ? e.target : null)
+          : null;
+      if (!el) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      stopPickImageMode();
+      onPick(el);
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        stopPickImageMode();
+        if (showStatus) showStatus("❌ Image selection cancelled.", "info");
+      }
+    };
+
+    document.addEventListener("mousemove", onMouseMove, true);
+    document.addEventListener("click", onClick, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    pickImageCancelListeners = [
       { el: document, type: "mousemove", fn: onMouseMove },
       { el: document, type: "click", fn: onClick },
       { el: document, type: "keydown", fn: onKeyDown },
@@ -1278,6 +1382,7 @@
       bar.dataset.phHidden = "true";
       bar.style.display = "none";
       stopPickLinkMode();
+      stopPickImageMode();
     });
     header.appendChild(closeBtn);
 
@@ -1645,6 +1750,139 @@
       guidedPanel.appendChild(cancelBtn);
     };
 
+    // Show confirmation after an image is picked
+    const showPickImageConfirmation = (imgEl) => {
+      const src = imgEl.getAttribute("src") || "";
+      const alt = imgEl.getAttribute("alt") || "";
+      const absUrl = (() => {
+        try {
+          return new URL(src, window.location.href).href;
+        } catch (_e) {
+          return src;
+        }
+      })();
+
+      guidedPanel.innerHTML = "";
+
+      const heading = document.createElement("div");
+      heading.style.cssText =
+        "font-weight:600;color:#93c5fd;margin-bottom:6px;font-size:11px;";
+      heading.textContent =
+        pickedImages.length > 0
+          ? `Is this image #${pickedImages.length + 1} correct?`
+          : "Is this the right image?";
+      guidedPanel.appendChild(heading);
+
+      const preview = document.createElement("div");
+      preview.style.cssText = [
+        "background:#0f172a",
+        "border-radius:4px",
+        "padding:5px",
+        "margin-bottom:6px",
+        "text-align:center",
+      ].join(";");
+
+      const thumb = document.createElement("img");
+      thumb.src = absUrl;
+      thumb.style.cssText =
+        "max-width:100%;max-height:80px;border-radius:3px;display:block;margin:0 auto 4px;";
+      thumb.alt = alt || "selected image";
+      preview.appendChild(thumb);
+
+      const urlText = document.createElement("div");
+      urlText.style.cssText = "font-size:9px;color:#9ca3af;word-break:break-all;";
+      urlText.textContent =
+        absUrl.length > 70 ? absUrl.slice(0, 67) + "…" : absUrl;
+      preview.appendChild(urlText);
+      if (alt) {
+        const altText = document.createElement("div");
+        altText.style.cssText = "font-size:9px;color:#6b7280;margin-top:2px;";
+        altText.textContent = `Alt: "${alt}"`;
+        preview.appendChild(altText);
+      }
+      guidedPanel.appendChild(preview);
+
+      if (pickedImages.length > 0) {
+        const countNote = document.createElement("div");
+        countNote.style.cssText = "font-size:9px;color:#fbbf24;margin-bottom:5px;";
+        countNote.textContent = `Already picked ${pickedImages.length} image(s). Add this one too?`;
+        guidedPanel.appendChild(countNote);
+      }
+
+      const btnRow = document.createElement("div");
+      btnRow.style.cssText = "display:flex;flex-direction:column;gap:4px;";
+
+      const confirmBtn = makeSmallBtn(
+        pickedImages.length > 0 ? "✅ Yes — add this image" : "✅ Yes, use this image",
+        "#16a34a",
+        () => {
+          pickedImages.push({ url: absUrl, el: imgEl });
+          if (window.ph_mark_image) {
+            try {
+              window.ph_mark_image({ url: absUrl });
+              addSessionStep("mark_image", `🖼️ Image: ${absUrl.slice(-50)}`);
+              showStatus(`✅ Image recorded: ${absUrl.slice(-40)}`);
+            } catch (_e) {
+              showStatus("❌ Could not record image. Try refreshing.", "error");
+            }
+          } else {
+            addSessionStep("mark_image", `🖼️ Image: ${absUrl.slice(-50)}`);
+            showStatus(`✅ Image noted: ${absUrl.slice(-40)}`);
+          }
+          pickedImages = [];
+          resetGuidedPanel();
+        },
+        "Record this image as the bulletin"
+      );
+
+      const addAnotherBtn = makeSmallBtn(
+        "➕ Pick another image too",
+        "#2563eb",
+        () => {
+          pickedImages.push({ url: absUrl, el: imgEl });
+          showStatus(
+            `✅ Image ${pickedImages.length} saved. Now pick the next one.`,
+            "info"
+          );
+          resetGuidedPanel();
+          startPickImageMode(showPickImageConfirmation, showStatus);
+        },
+        "Add another image (e.g. multi-page bulletin)"
+      );
+
+      const pickAgainBtn = makeSmallBtn(
+        "🔄 Pick a different image",
+        "#374151",
+        () => {
+          resetGuidedPanel();
+          startPickImageMode(showPickImageConfirmation, showStatus);
+        },
+        "Select a different image"
+      );
+
+      const cancelBtn = makeSmallBtn("↩ Cancel", "#374151", () => {
+        pickedImages = [];
+        resetGuidedPanel();
+      });
+      cancelBtn.style.fontSize = "10px";
+      cancelBtn.style.padding = "4px 8px";
+
+      btnRow.appendChild(confirmBtn);
+      if (pickedImages.length === 0) btnRow.appendChild(addAnotherBtn);
+      btnRow.appendChild(pickAgainBtn);
+      btnRow.appendChild(cancelBtn);
+      guidedPanel.appendChild(btnRow);
+
+      if (imgEl instanceof Element) {
+        const prev = imgEl.style.outline;
+        imgEl.style.outline = "3px solid #f59e0b";
+        imgEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        setTimeout(() => {
+          if (imgEl.style.outline === "3px solid #f59e0b") imgEl.style.outline = prev;
+        }, 3000);
+      }
+    };
+
     // Wizard buttons (Guided Mode — 3 simple choices)
     wizardBtns.appendChild(
       makeSmallBtn(
@@ -1664,6 +1902,17 @@
           startCrop();
         },
         "The bulletin is an image on screen — draw a rectangle to capture it"
+      )
+    );
+    wizardBtns.appendChild(
+      makeSmallBtn(
+        "🖼️ Pick an image on this page",
+        "#2563eb",
+        () => {
+          pickedImages = [];
+          startPickImageMode(showPickImageConfirmation, showStatus);
+        },
+        "Click to hover-select an existing image on the page — no cropping needed"
       )
     );
     wizardBtns.appendChild(
@@ -1700,6 +1949,10 @@
     // pick modes — they need to run inside the createToolbar closure.
     window.addEventListener("ph-start-pick-link", () => {
       startPickLinkMode(showPickConfirmation, showStatus);
+    });
+    window.addEventListener("ph-start-pick-image-mode", () => {
+      pickedImages = [];
+      startPickImageMode(showPickImageConfirmation, showStatus);
     });
     window.addEventListener("ph-start-pick-iframe", () => {
       const pickerPanel = buildIframePickerPanel(showStatus);
@@ -2323,6 +2576,17 @@
           toolbar.style.display = "flex";
         }
         window.dispatchEvent(new CustomEvent("ph-start-pick-iframe"));
+        return;
+      }
+      if (type === "start_pick_image") {
+        if (!toolbar) {
+          toolbar = createToolbar();
+          document.documentElement.appendChild(toolbar);
+        } else {
+          toolbar.dataset.phHidden = "false";
+          toolbar.style.display = "flex";
+        }
+        window.dispatchEvent(new CustomEvent("ph-start-pick-image-mode"));
         return;
       }
       if (type === "mark_crop") {

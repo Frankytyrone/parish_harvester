@@ -49,6 +49,13 @@ document.getElementById("wizard-link").addEventListener("click", () => {
   );
 });
 
+document.getElementById("wizard-pick-image").addEventListener("click", () => {
+  void sendToActiveTab(
+    { type: "start_pick_image" },
+    "🖼️ Hover over an image and click to select it…"
+  );
+});
+
 document.getElementById("wizard-iframe").addEventListener("click", () => {
   void sendToActiveTab(
     { type: "start_pick_iframe" },
