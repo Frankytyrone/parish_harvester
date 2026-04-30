@@ -393,5 +393,46 @@ class UrlDateParsingAndScoringTests(unittest.TestCase):
         self.assertGreater(scores[1], scores[0], "May 3rd URL must outscore April 26th URL")
 
 
+class ToolbarImprovementsTests(unittest.TestCase):
+    def setUp(self):
+        repo_root = Path(__file__).resolve().parent
+        self.content_js = (repo_root / "extension" / "content.js").read_text(encoding="utf-8")
+        self.train_py = (repo_root / "train.py").read_text(encoding="utf-8")
+
+    def test_toolbar_max_height_set(self):
+        self.assertIn("maxHeight", self.content_js)
+        self.assertIn("innerHeight", self.content_js)
+
+    def test_toolbar_scroll_container(self):
+        self.assertIn("ph-toolbar-scroll", self.content_js)
+        self.assertIn("overflow-y: auto", self.content_js)
+
+    def test_drag_clamp(self):
+        # Dragging must clamp position to viewport
+        self.assertIn("innerWidth - bw", self.content_js)
+        self.assertIn("innerHeight - bh", self.content_js)
+
+    def test_dock_button(self):
+        self.assertIn("Snap to top-right corner", self.content_js)
+
+    def test_chrome_interstitial_detection(self):
+        self.assertIn("detectChromeInterstitial", self.content_js)
+        self.assertIn("security-interstitial-content", self.content_js)
+        self.assertIn("Click Advanced", self.content_js)
+
+    def test_no_bulletin_button(self):
+        self.assertIn("No bulletin here (skip)", self.content_js)
+        self.assertIn("no_bulletin", self.content_js)
+
+    def test_no_bulletin_train_handler(self):
+        self.assertIn("no_bulletin", self.train_py)
+
+    def test_pick_newest_recommended_label(self):
+        self.assertIn("Recommended (newest)", self.content_js)
+
+    def test_interstitial_result_list_scrollable(self):
+        self.assertIn("ph-interstitial-banner", self.content_js)
+
+
 if __name__ == "__main__":
     unittest.main()

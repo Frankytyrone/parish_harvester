@@ -421,6 +421,10 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
 
             async def handle_mark_download_url(_source, payload: dict[str, Any]) -> None:
                 nonlocal final_document_url, marked_step
+                if payload.get("url") == "no_bulletin":
+                    final_document_url = "no_bulletin"
+                    print("🚫 Parish marked as having no bulletin — skipping.")
+                    return
                 url = _normalize_http_url(str(payload.get("url", "")))
                 if not url:
                     return

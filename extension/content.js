@@ -1178,11 +1178,31 @@
     beginDrawing();
   };
 
+  // ── Chrome interstitial detection helpers ─────────────────────────────────
+
+  const detectChromeInterstitial = () => {
+    return (
+      document.getElementById("main-frame-error") !== null ||
+      document.getElementById("security-interstitial-content") !== null ||
+      (document.body && document.body.id === "t")
+    );
+  };
+
+  const tryClickChromeInterstitialProceed = () => {
+    const btn =
+      document.getElementById("proceed-link") ||
+      document.getElementById("proceed-button") ||
+      document.querySelector("#proceed-link, #proceed-button, .proceed-button, [id*='proceed']");
+    if (btn) { try { btn.click(); } catch (_e) {} }
+  };
+
   // ── createToolbar ─────────────────────────────────────────────────────────
 
   const createToolbar = () => {
     const bar = document.createElement("div");
     bar.id = "ph-floating-toolbar";
+    bar.setAttribute("role", "toolbar");
+    bar.setAttribute("aria-label", "Parish Trainer");
     bar.style.cssText = [
       "position: fixed",
       "top: 10px",
@@ -1201,7 +1221,12 @@
       "max-width: 420px",
       "user-select: none",
       "pointer-events: auto",
+      "overflow: hidden",
+      `max-height: calc(${window.innerHeight}px - 40px)`,
     ].join(";");
+    window.addEventListener("resize", () => {
+      bar.style.maxHeight = `calc(${window.innerHeight}px - 40px)`;
+    });
 
     // ── Header / drag handle ───────────────────────────────────────────────
     const header = document.createElement("div");
@@ -1236,6 +1261,7 @@
     header.appendChild(guidedBadge);
 
     const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
     closeBtn.textContent = "✕";
     closeBtn.title = "Hide toolbar";
     closeBtn.style.cssText = [
@@ -1254,6 +1280,62 @@
       stopPickLinkMode();
     });
     header.appendChild(closeBtn);
+
+    const dockBtn = document.createElement("button");
+    dockBtn.type = "button";
+    dockBtn.textContent = "⊡";
+    dockBtn.title = "Snap to top-right corner";
+    dockBtn.style.cssText = [
+      "background: none",
+      "border: none",
+      "color: #9ca3af",
+      "cursor: pointer",
+      "font-size: 12px",
+      "line-height: 1",
+      "padding: 0 2px",
+    ].join(";");
+    dockBtn.addEventListener("click", () => {
+      bar.style.left = window.innerWidth - bar.offsetWidth - 10 + "px";
+      bar.style.top = "10px";
+      bar.style.transform = "";
+    });
+    header.appendChild(dockBtn);
+
+    // Interstitial banner (shown when Chrome blocks the page)
+    if (detectChromeInterstitial()) {
+      const interstitialBanner = document.createElement("div");
+      interstitialBanner.id = "ph-interstitial-banner";
+      interstitialBanner.style.cssText = [
+        "background:#7f1d1d",
+        "color:#fca5a5",
+        "padding:8px 10px",
+        "font-size:11px",
+        "line-height:1.5",
+        "border-radius:8px 8px 0 0",
+      ].join(";");
+      const msg = document.createElement("div");
+      msg.textContent = "⚠️ Chrome is blocking this page (connection not private).";
+      const instruction = document.createElement("div");
+      instruction.style.cssText = "margin-top:4px;font-weight:600;";
+      instruction.textContent = "👉 Click Advanced → Proceed to [site] (unsafe), then click Continue here.";
+      const continueBtn = document.createElement("button");
+      continueBtn.type = "button";
+      continueBtn.textContent = "Continue here ↩";
+      continueBtn.style.cssText = [
+        "margin-top:6px","border:none","border-radius:4px",
+        "padding:4px 10px","background:#dc2626","color:#fff",
+        "cursor:pointer","font-size:10px","font-family:inherit",
+      ].join(";");
+      continueBtn.addEventListener("click", () => {
+        tryClickChromeInterstitialProceed();
+        if (interstitialBanner.parentNode) interstitialBanner.parentNode.removeChild(interstitialBanner);
+      });
+      interstitialBanner.appendChild(msg);
+      interstitialBanner.appendChild(instruction);
+      interstitialBanner.appendChild(continueBtn);
+      bar.appendChild(interstitialBanner);
+    }
+
     bar.appendChild(header);
 
     // ── Status bar ─────────────────────────────────────────────────────────
@@ -1493,7 +1575,14 @@
         : "No dates detected — please pick the correct bulletin:";
       guidedPanel.appendChild(heading);
 
-      candidates.forEach(({ el, url, label }) => {
+      if (hasAnyDate) {
+        const note = document.createElement("div");
+        note.style.cssText = "font-size:9px;color:#6b7280;margin-bottom:4px;";
+        note.textContent = "Sorted newest-first. ⭐ = most likely this week's bulletin.";
+        guidedPanel.appendChild(note);
+      }
+
+      candidates.forEach(({ el, url, label }, idx) => {
         const row = document.createElement("div");
         row.style.cssText = [
           "display:flex",
@@ -1516,7 +1605,8 @@
         ].join(";");
         const shortUrl = (url || "").length > 55 ? (url || "").slice(0, 52) + "…" : (url || "");
         const shortLabel = (label || "").slice(0, 40);
-        info.textContent = shortLabel ? shortLabel + "\n" + shortUrl : shortUrl;
+        const prefix = (idx === 0 && hasAnyDate) ? "⭐ Recommended (newest)\n" : "";
+        info.textContent = prefix + (shortLabel ? shortLabel + "\n" + shortUrl : shortUrl);
 
         const pickBtn = document.createElement("button");
         pickBtn.textContent = "Use this";
@@ -1538,6 +1628,7 @@
       });
 
       const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
       cancelBtn.textContent = "↩ Cancel";
       cancelBtn.style.cssText = [
         "border:none",
@@ -1583,11 +1674,27 @@
         "Click a link or button to navigate to the bulletin"
       )
     );
+    wizardBtns.appendChild(
+      makeSmallBtn(
+        "🚫 No bulletin here (skip)",
+        "#6b7280",
+        () => {
+          if (typeof window.ph_mark_download_url === "function") {
+            try {
+              window.ph_mark_download_url({ url: "no_bulletin", type: "no_bulletin" });
+            } catch (_e) {}
+          }
+          addSessionStep("no_bulletin", "🚫 No bulletin — skipped");
+          showStatus("🚫 Marked as no bulletin. You can now close this tab or move on.");
+        },
+        "Record that this parish has no bulletin and skip it"
+      )
+    );
 
     guidedPanel.appendChild(wizardQ);
     guidedPanel.appendChild(wizardBtns);
     guidedPanel.appendChild(stuckLink);
-    body.appendChild(guidedPanel);
+    bar.appendChild(guidedPanel);
 
     // Listen for messages from the side-panel / isolated world that request
     // pick modes — they need to run inside the createToolbar closure.
@@ -1608,6 +1715,7 @@
 
     // ── IDENTIFY PAGE ──────────────────────────────────────────────────────
     const identifyBtn = document.createElement("button");
+    identifyBtn.type = "button";
     identifyBtn.textContent = "🔍 Help me identify this page";
     identifyBtn.title = "Run automatic detection to see what kind of bulletin page you are on";
     identifyBtn.style.cssText = [
@@ -1633,6 +1741,8 @@
       "padding:6px 8px",
       "font-size:10px",
       "line-height:1.45",
+      "max-height: 160px",
+      "overflow-y: auto",
     ].join(";");
 
     identifyBtn.addEventListener("click", () => {
@@ -1840,6 +1950,7 @@
     _renderSessionSteps();
 
     const undoBtn = document.createElement("button");
+    undoBtn.type = "button";
     undoBtn.textContent = "↩ Undo Last Step";
     undoBtn.title = "Remove the last recorded step from this session";
     undoBtn.style.cssText = [
@@ -2038,7 +2149,11 @@
     advancedSection.appendChild(advancedBodyEl);
     body.appendChild(advancedSection);
 
-    bar.appendChild(body);
+    const scrollContainer = document.createElement("div");
+    scrollContainer.id = "ph-toolbar-scroll";
+    scrollContainer.style.cssText = "overflow-y: auto;flex: 1 1 auto;min-height: 0;";
+    scrollContainer.appendChild(body);
+    bar.appendChild(scrollContainer);
     bar.appendChild(statusBar);
 
     // ── "Mark Anyway" confirmation button for non-document URLs ───────────
@@ -2103,8 +2218,12 @@
         header.style.cursor = "grab";
         return;
       }
-      bar.style.left = `${event.clientX - dragOffsetX}px`;
-      bar.style.top = `${event.clientY - dragOffsetY}px`;
+      const bw = bar.offsetWidth;
+      const bh = bar.offsetHeight;
+      const clampedLeft = Math.max(0, Math.min(event.clientX - dragOffsetX, window.innerWidth - bw));
+      const clampedTop  = Math.max(0, Math.min(event.clientY - dragOffsetY, window.innerHeight - bh));
+      bar.style.left = `${clampedLeft}px`;
+      bar.style.top  = `${clampedTop}px`;
     });
 
     document.addEventListener("mouseup", () => {
