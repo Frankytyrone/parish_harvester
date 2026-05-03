@@ -1,92 +1,77 @@
-Parish Bulletin Harvest Report — 2026-04-26
+Parish Bulletin Harvest Report — 2026-05-03
 ==================================================
-Downloaded : 28
-HTML links : 11
-Failed     : 12
+Downloaded : 29
+HTML links : 7
+Failed     : 9
 
 Downloaded bulletins:
 
-  ✅ Aghagallon and Ballinderry — aghagallonandballinderryparish.pdf
-  ✅ Ballycastle — ballycastleparish.pdf
-  ✅ Ballymena — ballymenaparish.pdf
-  ✅ Ballymoney — ballymoneyparish.pdf
-  ✅ Bangor — bangorparish.pdf
-  ✅ Bright — parishofbright.pdf
-  ✅ Carrickfergus — carrickparish.pdf
-  ✅ Dunsford and Ardglass — dunsfordandardglassparish.pdf
-  ✅ Glenariffe — glenariffeparish.pdf
-  ✅ Glenavy and Killead — glenavyandkilleadparish.pdf
-  ✅ Loughshore — loughshoreparishes.pdf
-  ✅ Hannahstown — parishofhannahstown.pdf
-  ✅ Holy Cross Belfast — holycrossparishbelfast.pdf
-  ✅ Our Lady Queen of Peace — ourladyqueenofpeacekilwee.pdf
-  ✅ St MacNissi Randalstown — stmacnissirandalstown.pdf
-  ✅ Sacred Heart Belfast — sacredheartparishbelfast.pdf
-  ✅ Saul and Ballee — saulandballeeparish.pdf
-  ✅ Saint Annes — saintannesparish.pdf
-  ✅ St Bernadettes — stbernadettesparish.pdf
-  ✅ St Brigids Belfast — stbrigidsparishbelfast.pdf
-  ✅ St Colmcilles — st-colmcilles.pdf
-  ✅ St Michael the Archangel — saintmichaelthearchangel.pdf
-  ✅ St Oliver Plunkett — stoliverplunkettparish.pdf
-  ✅ Holy Family — holy-familyparish.pdf
-  ✅ Port Glenone — stmarysportglenone.pdf
-  ✅ Saint Malachy's — saintmalachysparish.pdf
-  ✅ St Mary's on the Hill — stmarysonthehill.pdf
-  ✅ St Patrick's Downpatrick — stpatricksdownpatrick.pdf
+  ✅ Ardmore — ardmoreparish.pdf
+  ✅ Banagher — banagherparish.pdf
+  ✅ Buncrana — buncranaparish.pdf
+  ✅ Carndonagh — carndonaghparish.pdf
+  ✅ Castlederg — castledergparish.pdf
+  ✅ Clonmany — clonmanyparish.pdf
+  ✅ Culdaff — culdaffparish.pdf
+  ✅ Culmoe — culmoreparish.pdf
+  ✅ DMA Parish (Claudy area) — dmaparish.pdf
+  ✅ Drumquin — drumquinparish.pdf
+  ✅ Dungiven — parishofdungiven.pdf
+  ✅ Errigal — errigalparish.pdf
+  ✅ Fahan — fahanparish.pdf
+  ✅ Iskaheen — iskaheenparish.pdf
+  ✅ Kilrea — parishofkilrea.pdf
+  ✅ Lavey — laveyparish.pdf
+  ✅ Leckpatrick — leckpatrickparish.pdf
+  ✅ Maghera (Derry) — magheraparishderry.pdf
+  ✅ Melmount (& Camus) — melmountparish.pdf
+  ✅ Moville — movilleparish.pdf
+  ✅ Sion Mills — parishofsionmills.pdf
+  ✅ Star of the Sea (Magilligan) — staroftheseacatholic.pdf
+  ✅ St Eugene's Cathedral (Templemore) — steugenescathedral.pdf
+  ✅ St Mary's Parish Creggan — stmarysparishcreggan.pdf
+  ✅ Aghyaran — parishofaghyaran.pdf
+  ✅ Ardstraw East — parishofardstraweast.pdf
+  ✅ Drumragh — drumraghparish.pdf
+  ✅ Granaghan — granaghanparish.pdf
+  ✅ Holy Family — holyfamily-parish.pdf
 
 HTML-only parishes (clickable links in mega PDF):
 
-  🔗 Antrim — https://www.antrimparish.com/bulletinpage/
-  🔗 Holy Rosary Belfast — https://www.holyrosaryparishbelfast.net/weekly-bulletin
-  🔗 Lisburn — https://parishoflisburn.org
-  🔗 Maghera — https://www.parishofmaghera.com/copy-of-sunday-missalette
-  🔗 Portaferry — https://portaferryparish.com/bulletin
-  🔗 St Agnes Belfast — https://www.stagnesbelfast.com/
-  🔗 St Gerards — https://stgerardsparish.org/parish-news-events/
-  🔗 St Patricks Belfast — https://www.stpatricksbelfast.org/category/weekly-bulletins/
-  🔗 St Teresas — https://stteresasparish.church/parish-news/
-  🔗 Christ the Redeemer — https://www.christtheredeemer.co.uk/parish-bulletin
-  🔗 Nativity — https://www.nativityparish.com/news
+  🔗 Ballinascreen (& Desertmartin amalgamated) — https://www.parishofballinascreen.com
+  🔗 Clonleigh (Strabane Pastoral Area) — https://clonleighparish.com/2026/04/11/strabane-pastoral-area-newsletter-for-sunday-12th-april-2026/
+  🔗 Camus — https://camusparish.com/
+  🔗 Desertmartin — https://www.desertmartinparish.com/?page_id=6
+  🔗 Greencastle — https://greencastleparish.com/
+  🔗 Long Tower — https://longtowerchurch.org/
+  🔗 Steelstown — http://www.steelstownparish.com/
 
 Failed parishes:
 
-  ❌ Ballyclare and Ballygowan — Total timeout exceeded
-  ❌ Derriaghy — Page.goto: Timeout 20000ms exceeded.
+  ❌ Bellaghy — Page.goto: net::ERR_ABORTED at https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf
 Call log:
-  - navigating to "https://derriaghycatholicparish.com/", waiting until "domcontentloaded"
+  - navigating to "https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf", waiting until "domcontentloaded"
 
-  ❌ Kilmore and Killyleagh — Total timeout exceeded
-  ❌ Portstewart — Total timeout exceeded
-  ❌ Saint Anthony — Page.goto: Timeout 20000ms exceeded.
+  ❌ Claudy — Total timeout exceeded
+  ❌ Greenlough — Page.goto: net::ERR_ABORTED at http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf
 Call log:
-  - navigating to "http://www.saintanthony.co.uk/", waiting until "domcontentloaded"
+  - navigating to "http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf", waiting until "domcontentloaded"
 
-  ❌ St Mary's Belfast — Page.goto: net::ERR_CERT_COMMON_NAME_INVALID at https://www.stmarysbelfast.org/news
+  ❌ Limavady — Total timeout exceeded
+  ❌ Malin — Page.goto: net::ERR_ABORTED at https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf
 Call log:
-  - navigating to "https://www.stmarysbelfast.org/news", waiting until "domcontentloaded"
+  - navigating to "https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf", waiting until "domcontentloaded"
 
-  ❌ Corpus Christi Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.corpuschristiparishbelfast.com/news
+  ❌ Three Patrons — No downloadable bulletin links found
+  ❌ Waterside (& Strathfoyle amalgamated) — Page.goto: net::ERR_ABORTED at https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf
 Call log:
-  - navigating to "https://www.corpuschristiparishbelfast.com/news", waiting until "domcontentloaded"
+  - navigating to "https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf", waiting until "domcontentloaded"
 
-  ❌ Drumbo and Carryduff — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.drumbocarryduff.ie/#sbp-bulletin
+  ❌ Coleraine (St John) — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.parishofstjohncoleraine.com/
 Call log:
-  - navigating to "https://www.drumbocarryduff.ie/#sbp-bulletin", waiting until "domcontentloaded"
+  - navigating to "https://www.parishofstjohncoleraine.com/", waiting until "domcontentloaded"
 
-  ❌ Holy Trinity Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://holytrinityparishbelfast.com/newsletters/
+  ❌ Urney and Castlefin — Page.goto: net::ERR_NAME_NOT_RESOLVED at http://urneyandcastlefinparish.com/?page_id=1227
 Call log:
-  - navigating to "https://holytrinityparishbelfast.com/newsletters/", waiting until "domcontentloaded"
-
-  ❌ St Luke's Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.stlukesparishbelfast.com/news
-Call log:
-  - navigating to "https://www.stlukesparishbelfast.com/news", waiting until "domcontentloaded"
-
-  ❌ St Matthew's — Page.goto: net::ERR_CERT_DATE_INVALID at https://www.stmatthewsparish.com/news
-Call log:
-  - navigating to "https://www.stmatthewsparish.com/news", waiting until "domcontentloaded"
-
-  ❌ St Vincent de Paul Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.stvincentdepaulparishbelfast.com/news
-Call log:
-  - navigating to "https://www.stvincentdepaulparishbelfast.com/news", waiting until "domcontentloaded"
+  - navigating to "http://urneyandcastlefinparish.com/?page_id=1227", waiting until "domcontentloaded"
 
