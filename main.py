@@ -221,6 +221,7 @@ def main() -> int:
             bulletins_dir=BULLETINS_DIR,
             target=target,
             contacts_path=contacts_path if contacts_path.exists() else None,
+            mega_excludes_path=PARISHES_DIR / "mega_excludes.json",
         )
     except Exception as exc:
         print(f"  ⚠️  Mega PDF generation failed (non-fatal): {exc}")

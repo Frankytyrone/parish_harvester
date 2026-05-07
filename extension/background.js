@@ -48,6 +48,111 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 //   { ok: true,  url: string }   — on success
 //   { ok: false, error: string } — on failure
 
+// ── Generic GitHub file fetch ─────────────────────────────────────────────
+//
+// Message shape: { type: "fetch_github_file", path: string }
+// Reply:         { ok: true, content: string } | { ok: false, error: string }
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "fetch_github_file") return false;
+
+  (async () => {
+    try {
+      const { gh_pat, gh_repo } = await chrome.storage.local.get(["gh_pat", "gh_repo"]);
+      if (!gh_pat || !gh_repo) {
+        sendResponse({ ok: false, error: "GitHub PAT or repo not configured." });
+        return;
+      }
+      const apiUrl = `https://api.github.com/repos/${gh_repo}/contents/${message.path}`;
+      const resp = await fetch(apiUrl, {
+        headers: {
+          Authorization: `token ${gh_pat}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+      if (!resp.ok) {
+        sendResponse({ ok: false, error: `GitHub ${resp.status}: ${resp.statusText}` });
+        return;
+      }
+      const data = await resp.json();
+      // content is base64-encoded by GitHub API
+      const decoded = decodeURIComponent(
+        atob(data.content.replace(/\n/g, ""))
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      sendResponse({ ok: true, content: decoded, sha: data.sha });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err) });
+    }
+  })();
+
+  return true;
+});
+
+// ── Generic GitHub file push ──────────────────────────────────────────────
+//
+// Message shape:
+//   { type: "push_github_file", path: string, content: string, commitMessage: string }
+// Reply: { ok: true, url: string } | { ok: false, error: string }
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "push_github_file") return false;
+
+  (async () => {
+    try {
+      const { gh_pat, gh_repo } = await chrome.storage.local.get(["gh_pat", "gh_repo"]);
+      if (!gh_pat || !gh_repo) {
+        sendResponse({ ok: false, error: "GitHub PAT or repo not configured." });
+        return;
+      }
+
+      const filePath = (message.path || "").trim();
+      if (!filePath) { sendResponse({ ok: false, error: "No file path provided." }); return; }
+
+      const apiBase = `https://api.github.com/repos/${gh_repo}/contents/${filePath}`;
+      const headers = {
+        Authorization: `token ${gh_pat}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      };
+
+      // Get current SHA (for updates)
+      let existingSha = null;
+      try {
+        const getResp = await fetch(apiBase, { headers });
+        if (getResp.ok) { existingSha = (await getResp.json()).sha || null; }
+      } catch (_e) { /* new file */ }
+
+      const encoded = btoa(unescape(encodeURIComponent(message.content || "")));
+      const body = {
+        message: message.commitMessage || `update ${filePath} [from extension]`,
+        content: encoded,
+        ...(existingSha ? { sha: existingSha } : {}),
+      };
+
+      const putResp = await fetch(apiBase, { method: "PUT", headers, body: JSON.stringify(body) });
+      if (!putResp.ok) {
+        const err = await putResp.json().catch(() => ({}));
+        sendResponse({ ok: false, error: `GitHub API error ${putResp.status}: ${err.message || putResp.statusText}` });
+        return;
+      }
+
+      const result = await putResp.json();
+      sendResponse({ ok: true, url: result?.content?.html_url || `https://github.com/${gh_repo}/blob/main/${filePath}` });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err) });
+    }
+  })();
+
+  return true;
+});
+
+// ── Recipe push ───────────────────────────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "push_recipe") return false;
 

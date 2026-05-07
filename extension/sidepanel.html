@@ -47,6 +47,52 @@
       .note { margin: 8px 0 0; line-height: 1.35; font-size: 10px; color: #6b7280; }
       details summary { cursor: pointer; font-size: 10px; color: #6b7280; margin-top: 6px; }
       details .inner { margin-top: 5px; }
+
+      /* ── Parish Directory ── */
+      #parish-dir-content { max-height: 420px; overflow-y: auto; }
+      .pd-diocese { margin-bottom: 6px; }
+      .pd-diocese-title {
+        font-size: 10px; font-weight: 700; color: #fbbf24;
+        padding: 3px 0; border-bottom: 1px solid #374151; margin-bottom: 3px;
+      }
+      .pd-row {
+        display: flex; align-items: center; gap: 4px;
+        padding: 3px 2px; border-radius: 4px; font-size: 10px;
+      }
+      .pd-row:hover { background: #1e293b; }
+      .pd-status { font-size: 10px; flex-shrink: 0; }
+      .pd-name {
+        flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        color: #f9fafb; cursor: pointer;
+      }
+      .pd-name:hover { text-decoration: underline; color: #93c5fd; }
+      .pd-name.disabled { color: #6b7280; font-style: italic; }
+      .pd-btn {
+        border: none; border-radius: 4px; padding: 2px 5px; cursor: pointer;
+        font-size: 9px; font-family: inherit; flex-shrink: 0; line-height: 1.4; width: auto;
+        background: #374151; color: #d1d5db;
+      }
+      .pd-btn:hover { background: #4b5563; }
+      .pd-btn.red { background: #7f1d1d; color: #fca5a5; }
+      .pd-btn.red:hover { background: #991b1b; }
+      .pd-excl { accent-color: #f59e0b; cursor: pointer; flex-shrink: 0; }
+      .pd-edit-row {
+        display: flex; flex-direction: column; gap: 3px;
+        background: #0f172a; border-radius: 4px; padding: 5px; margin: 2px 0;
+      }
+      .pd-edit-row input {
+        border: 1px solid #374151; border-radius: 4px; padding: 3px 5px;
+        background: #1e293b; color: #f9fafb; font-size: 10px; font-family: inherit; width: 100%;
+      }
+      .pd-edit-btns { display: flex; gap: 4px; }
+      .pd-edit-btns button { width: auto; font-size: 9px; padding: 3px 8px; }
+      #pd-refresh { width: auto; font-size: 9px; padding: 2px 7px; background: #374151; }
+      #pd-search {
+        width: 100%; border: 1px solid #374151; border-radius: 4px;
+        padding: 4px 6px; background: #0f172a; color: #f9fafb;
+        font-size: 10px; margin-bottom: 6px; font-family: inherit;
+      }
+      .pd-excl-label { font-size: 9px; color: #9ca3af; flex-shrink: 0; }
     </style>
   </head>
   <body>
@@ -91,6 +137,22 @@
           <input id="gh-repo" type="text" placeholder="Frankytyrone/parish_harvester" style="width:100%;border:1px solid #374151;border-radius:4px;padding:4px 6px;background:#0f172a;color:#f9fafb;font-size:10px;margin-bottom:5px;box-sizing:border-box;font-family:inherit;" />
           <button id="gh-save" type="button" class="green">💾 Save settings</button>
           <p id="gh-save-status" class="note" style="margin-top:4px;"></p>
+        </div>
+      </details>
+
+      <!-- Parish Directory -->
+      <details id="parish-dir-details">
+        <summary>📋 Parish Directory</summary>
+        <div class="inner section">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">
+            <span style="font-size:10px;color:#6b7280;flex:1;">Browse parishes, open bulletin pages, update links, and control the mega PDF.</span>
+            <button id="pd-refresh" type="button">↺ Refresh</button>
+          </div>
+          <input id="pd-search" type="search" placeholder="Search parish name…" />
+          <div id="parish-dir-loading" style="font-size:10px;color:#6b7280;display:none;">⏳ Loading…</div>
+          <div id="parish-dir-error"  style="font-size:10px;color:#fca5a5;display:none;"></div>
+          <div id="parish-dir-content"></div>
+          <p class="note" style="margin-top:4px;">☑ = excluded from mega PDF this week. Changes push to GitHub immediately.</p>
         </div>
       </details>
     </div>
