@@ -79,6 +79,20 @@
           <p class="note">Right-click an image on the page → "Mark as Bulletin Image"</p>
         </div>
       </details>
+
+      <!-- GitHub Settings -->
+      <details id="gh-settings-details">
+        <summary>🔑 GitHub Settings (one-time setup)</summary>
+        <div class="inner section">
+          <p class="note" style="margin-bottom:5px;">Enter your GitHub Personal Access Token (PAT) and repository to enable pushing recipes directly to GitHub without running train.py.</p>
+          <label style="font-size:10px;color:#93c5fd;display:block;margin-bottom:2px;">Personal Access Token</label>
+          <input id="gh-pat" type="password" placeholder="ghp_…" style="width:100%;border:1px solid #374151;border-radius:4px;padding:4px 6px;background:#0f172a;color:#f9fafb;font-size:10px;margin-bottom:5px;box-sizing:border-box;font-family:inherit;" />
+          <label style="font-size:10px;color:#93c5fd;display:block;margin-bottom:2px;">Repository (owner/repo)</label>
+          <input id="gh-repo" type="text" placeholder="Frankytyrone/parish_harvester" style="width:100%;border:1px solid #374151;border-radius:4px;padding:4px 6px;background:#0f172a;color:#f9fafb;font-size:10px;margin-bottom:5px;box-sizing:border-box;font-family:inherit;" />
+          <button id="gh-save" type="button" class="green">💾 Save settings</button>
+          <p id="gh-save-status" class="note" style="margin-top:4px;"></p>
+        </div>
+      </details>
     </div>
     <script src="sidepanel.js"></script>
   </body>

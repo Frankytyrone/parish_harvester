@@ -6,11 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       diocese:
-        description: 'Diocese to harvest'
+        description: 'Diocese to harvest (or "all" for every diocese)'
         required: true
-        default: 'derry_diocese'
+        default: 'all'
         type: choice
         options:
+          - all
           - derry_diocese
           - down_and_connor
 
@@ -39,7 +40,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
 
       - name: Run Bulletin Harvester
-        run: python main.py --diocese ${{ github.event.inputs.diocese || 'derry_diocese' }}
+        run: python main.py --diocese ${{ github.event.inputs.diocese || 'all' }}
         env:
           HARVEST_EMAIL_TO: ${{ secrets.HARVEST_EMAIL_TO }}
           HARVEST_EMAIL_FROM: ${{ secrets.HARVEST_EMAIL_FROM }}
@@ -52,13 +53,47 @@ jobs:
           MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
           MAILGUN_DOMAIN: ${{ secrets.MAILGUN_DOMAIN }}
 
+      - name: Write workflow step summary
+        if: always()
+        run: |
+          if [ -f Bulletins/report.json ]; then
+            python - <<'PYEOF'
+          import json, os
+          d = json.load(open("Bulletins/report.json"))
+          s = d.get("summary", {})
+          dl = s.get("downloaded", 0)
+          hl = s.get("html_links", 0)
+          fa = s.get("failed", 0)
+          total = dl + fa
+          rate = f"{dl/total*100:.1f}%" if total > 0 else "N/A"
+          lines = [
+              f"## 📋 Bulletin Harvest — {d.get('target_date','?')}",
+              "",
+              f"| Metric | Value |",
+              f"|--------|-------|",
+              f"| ✅ Downloaded | {dl} |",
+              f"| 🔗 HTML links | {hl} |",
+              f"| 💥 Failed | {fa} |",
+              f"| 📈 Success rate | {rate} |",
+              "",
+          ]
+          if d.get("failed"):
+              lines += ["### ❌ Failed parishes (need re-training)", ""]
+              for f in d["failed"]:
+                  lines.append(f"- **{f['display_name']}** — _{f.get('error','?')[:120]}_")
+              lines.append("")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
+              fh.write("\n".join(lines))
+          PYEOF
+          fi
+
       - name: Post GitHub Issue summary
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -f Bulletins/report.json ]; then
-            DIOCESE="${{ github.event.inputs.diocese || 'derry_diocese' }}"
+            DIOCESE="${{ github.event.inputs.diocese || 'all' }}"
             REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
             DOWNLOADED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['downloaded'])")
             HTML_LINKS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['html_links'])")

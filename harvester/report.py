@@ -31,6 +31,14 @@ def generate_report(
     """
     current_dir.mkdir(parents=True, exist_ok=True)
 
+    # Purge stale PDFs from previous runs so the mega PDF only contains
+    # this week's bulletins (fixes "mega PDF includes all previous weeks").
+    for stale in current_dir.glob("*.pdf"):
+        try:
+            stale.unlink()
+        except OSError:
+            pass
+
     downloaded: list[dict] = []
     html_links: list[dict] = []
     failed: list[dict] = []

@@ -43,14 +43,25 @@ def _silence_playwright_shutdown(
     loop.default_exception_handler(context)
 
 
+def _discover_dioceses(parishes_dir: Path) -> list[str]:
+    """Return sorted list of diocese names from evidence files in *parishes_dir*."""
+    return sorted(
+        p.stem.replace("_bulletin_urls", "")
+        for p in parishes_dir.glob("*_bulletin_urls.txt")
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Parish Bulletin Harvester — evidence-driven downloader."
     )
     parser.add_argument(
         "--diocese",
-        default="derry_diocese",
-        help="Diocese name (default: derry_diocese)",
+        default="all",
+        help=(
+            "Diocese name or 'all' to run every diocese found in parishes/. "
+            "(default: all)"
+        ),
     )
     parser.add_argument(
         "--target-date",
@@ -78,11 +89,13 @@ def main() -> int:
     harvest_start = time.monotonic()
 
     if args.train:
+        # Training always targets a single diocese
+        diocese = args.diocese if args.diocese != "all" else "derry_diocese"
         try:
             asyncio.run(
                 run_training(
                     parish_query=args.train,
-                    diocese=args.diocese,
+                    diocese=diocese,
                     parishes_dir=PARISHES_DIR,
                 )
             )
@@ -102,58 +115,82 @@ def main() -> int:
         target = target_sunday()
 
     print(f"🗓️  Target date  : {target}")
-    print(f"📋 Diocese      : {args.diocese}")
 
-    # Parse evidence file
-    try:
-        entries = parse_evidence_file(args.diocese, PARISHES_DIR)
-    except FileNotFoundError as exc:
-        print(f"💥 {exc}", file=sys.stderr)
-        return 1
+    # Determine which dioceses to run
+    if args.diocese == "all":
+        dioceses = _discover_dioceses(PARISHES_DIR)
+        if not dioceses:
+            print("💥 No diocese evidence files found in parishes/", file=sys.stderr)
+            return 1
+        print(f"📋 Dioceses     : {', '.join(dioceses)}")
+    else:
+        dioceses = [args.diocese]
+        print(f"📋 Diocese      : {args.diocese}")
 
-    print(f"⛪ Parishes     : {len(entries)}")
+    # Fetch bulletins for all requested dioceses
+    all_results = []
+    for diocese in dioceses:
+        if len(dioceses) > 1:
+            print(f"\n{'═' * 58}")
+            print(f"📍 Diocese: {diocese}")
+            print('═' * 58)
+        try:
+            entries = parse_evidence_file(diocese, PARISHES_DIR)
+        except FileNotFoundError as exc:
+            print(f"💥 {exc}", file=sys.stderr)
+            if len(dioceses) == 1:
+                return 1
+            continue
 
-    # Fetch all bulletins
-    print("\n── Fetch ───────────────────────────────────────────────────")
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    loop = asyncio.new_event_loop()
-    loop.set_exception_handler(_silence_playwright_shutdown)
-    asyncio.set_event_loop(loop)
-    try:
-        results = loop.run_until_complete(fetch_all(entries, RAW_DIR, target))
-    finally:
-        loop.close()
+        print(f"⛪ Parishes     : {len(entries)}")
+        print("\n── Fetch ───────────────────────────────────────────────────")
+        RAW_DIR.mkdir(parents=True, exist_ok=True)
+        loop = asyncio.new_event_loop()
+        loop.set_exception_handler(_silence_playwright_shutdown)
+        asyncio.set_event_loop(loop)
+        try:
+            results = loop.run_until_complete(fetch_all(entries, RAW_DIR, target))
+        finally:
+            loop.close()
 
-    ok_count = sum(1 for r in results if r.status == "ok")
-    html_count = sum(1 for r in results if r.status == "html_link")
-    err_count = sum(1 for r in results if r.status == "error")
+        ok_count = sum(1 for r in results if r.status == "ok")
+        html_count = sum(1 for r in results if r.status == "html_link")
+        err_count = sum(1 for r in results if r.status == "error")
 
-    # Log every result to harvest_log.json
-    for r in results:
-        log_result(r, r.key, r.display_name)
+        # Log every result to harvest_log.json
+        for r in results:
+            log_result(r, r.key, r.display_name)
 
-    print(f"  ✅ Downloaded  : {ok_count}")
-    print(f"  🔗 HTML links  : {html_count}")
-    print(f"  💥 Failed      : {err_count}")
+        print(f"  ✅ Downloaded  : {ok_count}")
+        print(f"  🔗 HTML links  : {html_count}")
+        print(f"  💥 Failed      : {err_count}")
 
-    if err_count:
-        print(f"\n  Failed parishes ({err_count}):")
-        for i, r in enumerate(
-            (r for r in results if r.status == "error"), start=1
-        ):
-            print(f"  {i:2d}. {r.display_name}")
-            print(f"       URL    : {r.url}")
-            print(f"       Reason : {r.error}")
+        if err_count:
+            print(f"\n  Failed parishes ({err_count}):")
+            for i, r in enumerate(
+                (r for r in results if r.status == "error"), start=1
+            ):
+                print(f"  {i:2d}. {r.display_name}")
+                print(f"       URL    : {r.url}")
+                print(f"       Reason : {r.error}")
+
+        all_results.extend(results)
 
     if args.dry_run:
         print("\n⚠️  --dry-run: stopping after fetch.")
         return 0
 
-    # Generate report
+    if not all_results:
+        print("⚠️  No results to report.", file=sys.stderr)
+        return 1
+
+    # Generate combined report (across all dioceses)
     print("\n── Report ──────────────────────────────────────────────────")
-    contacts_path = PARISHES_DIR / f"{args.diocese}_contacts.json"
+    # Use first diocese for contacts lookup when running a single diocese
+    primary_diocese = dioceses[0]
+    contacts_path = PARISHES_DIR / f"{primary_diocese}_contacts.json"
     generate_report(
-        results,
+        all_results,
         raw_dir=RAW_DIR,
         current_dir=CURRENT_DIR,
         report_json=REPORT_JSON,
@@ -179,7 +216,7 @@ def main() -> int:
     print("\n── Stitch Mega PDF ─────────────────────────────────────────")
     try:
         stitch_mega_pdf(
-            results,
+            all_results,
             current_dir=CURRENT_DIR,
             bulletins_dir=BULLETINS_DIR,
             target=target,

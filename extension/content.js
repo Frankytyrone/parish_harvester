@@ -14,6 +14,62 @@
   let _stepsListEl = null; // set by createToolbar
   let _refreshRecipeCount = null; // callback set by createToolbar
 
+  // ── Standalone recipe accumulator ────────────────────────────────────────
+  // When the Playwright training bindings (window.ph_*) are absent, the
+  // extension operates in "standalone" mode.  Steps are stored here so the
+  // user can later push the recipe directly to GitHub without running train.py.
+  const standaloneSteps = []; // {action, ...} — recipe step objects
+  let standaloneStartUrl = "";
+
+  const _inStandaloneMode = () => typeof window.ph_mark_download_url !== "function";
+
+  const standaloneAddStep = (step) => {
+    if (!_inStandaloneMode()) return;
+    // Replace an existing download/image/html step if one already exists
+    const terminal = ["download", "image", "html"];
+    if (terminal.includes(step.action)) {
+      const idx = standaloneSteps.findIndex((s) => terminal.includes(s.action));
+      if (idx >= 0) {
+        standaloneSteps.splice(idx, 1);
+      }
+    }
+    standaloneSteps.push(step);
+    if (!standaloneStartUrl) {
+      standaloneStartUrl = window.location.href;
+    }
+  };
+
+  const standaloneUndo = (actionType) => {
+    if (!_inStandaloneMode()) return;
+    for (let i = standaloneSteps.length - 1; i >= 0; i--) {
+      if (standaloneSteps[i].action === actionType) {
+        standaloneSteps.splice(i, 1);
+        break;
+      }
+    }
+  };
+
+  const buildStandaloneRecipe = (parishKey, displayName, diocese) => {
+    const steps = [];
+    if (standaloneStartUrl) {
+      steps.push({ action: "goto", url: standaloneStartUrl });
+    }
+    steps.push(...standaloneSteps);
+    return {
+      version: 1,
+      parish_key: parishKey,
+      display_name: displayName,
+      diocese: diocese || "",
+      start_url: standaloneStartUrl || window.location.href,
+      steps,
+    };
+  };
+
+  const clearStandaloneRecipe = () => {
+    standaloneSteps.length = 0;
+    standaloneStartUrl = "";
+  };
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   const cropSignature = (payload) =>
@@ -830,9 +886,10 @@
           );
       }
     } else {
-      console.warn("Parish Trainer: ph_mark_download_url binding is unavailable.");
-      if (showStatus)
-        showStatus("❌ Training binding unavailable. Try refreshing.", "error");
+      // Standalone mode: accumulate step locally for later GitHub push
+      standaloneAddStep({ action: "download", url });
+      addSessionStep("mark_file", `📄 File: ${url.slice(-50)}`);
+      if (showStatus) showStatus("✅ File URL saved (standalone). Use ⬆ Push Recipe to save to GitHub.");
     }
   };
 
@@ -2627,7 +2684,155 @@
     advancedSection.appendChild(advancedBodyEl);
     body.appendChild(advancedSection);
 
-    const scrollContainer = document.createElement("div");
+    // ── Push Recipe to GitHub (standalone mode) ───────────────────────────
+    // Only rendered when the Playwright bindings are absent.  Uses the
+    // standaloneSteps[] accumulated above to build a recipe JSON and push
+    // it directly to the repo via the GitHub Contents API.
+    if (_inStandaloneMode()) {
+      const pushSection = document.createElement("div");
+      pushSection.id = "ph-push-section";
+      pushSection.style.cssText = [
+        "background:#1e293b",
+        "border:1px solid #16a34a",
+        "border-radius:6px",
+        "padding:8px",
+        "margin-top:6px",
+      ].join(";");
+
+      const pushTitle = document.createElement("div");
+      pushTitle.style.cssText = "font-size:10px;font-weight:600;color:#86efac;margin-bottom:6px;";
+      pushTitle.textContent = "⬆ Push Recipe to GitHub";
+      pushSection.appendChild(pushTitle);
+
+      const makeInput = (placeholder, id) => {
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.placeholder = placeholder;
+        inp.id = id;
+        inp.style.cssText = [
+          "width:100%",
+          "border:1px solid #374151",
+          "border-radius:4px",
+          "padding:4px 6px",
+          "background:#0f172a",
+          "color:#f9fafb",
+          "font-size:10px",
+          "margin-bottom:4px",
+          "box-sizing:border-box",
+          "font-family:inherit",
+        ].join(";");
+        return inp;
+      };
+
+      const keyInput = makeInput("Parish key  e.g. ardmoreparish", "ph-parish-key");
+      const nameInput = makeInput("Display name  e.g. Ardmore Parish", "ph-display-name");
+      const dioceseInput = makeInput("Diocese  e.g. derry_diocese", "ph-diocese");
+      pushSection.appendChild(keyInput);
+      pushSection.appendChild(nameInput);
+      pushSection.appendChild(dioceseInput);
+
+      // Pre-populate diocese from storage
+      chrome.storage.local.get(["ph_last_diocese"], (r) => {
+        if (r.ph_last_diocese) dioceseInput.value = r.ph_last_diocese;
+      });
+
+      const stepCountEl = document.createElement("div");
+      stepCountEl.style.cssText = "font-size:9px;color:#6b7280;margin-bottom:5px;";
+      const refreshStepCount = () => {
+        stepCountEl.textContent = `${standaloneSteps.length} step(s) recorded`;
+      };
+      refreshStepCount();
+      pushSection.appendChild(stepCountEl);
+
+      // Keep count in sync with session steps
+      const origRefreshRecipeCount = _refreshRecipeCount;
+      _refreshRecipeCount = () => {
+        if (origRefreshRecipeCount) origRefreshRecipeCount();
+        refreshStepCount();
+      };
+
+      const pushBtn = document.createElement("button");
+      pushBtn.type = "button";
+      pushBtn.textContent = "⬆ Push Recipe to GitHub";
+      pushBtn.style.cssText = [
+        "border:none",
+        "border-radius:6px",
+        "padding:6px 10px",
+        "background:#16a34a",
+        "color:#fff",
+        "cursor:pointer",
+        "font-size:11px",
+        "text-align:left",
+        "white-space:normal",
+        "font-family:inherit",
+        "line-height:1.3",
+        "width:100%",
+        "margin-bottom:4px",
+      ].join(";");
+      pushBtn.addEventListener("click", async () => {
+        const key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
+        const name = nameInput.value.trim();
+        const diocese = dioceseInput.value.trim();
+        if (!key) { showStatus("❌ Parish key is required.", "error"); return; }
+        if (!name) { showStatus("❌ Display name is required.", "error"); return; }
+        if (standaloneSteps.length === 0) { showStatus("⚠️ No steps recorded yet.", "warn"); return; }
+
+        const recipe = buildStandaloneRecipe(key, name, diocese);
+        pushBtn.disabled = true;
+        pushBtn.textContent = "⏳ Pushing…";
+        showStatus("⏳ Pushing recipe to GitHub…", "info");
+
+        try {
+          const response = await new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({ type: "push_recipe", parish_key: key, recipe }, (res) => {
+              if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+              resolve(res);
+            });
+          });
+          if (response && response.ok) {
+            showStatus(`✅ Recipe saved! ${response.url}`, "ok");
+            if (diocese) chrome.storage.local.set({ ph_last_diocese: diocese });
+            clearStandaloneRecipe();
+            refreshStepCount();
+          } else {
+            showStatus(`❌ ${(response && response.error) || "Unknown error"}`, "error");
+          }
+        } catch (err) {
+          showStatus(`❌ ${err.message}`, "error");
+        } finally {
+          pushBtn.disabled = false;
+          pushBtn.textContent = "⬆ Push Recipe to GitHub";
+        }
+      });
+      pushSection.appendChild(pushBtn);
+
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.textContent = "🗑 Clear steps";
+      clearBtn.style.cssText = [
+        "border:1px solid #374151",
+        "border-radius:6px",
+        "padding:4px 8px",
+        "background:transparent",
+        "color:#9ca3af",
+        "cursor:pointer",
+        "font-size:10px",
+        "font-family:inherit",
+        "width:100%",
+      ].join(";");
+      clearBtn.addEventListener("click", () => {
+        clearStandaloneRecipe();
+        sessionSteps.length = 0;
+        if (_stepsListEl) _stepsListEl.innerHTML = "";
+        refreshStepCount();
+        showStatus("🗑 Steps cleared.", "info");
+      });
+      pushSection.appendChild(clearBtn);
+
+      body.appendChild(pushSection);
+    }
+
+
     scrollContainer.id = "ph-toolbar-scroll";
     scrollContainer.style.cssText = "overflow-y: auto;flex: 1 1 auto;min-height: 0;";
     scrollContainer.appendChild(body);
@@ -2748,29 +2953,32 @@
 
       const type = message?.type;
       if (type === "mark_html") {
-        if (!window.ph_mark_html) {
-          console.warn("Parish Trainer: ph_mark_html binding is unavailable.");
-          return;
+        if (window.ph_mark_html) {
+          window.ph_mark_html({ url: window.location.href });
+        } else {
+          // Standalone mode
+          standaloneAddStep({ action: "html", url: window.location.href });
         }
-        window.ph_mark_html({ url: window.location.href });
         addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
         return;
       }
       if (type === "mark_file") {
-        if (!window.ph_mark_download_url) {
-          console.warn("Parish Trainer: ph_mark_download_url binding is unavailable.");
-          return;
+        if (window.ph_mark_download_url) {
+          window.ph_mark_download_url({ url: window.location.href });
+        } else {
+          // Standalone mode
+          standaloneAddStep({ action: "download", url: window.location.href });
         }
-        window.ph_mark_download_url({ url: window.location.href });
         addSessionStep("mark_file", `📄 File: ${window.location.pathname}`);
         return;
       }
       if (type === "mark_image" && message?.url) {
-        if (!window.ph_mark_image) {
-          console.warn("Parish Trainer: ph_mark_image binding is unavailable.");
-          return;
+        if (window.ph_mark_image) {
+          window.ph_mark_image({ url: message.url });
+        } else {
+          // Standalone mode
+          standaloneAddStep({ action: "image", url: message.url });
         }
-        window.ph_mark_image({ url: message.url });
         addSessionStep("mark_image", `🖼️ Image: ${message.url.slice(-45)}`);
         return;
       }
@@ -2857,7 +3065,6 @@
             )
           : null;
       if (!target) return;
-      if (!window.ph_record_click) return;
       const clickData = {
         tag: (target.tagName || "").toLowerCase(),
         role: (target.getAttribute("role") || "").toLowerCase(),
@@ -2865,11 +3072,28 @@
         href: target.getAttribute("href") || "",
         css_path: cssPath(target),
       };
-      window.ph_record_click(clickData);
       const label = clickData.text
         ? `🔗 Click: "${clickData.text.slice(0, 40)}"`
         : `🔗 Click: ${clickData.css_path.slice(0, 40)}`;
-      addSessionStep("click", label);
+      if (window.ph_record_click) {
+        window.ph_record_click(clickData);
+        addSessionStep("click", label);
+      } else if (_inStandaloneMode() && toolbar && toolbar.style.display !== "none") {
+        // Standalone mode: record the navigation click for the recipe
+        const text = clickData.text;
+        const href = clickData.href;
+        const selector = text && text.length >= 3 && text.length <= 60
+          ? `${clickData.tag}:has-text("${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
+          : clickData.css_path;
+        const step = { action: "click", selector };
+        const fallbacks = [];
+        if (href && href.toLowerCase().endsWith(".pdf")) fallbacks.push("a[href$='.pdf']");
+        else if (href && href.toLowerCase().endsWith(".docx")) fallbacks.push("a[href$='.docx']");
+        if (clickData.css_path && clickData.css_path !== selector) fallbacks.push(clickData.css_path);
+        if (fallbacks.length) step.fallback_selectors = fallbacks;
+        standaloneAddStep(step);
+        addSessionStep("click", label);
+      }
     },
     true
   );

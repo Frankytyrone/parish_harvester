@@ -80,7 +80,32 @@ document.getElementById("crop-btn").addEventListener("click", async () => {
   );
 });
 
-// ── Crop done notification ─────────────────────────────────────────────────
+// ── GitHub Settings ────────────────────────────────────────────────────────
+
+// Load saved settings on open
+chrome.storage.local.get(["gh_pat", "gh_repo"], (r) => {
+  const patInput  = document.getElementById("gh-pat");
+  const repoInput = document.getElementById("gh-repo");
+  if (patInput  && r.gh_pat)  patInput.value  = r.gh_pat;
+  if (repoInput && r.gh_repo) repoInput.value = r.gh_repo;
+});
+
+document.getElementById("gh-save").addEventListener("click", () => {
+  const pat  = (document.getElementById("gh-pat").value  || "").trim();
+  const repo = (document.getElementById("gh-repo").value || "").trim();
+  const status = document.getElementById("gh-save-status");
+  if (!pat || !repo) {
+    status.textContent = "❌ Both PAT and repository are required.";
+    status.style.color = "#fca5a5";
+    return;
+  }
+  chrome.storage.local.set({ gh_pat: pat, gh_repo: repo }, () => {
+    status.textContent = "✅ Settings saved.";
+    status.style.color = "#86efac";
+    setTimeout(() => { status.textContent = ""; }, 3000);
+  });
+});
+
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "crop_done") return;

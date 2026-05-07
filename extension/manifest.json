@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Parish Trainer",
   "version": "1.0.0",
-  "permissions": ["activeTab", "scripting", "contextMenus"],
+  "permissions": ["activeTab", "scripting", "contextMenus", "storage"],
   "background": {
     "service_worker": "background.js"
   },
