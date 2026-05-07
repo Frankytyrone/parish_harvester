@@ -136,7 +136,7 @@ function _pdUrlToKey(url, headerName = "") {
         if (segs.length >= 2) return segs[0];
       }
     }
-    if (hostname.includes("filesafe.space") || hostname.includes("google.com")) {
+    if (hostname.includes("filesafe.space") || hostname === "google.com" || hostname.endsWith(".google.com")) {
       if (headerName) return headerName.toLowerCase().split("(")[0].trim().replace(/[^a-z0-9]/g, "");
       return hostname.split(".")[0].replace(/[^a-z0-9]/g, "");
     }
@@ -540,6 +540,7 @@ document.getElementById("pd-search").addEventListener("input", function () {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "crop_done") return;
+  const x = Number(message.x ?? 0);
   const y = Number(message.y ?? 0);
   const width = Number(message.width ?? 0);
   const height = Number(message.height ?? 0);

@@ -163,7 +163,7 @@ def stitch_mega_pdf(
         if r.is_fallback:
             continue
         # Skip parishes explicitly excluded by the operator
-        if key in mega_excludes:
+        elif key in mega_excludes:
             print(f"    ⏭️  Skipping {key} (in mega-PDF exclude list)")
             continue
         if r.status == "ok" and r.file_path:
