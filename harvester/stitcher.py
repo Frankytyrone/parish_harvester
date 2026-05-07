@@ -106,11 +106,17 @@ def stitch_mega_pdf(
     bulletins_dir: Path,
     target: date,
     contacts_path: Path | None = None,
+    mega_excludes_path: Path | None = None,
 ) -> None:
     """
     Merge all downloaded PDFs (A-Z by display name) into one mega PDF, then
     append a single compact summary page listing all HTML-only and unavailable
     parishes.
+
+    *mega_excludes_path* points to an optional JSON array of parish keys to
+    skip in the mega PDF (e.g. when a parish posted a stale bulletin).  The
+    file is typically ``parishes/mega_excludes.json`` and can be edited from
+    the browser extension without rerunning the recipe.
     """
     try:
         import PyPDF2
@@ -137,12 +143,28 @@ def stitch_mega_pdf(
         except Exception as exc:
             print(f"  ⚠️  Could not load contacts file: {exc}")
 
+    # Load mega-PDF exclude list (parish keys to skip for this run)
+    mega_excludes: set[str] = set()
+    if mega_excludes_path and mega_excludes_path.exists():
+        try:
+            raw_excludes = json.loads(mega_excludes_path.read_text(encoding="utf-8"))
+            if isinstance(raw_excludes, list):
+                mega_excludes = {str(k).strip() for k in raw_excludes if k}
+                if mega_excludes:
+                    print(f"  ℹ️  Mega-PDF excludes ({len(mega_excludes)}): {', '.join(sorted(mega_excludes))}")
+        except Exception as exc:
+            print(f"  ⚠️  Could not load mega_excludes.json: {exc}")
+
     # Build map: key -> (pdf_path | None, url, display_name)
     parish_map: dict[str, tuple[Path | None, str, str]] = {}
     for r in results:
         key = r.key
         # Keep stale historical fallback results out of the mega PDF.
         if r.is_fallback:
+            continue
+        # Skip parishes explicitly excluded by the operator
+        elif key in mega_excludes:
+            print(f"    ⏭️  Skipping {key} (in mega-PDF exclude list)")
             continue
         if r.status == "ok" and r.file_path:
             pdf_path: Path | None = current_dir / r.file_path.name

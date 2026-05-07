@@ -937,6 +937,17 @@ async def _fetch_entry(
             if dest.exists() and not _is_real_pdf(dest, key):
                 dest.unlink(missing_ok=True)
 
+        # Recipe exists but failed: do NOT fall through to the heuristic scraper.
+        # A trained recipe is the source of truth — if it fails the site has
+        # changed and the recipe needs to be re-trained, not guessed at.
+        return FetchResult(
+            key=key,
+            display_name=entry.display_name,
+            status="error",
+            url=target_url,
+            error=recipe_error or "Recipe replay produced no valid PDF",
+        )
+
     # Non-html entries keep URL prediction first.
     if entry.content_type != "html_link":
         primary_is_404 = False
