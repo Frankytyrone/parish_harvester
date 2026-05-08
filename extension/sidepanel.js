@@ -122,6 +122,7 @@ const PD_EVIDENCE_FILES = {
   "Down & Connor Diocese": "parishes/down_and_connor_bulletin_urls.txt",
 };
 const MEGA_EXCLUDES_PATH = "parishes/mega_excludes.json";
+const MANUAL_OVERRIDES_PATH = "parishes/manual_overrides.json";
 
 // Replicate Python's _url_to_key logic
 function _pdUrlToKey(url, headerName = "") {
@@ -245,6 +246,48 @@ async function _pdSaveExcludes(excludes) {
   return _pdGhPush(MEGA_EXCLUDES_PATH, content, "excludes: update mega PDF exclude list [from extension]");
 }
 
+// ── Manual bulletin overrides ───────────────────────────────────────────────
+
+let _pdOverrides = null; // key -> {url,type,updated_at,source}
+
+function _pdInferOverrideType(url) {
+  const lower = (url || "").toLowerCase();
+  if (lower.endsWith(".docx")) return "docx";
+  if (lower.match(/\.(jpg|jpeg|png|webp)(\?|$)/)) return "image";
+  if (lower.endsWith(".pdf") || lower.includes(".pdf?")) return "download";
+  return "html";
+}
+
+async function _pdLoadOverrides() {
+  if (_pdOverrides !== null) return _pdOverrides;
+  try {
+    const { content } = await _pdGhFetch(MANUAL_OVERRIDES_PATH);
+    const parsed = JSON.parse(content);
+    _pdOverrides = parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_e) {
+    _pdOverrides = {};
+  }
+  return _pdOverrides;
+}
+
+async function _pdSaveOverrides(overrides) {
+  _pdOverrides = overrides;
+  const content = JSON.stringify(overrides, null, 2);
+  return _pdGhPush(
+    MANUAL_OVERRIDES_PATH,
+    content,
+    "overrides: update manual bulletin URL overrides [from extension]"
+  );
+}
+
+function _pdGetOverride(parishKey) {
+  if (!_pdOverrides || !parishKey) return null;
+  const raw = _pdOverrides[parishKey];
+  if (!raw || typeof raw !== "object") return null;
+  if (typeof raw.url !== "string" || !/^https?:\/\//i.test(raw.url)) return null;
+  return raw;
+}
+
 // ── Recipe status cache ────────────────────────────────────────────────────
 const _pdRecipeCache = {}; // key → "ok" | "dead" | "none"
 
@@ -267,6 +310,7 @@ let _pdDioceseTexts = {}; // dioceseName → { text, path }
 
 function _pdStatusDot(parish) {
   if (parish.disabled) return "⚫";
+  if (_pdGetOverride(parish.key)) return "📌";
   const rs = _pdRecipeCache[parish.key];
   if (rs === "dead") return "🔴";
   if (rs === "ok")   return "🟢";
@@ -274,7 +318,7 @@ function _pdStatusDot(parish) {
   return "⬜";
 }
 
-const _PD_DOT_TITLES = { "🟢": "Recipe trained", "🟡": "Needs training", "🔴": "Dead website", "⚫": "Disabled", "⬜": "Checking…" };
+const _PD_DOT_TITLES = { "🟢": "Recipe trained", "🟡": "Needs training", "🔴": "Dead website", "⚫": "Disabled", "📌": "Manual override URL set", "⬜": "Checking…" };
 
 function _pdRenderAll(searchTerm, excludes) {
   const container = document.getElementById("parish-dir-content");
@@ -334,6 +378,22 @@ function _pdBuildRow(parish, excludes) {
   editBtn.title = "Edit bulletin page URL";
   editBtn.addEventListener("click", () => _pdShowEditRow(wrap, parish));
   row.appendChild(editBtn);
+
+  const overrideBtn = document.createElement("button");
+  overrideBtn.className = "pd-btn";
+  overrideBtn.textContent = "📌";
+  overrideBtn.title = "Set manual bulletin override from active tab URL";
+  overrideBtn.addEventListener("click", () => _pdSetOverrideFromActiveTab(parish, dot, clearOverrideBtn));
+  row.appendChild(overrideBtn);
+
+  const clearOverrideBtn = document.createElement("button");
+  clearOverrideBtn.className = "pd-btn";
+  clearOverrideBtn.textContent = "🧹";
+  clearOverrideBtn.title = "Clear manual bulletin override";
+  clearOverrideBtn.disabled = !_pdGetOverride(parish.key);
+  clearOverrideBtn.style.opacity = clearOverrideBtn.disabled ? "0.4" : "1";
+  clearOverrideBtn.addEventListener("click", () => _pdClearOverride(parish, dot, clearOverrideBtn));
+  row.appendChild(clearOverrideBtn);
 
   if (!parish.disabled) {
     const deadBtn = document.createElement("button");
@@ -438,6 +498,58 @@ function _pdShowEditRow(wrap, parish) {
   inp.focus();
 }
 
+async function _pdSetOverrideFromActiveTab(parish, dotEl, clearBtn) {
+  let tab;
+  try {
+    [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  } catch (err) {
+    setStatus(`❌ Could not read active tab: ${err.message}`, "err");
+    return;
+  }
+  const url = (tab?.url || "").trim();
+  if (!/^https?:\/\//i.test(url)) {
+    setStatus("❌ Active tab URL must be http/https.", "err");
+    return;
+  }
+  const type = _pdInferOverrideType(url);
+  const overrides = await _pdLoadOverrides();
+  overrides[parish.key] = {
+    url,
+    type,
+    updated_at: new Date().toISOString(),
+    source: "extension-sidepanel",
+  };
+  const res = await _pdSaveOverrides(overrides);
+  if (!res?.ok) {
+    setStatus(`❌ ${res?.error || "Failed to save override."}`, "err");
+    return;
+  }
+  dotEl.textContent = "📌";
+  dotEl.title = _PD_DOT_TITLES["📌"];
+  clearBtn.disabled = false;
+  clearBtn.style.opacity = "1";
+  setStatus(`✅ Saved manual override for ${parish.name}.`, "ok");
+}
+
+async function _pdClearOverride(parish, dotEl, clearBtn) {
+  const overrides = await _pdLoadOverrides();
+  if (!overrides[parish.key]) {
+    setStatus(`ℹ️ ${parish.name} has no override set.`, "info");
+    return;
+  }
+  delete overrides[parish.key];
+  const res = await _pdSaveOverrides(overrides);
+  if (!res?.ok) {
+    setStatus(`❌ ${res?.error || "Failed to clear override."}`, "err");
+    return;
+  }
+  dotEl.textContent = _pdStatusDot(parish);
+  dotEl.title = _PD_DOT_TITLES[dotEl.textContent] || "";
+  clearBtn.disabled = true;
+  clearBtn.style.opacity = "0.4";
+  setStatus(`✅ Cleared override for ${parish.name}.`, "ok");
+}
+
 async function _pdMarkDead(parish, dotEl, btnEl) {
   if (!confirm(`Mark "${parish.name}" as a dead website?\nThis pushes a dead recipe to GitHub.`)) return;
   btnEl.disabled = true;
@@ -479,11 +591,12 @@ async function loadParishDirectory() {
   loadingEl.style.display = "block";
   errorEl.style.display   = "none";
   container.innerHTML     = "";
-  _pdAllParishes = []; _pdDioceseTexts = {}; _pdExcludes = null;
+  _pdAllParishes = []; _pdDioceseTexts = {}; _pdExcludes = null; _pdOverrides = null;
 
   try {
-    const [excludes, ...evidenceResults] = await Promise.all([
+    const [excludes, _overrides, ...evidenceResults] = await Promise.all([
       _pdLoadExcludes(),
+      _pdLoadOverrides(),
       ...Object.entries(PD_EVIDENCE_FILES).map(([diocese, path]) =>
         _pdGhFetch(path)
           .then(({ content }) => ({ diocese, path, content }))
@@ -530,6 +643,7 @@ document.getElementById("parish-dir-details").addEventListener("toggle", functio
 document.getElementById("pd-refresh").addEventListener("click", () => {
   Object.keys(_pdRecipeCache).forEach((k) => delete _pdRecipeCache[k]);
   _pdExcludes = null;
+  _pdOverrides = null;
   loadParishDirectory();
 });
 document.getElementById("pd-search").addEventListener("input", function () {

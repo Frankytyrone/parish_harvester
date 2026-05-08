@@ -3,6 +3,8 @@
   let cropOverlay = null;
   let lastCropSignature = "";
   let toolbar = null;
+  const TOOLBAR_ID = "ph-floating-toolbar";
+  let toolbarReadyLogged = false;
   let sessionSteps = []; // {type, label} tracked in the training UI
   let pickLinkActive = false;
   let pickLinkHighlightEl = null;
@@ -68,6 +70,48 @@
   const clearStandaloneRecipe = () => {
     standaloneSteps.length = 0;
     standaloneStartUrl = "";
+  };
+
+  const _getToolbarNode = () => {
+    if (toolbar && toolbar.isConnected) {
+      return toolbar;
+    }
+    const found = document.getElementById(TOOLBAR_ID);
+    if (found) {
+      toolbar = found;
+      return toolbar;
+    }
+    toolbar = null;
+    return null;
+  };
+
+  const _cleanupDuplicateToolbars = () => {
+    const all = Array.from(document.querySelectorAll(`#${TOOLBAR_ID}`));
+    if (all.length <= 1) return;
+    const keep = all[0];
+    for (let i = 1; i < all.length; i++) {
+      all[i].remove();
+    }
+    toolbar = keep;
+  };
+
+  const _ensureToolbar = (visible = true) => {
+    _cleanupDuplicateToolbars();
+    let node = _getToolbarNode();
+    if (!node) {
+      node = createToolbar();
+      document.documentElement.appendChild(node);
+      toolbar = node;
+    }
+    if (visible) {
+      node.dataset.phHidden = "false";
+      node.style.display = "flex";
+      if (!toolbarReadyLogged) {
+        console.log("✅ Parish Trainer toolbar ready");
+        toolbarReadyLogged = true;
+      }
+    }
+    return node;
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -1498,7 +1542,7 @@
 
   const createToolbar = () => {
     const bar = document.createElement("div");
-    bar.id = "ph-floating-toolbar";
+    bar.id = TOOLBAR_ID;
     bar.setAttribute("role", "toolbar");
     bar.setAttribute("aria-label", "Parish Trainer");
     bar.style.cssText = [
@@ -2926,28 +2970,20 @@
       const message = event.data.message;
 
       if (message?.type === "toggle_toolbar") {
-        if (!toolbar) {
-          toolbar = createToolbar();
-          document.documentElement.appendChild(toolbar);
-        } else if (toolbar.dataset.phHidden === "true") {
-          toolbar.dataset.phHidden = "false";
-          toolbar.style.display = "flex";
+        const bar = _getToolbarNode();
+        if (!bar) {
+          _ensureToolbar(true);
+        } else if (bar.dataset.phHidden === "true" || bar.style.display === "none") {
+          _ensureToolbar(true);
         } else {
-          toolbar.dataset.phHidden = "true";
-          toolbar.style.display = "none";
+          bar.dataset.phHidden = "true";
+          bar.style.display = "none";
         }
         return;
       }
 
       if (message?.type === "show_toolbar") {
-        if (!toolbar) {
-          toolbar = createToolbar();
-          document.documentElement.appendChild(toolbar);
-          console.log("✅ Parish Trainer toolbar ready");
-        } else if (toolbar.dataset.phHidden === "true") {
-          toolbar.dataset.phHidden = "false";
-          toolbar.style.display = "flex";
-        }
+        _ensureToolbar(true);
         return;
       }
 
@@ -2988,37 +3024,19 @@
       }
       if (type === "start_pick_link") {
         // Show the toolbar if hidden so the confirmation panel is visible
-        if (!toolbar) {
-          toolbar = createToolbar();
-          document.documentElement.appendChild(toolbar);
-        } else {
-          toolbar.dataset.phHidden = "false";
-          toolbar.style.display = "flex";
-        }
+        _ensureToolbar(true);
         // startPickLinkMode and showPickConfirmation live in the toolbar closure,
         // so we trigger via a custom event that the toolbar can hear.
         window.dispatchEvent(new CustomEvent("ph-start-pick-link"));
         return;
       }
       if (type === "start_pick_iframe") {
-        if (!toolbar) {
-          toolbar = createToolbar();
-          document.documentElement.appendChild(toolbar);
-        } else {
-          toolbar.dataset.phHidden = "false";
-          toolbar.style.display = "flex";
-        }
+        _ensureToolbar(true);
         window.dispatchEvent(new CustomEvent("ph-start-pick-iframe"));
         return;
       }
       if (type === "start_pick_image") {
-        if (!toolbar) {
-          toolbar = createToolbar();
-          document.documentElement.appendChild(toolbar);
-        } else {
-          toolbar.dataset.phHidden = "false";
-          toolbar.style.display = "flex";
-        }
+        _ensureToolbar(true);
         window.dispatchEvent(new CustomEvent("ph-start-pick-image-mode"));
         return;
       }
@@ -3034,10 +3052,7 @@
       }
       if (type === "document_url_detected") {
         const url = message?.url || "";
-        if (toolbar) {
-          toolbar.dataset.phHidden = "false";
-          toolbar.style.display = "flex";
-        }
+        _ensureToolbar(true);
         window.dispatchEvent(new CustomEvent("ph-document-detected", { detail: { url } }));
         return;
       }
@@ -3078,7 +3093,7 @@
       if (window.ph_record_click) {
         window.ph_record_click(clickData);
         addSessionStep("click", label);
-      } else if (_inStandaloneMode() && toolbar && toolbar.style.display !== "none") {
+      } else if (_inStandaloneMode() && _getToolbarNode() && _getToolbarNode().style.display !== "none") {
         // Standalone mode: record the navigation click for the recipe
         const text = clickData.text;
         const href = clickData.href;
@@ -3220,14 +3235,11 @@
   // ── Auto-show toolbar when Playwright training bindings are detected ──────
 
   const _TRAINING_BINDINGS = ["ph_mark_html", "ph_mark_download_url", "ph_mark_crop"];
-  const _AUTO_SHOW_DELAYS_MS = [0, 300, 1000, 2500];
+  const _AUTO_SHOW_DELAYS_MS = [0, 300, 1000, 2500, 4000, 7000];
 
   const _tryAutoShowToolbar = () => {
-    if (toolbar) return;
     if (_TRAINING_BINDINGS.some((b) => typeof window[b] === "function")) {
-      toolbar = createToolbar();
-      document.documentElement.appendChild(toolbar);
-      console.log("✅ Parish Trainer toolbar ready");
+      _ensureToolbar(true);
     }
   };
 

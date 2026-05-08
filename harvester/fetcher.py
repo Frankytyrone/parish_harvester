@@ -7,6 +7,7 @@ date math, and downloads each bulletin directly.  No crawling, no guessing.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import subprocess
 import tempfile
@@ -257,6 +258,31 @@ def parse_evidence_file(diocese: str, parishes_dir: Path | None = None) -> list[
 
     _flush()
     return entries
+
+
+def load_manual_overrides(parishes_dir: Path | None = None) -> dict[str, dict[str, str]]:
+    """Load operator-saved bulletin URL overrides from parishes/manual_overrides.json."""
+    if parishes_dir is None:
+        parishes_dir = PARISHES_DIR
+    path = parishes_dir / "manual_overrides.json"
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    overrides: dict[str, dict[str, str]] = {}
+    for key, payload in raw.items():
+        if not isinstance(key, str) or not isinstance(payload, dict):
+            continue
+        url = str(payload.get("url", "")).strip()
+        if not url.startswith(("http://", "https://")):
+            continue
+        override_type = str(payload.get("type", "")).strip().lower() or "download"
+        overrides[key.strip()] = {"url": url, "type": override_type}
+    return overrides
 
 
 # ---------------------------------------------------------------------------
@@ -874,6 +900,49 @@ async def _download_image_as_pdf(url: str, dest: Path, browser: Browser) -> None
     img.save(str(dest), "PDF", resolution=150)
 
 
+async def _fetch_from_manual_override(
+    entry: ParishEntry,
+    override: dict[str, str],
+    dest: Path,
+    browser: Browser,
+) -> FetchResult:
+    """Fetch a bulletin using an explicit operator override URL."""
+    url = override.get("url", "").strip()
+    override_type = override.get("type", "download").strip().lower()
+    encoded_url = url.replace(" ", "%20")
+
+    if override_type in {"html", "html_link"}:
+        return FetchResult(
+            key=entry.key,
+            display_name=entry.display_name,
+            status="html_link",
+            url=url,
+            file_type="html_link",
+        )
+
+    if override_type == "docx" or encoded_url.lower().endswith(".docx"):
+        await _download_docx_as_pdf(encoded_url, dest, browser)
+        file_type = "docx_to_pdf"
+    elif override_type == "image" or encoded_url.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+        await _download_image_as_pdf(encoded_url, dest, browser)
+        file_type = "image_to_pdf"
+    else:
+        await _download_pdf(encoded_url, dest, browser)
+        file_type = "pdf"
+
+    if not _is_real_pdf(dest, entry.key):
+        raise RuntimeError("Manual override download did not produce a valid PDF")
+
+    return FetchResult(
+        key=entry.key,
+        display_name=entry.display_name,
+        status="ok",
+        url=url,
+        file_path=dest,
+        file_type=file_type,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Core fetch logic
 # ---------------------------------------------------------------------------
@@ -883,6 +952,7 @@ async def _fetch_entry(
     output_dir: Path,
     target: date,
     browser: Browser,
+    manual_overrides: dict[str, dict[str, str]] | None = None,
 ) -> FetchResult:
     """Fetch one parish bulletin — no retries, called by fetch_parish."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -894,6 +964,18 @@ async def _fetch_entry(
     dest = output_dir / safe_filename(key, ".pdf")
     last_err = "No valid content found"
     recipe_error = ""
+
+    manual_override = (manual_overrides or {}).get(key)
+    if manual_override:
+        print(f"  📌 {key}: using manual override URL first")
+        try:
+            return await _fetch_from_manual_override(entry, manual_override, dest, browser)
+        except Exception as exc:
+            last_err = f"Manual override failed: {exc}"
+            print(f"  ↩️  {key}: {last_err}")
+        finally:
+            if dest.exists() and not _is_real_pdf(dest, key):
+                dest.unlink(missing_ok=True)
 
     recipe_path = recipe_path_for(key, PARISHES_DIR)
     if recipe_path.exists():
@@ -1039,13 +1121,20 @@ async def fetch_parish(
     output_dir: Path,
     target: date,
     browser: Browser,
+    manual_overrides: dict[str, dict[str, str]] | None = None,
 ) -> FetchResult:
     """Fetch one parish bulletin with retries and a total timeout."""
     last_error = ""
     for attempt in range(_MAX_ATTEMPTS):
         try:
             async with asyncio.timeout(TOTAL_TIMEOUT_S):
-                result = await _fetch_entry(entry, output_dir, target, browser)
+                result = await _fetch_entry(
+                    entry,
+                    output_dir,
+                    target,
+                    browser,
+                    manual_overrides=manual_overrides,
+                )
             if result.status in ("ok", "html_link"):
                 return result
             last_error = result.error
@@ -1076,10 +1165,17 @@ async def fetch_all(
 ) -> list[FetchResult]:
     """Fetch all parishes concurrently, bounded by CONCURRENCY."""
     sem = asyncio.Semaphore(CONCURRENCY)
+    manual_overrides = load_manual_overrides(PARISHES_DIR)
 
     async def _bounded(e: ParishEntry, browser: Browser) -> FetchResult:
         async with sem:
-            return await fetch_parish(e, output_dir, target, browser)
+            return await fetch_parish(
+                e,
+                output_dir,
+                target,
+                browser,
+                manual_overrides=manual_overrides,
+            )
 
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)

@@ -1,14 +1,26 @@
+async function sendToTab(tabId, message) {
+  if (!tabId) return false;
+  try {
+    await chrome.tabs.sendMessage(tabId, message);
+    return true;
+  } catch (_err) {
+    return false;
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "mark-bulletin-image",
-    title: "Mark as Bulletin Image",
-    contexts: ["image"],
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "mark-bulletin-image",
+      title: "Mark as Bulletin Image",
+      contexts: ["image"],
+    });
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "mark-bulletin-image" && tab?.id) {
-    chrome.tabs.sendMessage(tab.id, {
+    void sendToTab(tab.id, {
       type: "mark_image",
       url: info.srcUrl,
     });
@@ -19,7 +31,7 @@ chrome.action.onClicked.addListener((tab) => {
   if (!tab?.id) {
     return;
   }
-  chrome.tabs.sendMessage(tab.id, { type: "toggle_toolbar" });
+  void sendToTab(tab.id, { type: "toggle_toolbar" });
 });
 
 // Automatically show the toolbar when a page finishes loading.
@@ -27,7 +39,7 @@ chrome.action.onClicked.addListener((tab) => {
 // present, so this does not affect normal browsing sessions.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "complete") {
-    chrome.tabs.sendMessage(tabId, { type: "show_toolbar" }).catch(() => {});
+    void sendToTab(tabId, { type: "show_toolbar" });
   }
 });
 
