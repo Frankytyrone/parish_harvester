@@ -57,6 +57,54 @@ The fetcher also auto-detects WordPress PDF Embedder links (`a.pdfemb-viewer`) a
 
 ---
 
+## Private Chrome/Brave Extension (Operator Workflow)
+
+You can load the extension privately and use it without running `train.py`.
+
+### Install as unpacked extension
+
+1. Open `chrome://extensions` (or `brave://extensions`).
+2. Enable **Developer mode**.
+3. Click **Load unpacked**.
+4. Select the repository folder: `extension/`.
+5. Pin **Parish Trainer** to your toolbar.
+
+The extension now opens a popup by default, and you can launch the full operator console from there.
+
+### One-time GitHub setup (for standalone save/push)
+
+1. Click the extension icon.
+2. Click **Open Operator Console**.
+3. In **GitHub Settings**, enter:
+   - Personal Access Token (`repo` scope)
+   - Repository in `owner/repo` format (for example `Frankytyrone/parish_harvester`)
+4. Save settings.
+
+### Manual on-the-fly bulletin / mega-PDF override
+
+Use this when automation picks an old or unrelated PDF.
+
+1. Open the correct bulletin document (or bulletin page) in the active tab.
+2. Open **Operator Console** → **Parish Directory**.
+3. Find the parish row and click **📌**.
+   - This saves the active tab URL to `parishes/manual_overrides.json`.
+   - It is pushed directly to GitHub from the extension.
+4. (Optional) Click **☑ skip** if you want to exclude that parish from this week's mega PDF (`parishes/mega_excludes.json`).
+5. Click **🧹** to clear a parish override when it is no longer needed.
+
+### How overrides are consumed by the harvester
+
+During `python main.py` fetches, `parishes/manual_overrides.json` is loaded first.
+
+Precedence is deterministic:
+1. **Manual override URL** (operator-confirmed)
+2. Trained recipe replay (`parishes/recipes/*.json`)
+3. Pattern prediction + scraper fallback
+
+So operator-confirmed bulletin URLs always get first attempt before automation guesses.
+
+---
+
 ## Guided Mode Training
 
 The Parish Trainer extension includes **Guided Mode** (on by default) to make training as simple as possible.

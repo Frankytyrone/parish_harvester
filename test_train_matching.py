@@ -138,11 +138,12 @@ https://www.antrimparish.com
         self.assertEqual(manifest["manifest_version"], 3)
         self.assertEqual(
             manifest["permissions"],
-            ["activeTab", "scripting", "contextMenus"],
+            ["activeTab", "scripting", "contextMenus", "storage"],
         )
         self.assertNotIn("sidePanel", manifest.get("permissions", []))
         self.assertNotIn("side_panel", manifest)
         self.assertEqual(manifest["action"]["default_title"], "Parish Trainer")
+        self.assertEqual(manifest["action"]["default_popup"], "popup.html")
         self.assertIn('"world": "MAIN"', manifest_path.read_text(encoding="utf-8"))
         self.assertIn("Mark Page as HTML", content_js)
         self.assertIn("Mark Current URL as File", content_js)
@@ -157,6 +158,7 @@ https://www.antrimparish.com
         self.assertIn("chrome.contextMenus.create", background_js)
         self.assertIn('id: "mark-bulletin-image"', background_js)
         self.assertIn("toggle_toolbar", background_js)
+        self.assertIn("default_popup", manifest_path.read_text(encoding="utf-8"))
         self.assertNotIn("chrome.sidePanel.open", background_js)
 
     def test_training_uses_persistent_context_with_extension_args(self) -> None:
