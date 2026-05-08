@@ -2806,6 +2806,7 @@
         "font-family:inherit",
       ].join(";");
       chrome.storage.local.get(["ph_last_diocese"], (r) => {
+        if (chrome.runtime.lastError) return; // storage unavailable; leave field empty
         if (r.ph_last_diocese) qfDioceseInput.value = r.ph_last_diocese;
       });
       quickFixSection.appendChild(qfDioceseInput);
@@ -2844,17 +2845,21 @@
         const action = isDocumentUrl(url) ? "download" : "html";
         const startUrl = window.location.href;
 
-        // Build a minimal recipe: goto the page we are on now, then download/html the target
+        // Build a minimal recipe.  If the bulletin URL is the current page itself
+        // (e.g. user navigated directly to the PDF) we skip the redundant goto step.
+        const steps = [];
+        if (startUrl !== url) {
+          steps.push({ action: "goto", url: startUrl });
+        }
+        steps.push({ action, url });
+
         const recipe = {
           version: 1,
           parish_key: key,
           display_name: name,
           diocese: diocese || "",
           start_url: startUrl,
-          steps: [
-            { action: "goto", url: startUrl },
-            { action, url },
-          ],
+          steps,
         };
 
         qfBtn.disabled = true;
