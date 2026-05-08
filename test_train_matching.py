@@ -138,7 +138,7 @@ https://www.antrimparish.com
         self.assertEqual(manifest["manifest_version"], 3)
         self.assertEqual(
             manifest["permissions"],
-            ["activeTab", "scripting", "contextMenus"],
+            ["activeTab", "scripting", "contextMenus", "storage"],
         )
         self.assertNotIn("sidePanel", manifest.get("permissions", []))
         self.assertNotIn("side_panel", manifest)

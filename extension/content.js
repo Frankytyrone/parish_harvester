@@ -2601,8 +2601,10 @@
             showStatus("❌ Could not communicate with page. Try refreshing.", "error");
           }
         } else {
-          console.warn("Parish Trainer: ph_mark_html binding is unavailable.");
-          showStatus("❌ Could not communicate with page. Try refreshing.", "error");
+          // Standalone mode — accumulate step for later GitHub push
+          standaloneAddStep({ action: "html", url: window.location.href });
+          addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
+          showStatus("✅ HTML page URL saved (standalone). Use ⬆ Push Recipe to save to GitHub.");
         }
       })
     );
@@ -2683,6 +2685,206 @@
     advancedBodyEl.appendChild(identifyResult);
     advancedSection.appendChild(advancedBodyEl);
     body.appendChild(advancedSection);
+
+    // ── Quick Bulletin Fix (standalone mode) ──────────────────────────────
+    // Prominent one-click path: navigate to the real bulletin PDF/page, then
+    // use this section to save it as the recipe for a named parish without
+    // having to record any intermediate click steps.  This is the primary
+    // manual override path when the auto-scraper picked the wrong bulletin.
+    if (_inStandaloneMode()) {
+      const quickFixSection = document.createElement("div");
+      quickFixSection.id = "ph-quick-fix";
+      quickFixSection.style.cssText = [
+        "background:#1e293b",
+        "border:2px solid #f59e0b",
+        "border-radius:6px",
+        "padding:8px",
+        "margin-top:6px",
+      ].join(";");
+
+      const qfTitle = document.createElement("div");
+      qfTitle.style.cssText = "font-size:10px;font-weight:700;color:#fbbf24;margin-bottom:4px;";
+      qfTitle.textContent = "📌 Fix Wrong Bulletin (direct override)";
+      quickFixSection.appendChild(qfTitle);
+
+      const qfNote = document.createElement("div");
+      qfNote.style.cssText = "font-size:9px;color:#9ca3af;margin-bottom:6px;line-height:1.4;";
+      qfNote.textContent =
+        "Navigate to the correct bulletin PDF (or the page that links to it), " +
+        "enter the parish key below, and click Fix. " +
+        "This pushes a minimal recipe that overwrites any wrong one.";
+      quickFixSection.appendChild(qfNote);
+
+      // URL row
+      const qfUrlLabel = document.createElement("div");
+      qfUrlLabel.style.cssText = "font-size:9px;color:#93c5fd;margin-bottom:2px;";
+      qfUrlLabel.textContent = "Bulletin URL (current page or paste PDF URL):";
+      quickFixSection.appendChild(qfUrlLabel);
+
+      const qfUrlInput = document.createElement("input");
+      qfUrlInput.type = "url";
+      qfUrlInput.id = "ph-qf-url";
+      qfUrlInput.placeholder = "https://parish.com/bulletin.pdf";
+      qfUrlInput.value = window.location.href;
+      qfUrlInput.style.cssText = [
+        "width:100%",
+        "border:1px solid #374151",
+        "border-radius:4px",
+        "padding:4px 6px",
+        "background:#0f172a",
+        "color:#f9fafb",
+        "font-size:10px",
+        "margin-bottom:4px",
+        "box-sizing:border-box",
+        "font-family:inherit",
+      ].join(";");
+      quickFixSection.appendChild(qfUrlInput);
+
+      // Parish key row
+      const qfKeyLabel = document.createElement("div");
+      qfKeyLabel.style.cssText = "font-size:9px;color:#93c5fd;margin-bottom:2px;";
+      qfKeyLabel.textContent = "Parish key (e.g. ballycastleparish):";
+      quickFixSection.appendChild(qfKeyLabel);
+
+      const qfKeyInput = document.createElement("input");
+      qfKeyInput.type = "text";
+      qfKeyInput.id = "ph-qf-key";
+      qfKeyInput.placeholder = "ballycastleparish";
+      qfKeyInput.style.cssText = [
+        "width:100%",
+        "border:1px solid #374151",
+        "border-radius:4px",
+        "padding:4px 6px",
+        "background:#0f172a",
+        "color:#f9fafb",
+        "font-size:10px",
+        "margin-bottom:4px",
+        "box-sizing:border-box",
+        "font-family:inherit",
+      ].join(";");
+      quickFixSection.appendChild(qfKeyInput);
+
+      // Display name row
+      const qfNameLabel = document.createElement("div");
+      qfNameLabel.style.cssText = "font-size:9px;color:#93c5fd;margin-bottom:2px;";
+      qfNameLabel.textContent = "Parish display name (e.g. Ballycastle Parish):";
+      quickFixSection.appendChild(qfNameLabel);
+
+      const qfNameInput = document.createElement("input");
+      qfNameInput.type = "text";
+      qfNameInput.id = "ph-qf-name";
+      qfNameInput.placeholder = "Ballycastle Parish";
+      qfNameInput.style.cssText = [
+        "width:100%",
+        "border:1px solid #374151",
+        "border-radius:4px",
+        "padding:4px 6px",
+        "background:#0f172a",
+        "color:#f9fafb",
+        "font-size:10px",
+        "margin-bottom:4px",
+        "box-sizing:border-box",
+        "font-family:inherit",
+      ].join(";");
+      quickFixSection.appendChild(qfNameInput);
+
+      // Pre-populate diocese from storage
+      const qfDioceseInput = document.createElement("input");
+      qfDioceseInput.type = "text";
+      qfDioceseInput.id = "ph-qf-diocese";
+      qfDioceseInput.placeholder = "derry_diocese (optional)";
+      qfDioceseInput.style.cssText = [
+        "width:100%",
+        "border:1px solid #374151",
+        "border-radius:4px",
+        "padding:4px 6px",
+        "background:#0f172a",
+        "color:#f9fafb",
+        "font-size:10px",
+        "margin-bottom:6px",
+        "box-sizing:border-box",
+        "font-family:inherit",
+      ].join(";");
+      chrome.storage.local.get(["ph_last_diocese"], (r) => {
+        if (r.ph_last_diocese) qfDioceseInput.value = r.ph_last_diocese;
+      });
+      quickFixSection.appendChild(qfDioceseInput);
+
+      const qfBtn = document.createElement("button");
+      qfBtn.type = "button";
+      qfBtn.textContent = "📌 Fix This Bulletin Now";
+      qfBtn.style.cssText = [
+        "border:none",
+        "border-radius:6px",
+        "padding:8px 10px",
+        "background:#f59e0b",
+        "color:#000",
+        "cursor:pointer",
+        "font-size:11px",
+        "font-weight:700",
+        "text-align:center",
+        "font-family:inherit",
+        "line-height:1.3",
+        "width:100%",
+        "margin-bottom:4px",
+      ].join(";");
+      qfBtn.addEventListener("mouseenter", () => { qfBtn.style.filter = "brightness(1.1)"; });
+      qfBtn.addEventListener("mouseleave", () => { qfBtn.style.filter = ""; });
+      qfBtn.addEventListener("click", async () => {
+        const url = qfUrlInput.value.trim();
+        const key = qfKeyInput.value.trim().toLowerCase().replace(/\s+/g, "");
+        const name = qfNameInput.value.trim();
+        const diocese = qfDioceseInput.value.trim();
+
+        if (!url) { showStatus("❌ Bulletin URL is required.", "error"); return; }
+        if (!key)  { showStatus("❌ Parish key is required.", "error"); return; }
+        if (!name) { showStatus("❌ Display name is required.", "error"); return; }
+
+        // Determine the correct recipe step: download for document URLs, html otherwise
+        const action = isDocumentUrl(url) ? "download" : "html";
+        const startUrl = window.location.href;
+
+        // Build a minimal recipe: goto the page we are on now, then download/html the target
+        const recipe = {
+          version: 1,
+          parish_key: key,
+          display_name: name,
+          diocese: diocese || "",
+          start_url: startUrl,
+          steps: [
+            { action: "goto", url: startUrl },
+            { action, url },
+          ],
+        };
+
+        qfBtn.disabled = true;
+        qfBtn.textContent = "⏳ Pushing fix…";
+        showStatus("⏳ Pushing bulletin fix to GitHub…", "info");
+
+        try {
+          const response = await new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({ type: "push_recipe", parish_key: key, recipe }, (res) => {
+              if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+              resolve(res);
+            });
+          });
+          if (response && response.ok) {
+            showStatus(`✅ Bulletin fix saved! ${response.url}`);
+            if (diocese) chrome.storage.local.set({ ph_last_diocese: diocese });
+          } else {
+            showStatus(`❌ ${(response && response.error) || "Unknown error"}`, "error");
+          }
+        } catch (err) {
+          showStatus(`❌ ${err.message}`, "error");
+        } finally {
+          qfBtn.disabled = false;
+          qfBtn.textContent = "📌 Fix This Bulletin Now";
+        }
+      });
+      quickFixSection.appendChild(qfBtn);
+
+      body.appendChild(quickFixSection);
+    }
 
     // ── Push Recipe to GitHub (standalone mode) ───────────────────────────
     // Only rendered when the Playwright bindings are absent.  Uses the
@@ -2832,7 +3034,8 @@
       body.appendChild(pushSection);
     }
 
-
+    // ── Scroll container wraps body so the toolbar is scrollable when tall ─
+    const scrollContainer = document.createElement("div");
     scrollContainer.id = "ph-toolbar-scroll";
     scrollContainer.style.cssText = "overflow-y: auto;flex: 1 1 auto;min-height: 0;";
     scrollContainer.appendChild(body);
@@ -2941,9 +3144,18 @@
 
       if (message?.type === "show_toolbar") {
         if (!toolbar) {
-          toolbar = createToolbar();
-          document.documentElement.appendChild(toolbar);
-          console.log("✅ Parish Trainer toolbar ready");
+          // In standalone (private addon) mode, only create the toolbar when the
+          // user explicitly clicks the extension icon (toggle_toolbar).  During a
+          // Playwright training session the ph_* bindings are already present so
+          // we auto-create here to restore the toolbar after page navigations.
+          const inTrainingMode = _TRAINING_BINDINGS.some(
+            (b) => typeof window[b] === "function"
+          );
+          if (inTrainingMode) {
+            toolbar = createToolbar();
+            document.documentElement.appendChild(toolbar);
+            console.log("✅ Parish Trainer toolbar ready");
+          }
         } else if (toolbar.dataset.phHidden === "true") {
           toolbar.dataset.phHidden = "false";
           toolbar.style.display = "flex";
