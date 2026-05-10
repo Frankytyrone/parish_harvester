@@ -615,6 +615,39 @@ async function _pdMarkDead(parish, dotEl, btnEl) {
   }
 }
 
+// ── Auto-detect active tab's parish ──────────────────────────────────────
+// After evidence is loaded, match the active tab URL against known parishes
+// and store the result in chrome.storage so the toolbar push form auto-fills.
+
+async function _pdAutoDetectFromActiveTab() {
+  if (_pdAllParishes.length === 0) return;
+  let tab;
+  try {
+    [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  } catch (_e) { return; }
+  if (!tab?.url || !/^https?:\/\//i.test(tab.url)) return;
+
+  const tabKey = _pdUrlToKey(tab.url);
+  if (!tabKey) return;
+
+  const match = _pdAllParishes.find((p) => {
+    if (p.key === tabKey) return true;
+    const allUrls = [p.pageUrl, ...p.bulletinUrls].filter(Boolean);
+    return allUrls.some((u) => _pdUrlToKey(u) === tabKey);
+  });
+
+  if (match) {
+    try {
+      await chrome.storage.local.set({
+        ph_training_parish: { key: match.key, name: match.name, diocese: match.diocese },
+      });
+      setStatus(`✅ Active tab auto-detected as: ${match.name}`, "ok");
+    } catch (_e) {
+      // Storage write failure is non-fatal.
+    }
+  }
+}
+
 // ── Main load ─────────────────────────────────────────────────────────────
 
 async function loadParishDirectory() {
@@ -662,6 +695,10 @@ async function loadParishDirectory() {
         if (el) { el.textContent = _pdStatusDot(p); el.title = _PD_DOT_TITLES[el.textContent] || ""; }
       }
     })();
+
+    // Auto-detect parish from the currently active tab and persist as
+    // ph_training_parish so the toolbar push form can auto-fill without manual entry.
+    _pdAutoDetectFromActiveTab();
 
   } catch (err) {
     loadingEl.style.display = "none";
