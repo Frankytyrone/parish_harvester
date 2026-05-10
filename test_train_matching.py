@@ -204,12 +204,16 @@ https://www.antrimparish.com
         # Must print the confirmation message when toolbar is auto-shown
         self.assertIn("Parish Trainer toolbar ready", content_js)
 
-    def test_background_js_shows_toolbar_on_tab_complete(self) -> None:
+    def test_background_js_does_not_auto_show_toolbar(self) -> None:
         repo_root = Path(__file__).resolve().parent
         background_js = (repo_root / "extension" / "background.js").read_text(encoding="utf-8")
-        # Must listen for tab updates to show toolbar after page navigation
-        self.assertIn("tabs.onUpdated", background_js)
-        self.assertIn("show_toolbar", background_js)
+        # The toolbar must NOT be shown automatically on every page load.
+        # Removing the tabs.onUpdated auto-show listener is the fix for the
+        # disruptive behaviour where the toolbar appeared on every webpage.
+        self.assertNotIn("tabs.onUpdated", background_js)
+        # The toolbar can still be shown manually via the popup "Show Toolbar"
+        # button or by clicking the extension icon (toggle_toolbar).
+        self.assertIn("toggle_toolbar", background_js)
 
     def test_bulletin_page_limit_constant(self) -> None:
         self.assertEqual(_MAX_BULLETIN_PAGES, 4)
