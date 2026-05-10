@@ -363,7 +363,47 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
       const result = await putResp.json();
       const htmlUrl = result?.content?.html_url || `https://github.com/${gh_repo}/blob/main/${filePath}`;
-      sendResponse({ ok: true, url: htmlUrl, filePath, updated: !!existingSha });
+
+      // After saving the recipe, immediately trigger a workflow_dispatch so
+      // the Mega PDF is rebuilt for just this parish right away.
+      let dispatchOk = false;
+      let dispatchError = "";
+      try {
+        const dispatchResp = await fetch(
+          `https://api.github.com/repos/${gh_repo}/actions/workflows/harvest.yml/dispatches`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `token ${gh_pat}`,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+            body: JSON.stringify({
+              ref: "main",
+              inputs: {
+                diocese: "all",
+                target_parish: key,
+              },
+            }),
+          }
+        );
+        dispatchOk = dispatchResp.status === 204;
+        if (!dispatchOk) {
+          dispatchError = await _githubApiError(dispatchResp);
+        }
+      } catch (dispatchErr) {
+        dispatchError = String(dispatchErr);
+      }
+
+      sendResponse({
+        ok: true,
+        url: htmlUrl,
+        filePath,
+        updated: !!existingSha,
+        dispatchOk,
+        dispatchError,
+      });
     } catch (err) {
       sendResponse({ ok: false, error: `Unexpected error: ${String(err)}. Try reloading the extension.` });
     }
