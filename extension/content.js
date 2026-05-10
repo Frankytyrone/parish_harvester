@@ -3013,7 +3013,16 @@
             const path = response.filePath || `parishes/recipes/${key}.json`;
             const linkUrl = response.url || "";
             const linkPart = linkUrl ? ` → ${linkUrl}` : ` → ${path}`;
-            showStatus(`✅ Recipe ${verb}!${linkPart}`, "ok");
+            if (response.dispatchOk) {
+              showStatus(`✅ Recipe ${verb}. Triggering instant Mega PDF rebuild… ${linkPart}`, "ok");
+            } else if (response.dispatchError) {
+              showStatus(
+                `✅ Recipe ${verb}!${linkPart} ⚠️ Rebuild trigger failed: ${response.dispatchError}`,
+                "ok",
+              );
+            } else {
+              showStatus(`✅ Recipe ${verb}!${linkPart}`, "ok");
+            }
             // Persist diocese and per-domain context for next time.
             if (typeof chrome !== "undefined" && chrome.storage) {
               try {

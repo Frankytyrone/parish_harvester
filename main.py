@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
+import shutil
 import sys
 import time
 from datetime import date, datetime
@@ -26,7 +28,7 @@ from harvester.config import (
 )
 from harvester.dashboard_generator import generate_dashboard
 from harvester.email_notifier import send_harvest_notification
-from harvester.fetcher import fetch_all, parse_evidence_file
+from harvester.fetcher import FetchResult, fetch_all, parse_evidence_file
 from harvester.harvest_log import log_result, print_summary
 from harvester.report import generate_report
 from harvester.stitcher import stitch_mega_pdf
@@ -79,6 +81,16 @@ def parse_args() -> argparse.Namespace:
         default=None,
         metavar="PARISH_NAME",
         help="Interactive training mode: record browser steps for a parish",
+    )
+    parser.add_argument(
+        "--target-parish",
+        default=None,
+        metavar="PARISH_KEY",
+        help=(
+            "Instantly rebuild the Mega PDF for a single parish key only. "
+            "The fetcher runs only for that parish; all other PDFs are "
+            "reused from the existing Bulletins/current/ cache."
+        ),
     )
     return parser.parse_args()
 
@@ -142,6 +154,17 @@ def main() -> int:
                 return 1
             continue
 
+        # When --target-parish is set, only fetch that one parish.
+        target_parish_key = (args.target_parish or "").strip().lower()
+        if target_parish_key:
+            entries = [e for e in entries if e.key == target_parish_key]
+            if not entries:
+                print(
+                    f"⚠️  Parish key '{target_parish_key}' not found in {diocese}.",
+                    file=sys.stderr,
+                )
+                continue
+
         print(f"⛪ Parishes     : {len(entries)}")
         print("\n── Fetch ───────────────────────────────────────────────────")
         RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -189,14 +212,66 @@ def main() -> int:
     # Use first diocese for contacts lookup when running a single diocese
     primary_diocese = dioceses[0]
     contacts_path = PARISHES_DIR / f"{primary_diocese}_contacts.json"
-    generate_report(
-        all_results,
-        raw_dir=RAW_DIR,
-        current_dir=CURRENT_DIR,
-        report_json=REPORT_JSON,
-        report_txt=REPORT_TXT,
-        target=target,
-    )
+
+    target_parish_key = (args.target_parish or "").strip().lower()
+
+    if target_parish_key:
+        # ── Instant single-parish rebuild ──────────────────────────────
+        # Update only the target parish's PDF in current_dir (do NOT purge
+        # the other parishes' cached PDFs so they remain in the Mega PDF).
+        CURRENT_DIR.mkdir(parents=True, exist_ok=True)
+        target_result = next(
+            (r for r in all_results if r.key == target_parish_key and r.status == "ok"),
+            None,
+        )
+        if target_result and target_result.file_path and target_result.file_path.exists():
+            dest = CURRENT_DIR / target_result.file_path.name
+            shutil.copy2(target_result.file_path, dest)
+            print(f"  📄 Updated     : {dest.name}")
+        else:
+            status_r = next((r for r in all_results if r.key == target_parish_key), None)
+            reason = (status_r.error if status_r else "unknown")
+            print(f"  ⚠️  No PDF downloaded for '{target_parish_key}': {reason}")
+
+        # Load contacts for display name lookup
+        contacts: dict = {}
+        if contacts_path.exists():
+            try:
+                contacts = json.loads(contacts_path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                print(f"  ⚠️  Could not load contacts: {exc}")
+
+        # Build FetchResult stubs for every PDF already in current_dir so
+        # the stitcher produces a complete Mega PDF with all parishes.
+        stitch_results: list[FetchResult] = []
+        for pdf in sorted(CURRENT_DIR.glob("*.pdf")):
+            key = pdf.stem
+            info = contacts.get(key, {})
+            display_name = info.get("display_name") or key.replace("_", " ").title()
+            stitch_results.append(
+                FetchResult(
+                    key=key,
+                    display_name=display_name,
+                    status="ok",
+                    url=info.get("website", ""),
+                    file_path=pdf,
+                )
+            )
+
+        print(
+            f"  📚 Stitching   : {len(stitch_results)} parish PDF(s) from cache + new fetch"
+        )
+    else:
+        generate_report(
+            all_results,
+            raw_dir=RAW_DIR,
+            current_dir=CURRENT_DIR,
+            report_json=REPORT_JSON,
+            report_txt=REPORT_TXT,
+            target=target,
+        )
+        stitch_results = all_results
+
     print(f"  📄 Report JSON : {REPORT_JSON}")
     print(f"  📄 Report TXT  : {REPORT_TXT}")
 
@@ -216,7 +291,7 @@ def main() -> int:
     print("\n── Stitch Mega PDF ─────────────────────────────────────────")
     try:
         stitch_mega_pdf(
-            all_results,
+            stitch_results,
             current_dir=CURRENT_DIR,
             bulletins_dir=BULLETINS_DIR,
             target=target,
