@@ -140,6 +140,7 @@ https://www.antrimparish.com
             manifest["permissions"],
             ["activeTab", "scripting", "contextMenus", "storage"],
         )
+        self.assertEqual(manifest.get("host_permissions"), ["<all_urls>"])
         self.assertNotIn("sidePanel", manifest.get("permissions", []))
         self.assertNotIn("side_panel", manifest)
         self.assertEqual(manifest["action"]["default_title"], "Parish Trainer")
@@ -158,6 +159,8 @@ https://www.antrimparish.com
         self.assertIn("chrome.contextMenus.create", background_js)
         self.assertIn('id: "mark-bulletin-image"', background_js)
         self.assertIn("toggle_toolbar", background_js)
+        self.assertIn("dispatch_to_tab", background_js)
+        self.assertIn("chrome.scripting.executeScript", background_js)
         self.assertIn("default_popup", manifest_path.read_text(encoding="utf-8"))
         self.assertNotIn("chrome.sidePanel.open", background_js)
 
@@ -194,6 +197,8 @@ https://www.antrimparish.com
         self.assertIn("ph_mark_download_url", content_js)
         self.assertIn("ph_mark_crop", content_js)
         self.assertIn("_tryAutoShowToolbar", content_js)
+        self.assertIn("chrome.runtime.onMessage.addListener", content_js)
+        self.assertIn("ph_ping", content_js)
         # Must print the confirmation message when toolbar is auto-shown
         self.assertIn("Parish Trainer toolbar ready", content_js)
 

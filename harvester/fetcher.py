@@ -273,15 +273,29 @@ def load_manual_overrides(parishes_dir: Path | None = None) -> dict[str, dict[st
         return {}
     if not isinstance(raw, dict):
         return {}
+    valid_types = {"download", "html", "html_link", "image", "docx"}
     overrides: dict[str, dict[str, str]] = {}
     for key, payload in raw.items():
         if not isinstance(key, str) or not isinstance(payload, dict):
+            continue
+        key = key.strip()
+        if not key:
             continue
         url = str(payload.get("url", "")).strip()
         if not url.startswith(("http://", "https://")):
             continue
         override_type = str(payload.get("type", "")).strip().lower() or "download"
-        overrides[key.strip()] = {"url": url, "type": override_type}
+        if override_type not in valid_types:
+            lowered = url.lower()
+            if lowered.endswith(".docx"):
+                override_type = "docx"
+            elif lowered.endswith((".jpg", ".jpeg", ".png", ".webp")):
+                override_type = "image"
+            elif lowered.endswith(".pdf") or ".pdf?" in lowered:
+                override_type = "download"
+            else:
+                override_type = "html"
+        overrides[key] = {"url": url, "type": override_type}
     return overrides
 
 

@@ -20,6 +20,7 @@ class ManualOverrideTests(unittest.IsolatedAsyncioTestCase):
                         "good": {"url": "https://example.org/bulletin.pdf", "type": "download"},
                         "bad_url": {"url": "javascript:alert(1)", "type": "download"},
                         "bad_payload": "nope",
+                        "unknown_type": {"url": "https://example.org/listing", "type": "mystery"},
                     }
                 ),
                 encoding="utf-8",
@@ -29,7 +30,10 @@ class ManualOverrideTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(
                 overrides,
-                {"good": {"url": "https://example.org/bulletin.pdf", "type": "download"}},
+                {
+                    "good": {"url": "https://example.org/bulletin.pdf", "type": "download"},
+                    "unknown_type": {"url": "https://example.org/listing", "type": "html"},
+                },
             )
 
     async def test_fetch_entry_prefers_manual_pdf_override_before_other_paths(self) -> None:

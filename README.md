@@ -71,6 +71,12 @@ You can load the extension privately and use it without running `train.py`.
 
 The extension now opens a popup by default, and you can launch the full operator console from there.
 
+### Popup vs Toolbar vs Operator Console
+
+- **Popup**: quick launcher for page-level actions (show toolbar, mark current page/file/html).
+- **Floating Toolbar**: in-page controls for click/crop/image/manual page interaction.
+- **Operator Console**: parish-level operations (manual override 📌/clear 🧹, mega-PDF skip, evidence edits, GitHub settings).
+
 ### One-time GitHub setup (for standalone save/push)
 
 1. Click the extension icon.
@@ -91,6 +97,15 @@ Use this when automation picks an old or unrelated PDF.
    - It is pushed directly to GitHub from the extension.
 4. (Optional) Click **☑ skip** if you want to exclude that parish from this week's mega PDF (`parishes/mega_excludes.json`).
 5. Click **🧹** to clear a parish override when it is no longer needed.
+
+### Troubleshooting: "Could not communicate with page"
+
+If popup/console page actions fail:
+
+1. Confirm the active tab is a regular `http://` or `https://` page (not `chrome://`, `brave://`, extension pages, or browser settings pages).
+2. Refresh the target page once, then retry **Show Toolbar**.
+3. Retry from the popup; the extension now auto-reinits its page scripts on demand when possible.
+4. If the page still cannot be scripted, use **Operator Console** parish-level override (`📌`) from a known-good bulletin URL tab.
 
 ### How overrides are consumed by the harvester
 
