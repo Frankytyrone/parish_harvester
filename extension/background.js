@@ -121,18 +121,6 @@ chrome.action.onClicked.addListener((tab) => {
   void sendToTab(tab.id, { type: "toggle_toolbar" });
 });
 
-// Automatically show the toolbar when a page finishes loading.
-// content.js will only display it when Playwright training bindings are
-// present, so this does not affect normal browsing sessions.
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "complete") {
-    void sendToTab(tabId, { type: "show_toolbar" }, { allowInject: false }).then((result) => {
-      if (!result.ok && result.reason !== "unsupported_url" && result.reason !== "receiver_unavailable") {
-        console.debug("Parish Trainer: auto-show toolbar failed", result);
-      }
-    });
-  }
-});
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "dispatch_to_tab") return false;
