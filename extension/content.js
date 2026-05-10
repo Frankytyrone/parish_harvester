@@ -2775,10 +2775,12 @@
       pushSection.appendChild(nameInput);
       pushSection.appendChild(dioceseInput);
 
-      // Pre-populate diocese from storage
-      chrome.storage.local.get(["ph_last_diocese"], (r) => {
-        if (r.ph_last_diocese) dioceseInput.value = r.ph_last_diocese;
-      });
+      // Pre-populate diocese from storage (only available in ISOLATED world)
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        chrome.storage.local.get(["ph_last_diocese"], (r) => {
+          if (r.ph_last_diocese) dioceseInput.value = r.ph_last_diocese;
+        });
+      }
 
       const stepCountEl = document.createElement("div");
       stepCountEl.style.cssText = "font-size:9px;color:#6b7280;margin-bottom:5px;";
@@ -2835,7 +2837,9 @@
           });
           if (response && response.ok) {
             showStatus(`✅ Recipe saved! ${response.url}`, "ok");
-            if (diocese) chrome.storage.local.set({ ph_last_diocese: diocese });
+            if (diocese && typeof chrome !== "undefined" && chrome.storage) {
+              chrome.storage.local.set({ ph_last_diocese: diocese });
+            }
             clearStandaloneRecipe();
             refreshStepCount();
           } else {
@@ -2876,7 +2880,7 @@
       body.appendChild(pushSection);
     }
 
-
+    const scrollContainer = document.createElement("div");
     scrollContainer.id = "ph-toolbar-scroll";
     scrollContainer.style.cssText = "overflow-y: auto;flex: 1 1 auto;min-height: 0;";
     scrollContainer.appendChild(body);

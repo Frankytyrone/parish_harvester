@@ -416,6 +416,26 @@ class ToolbarImprovementsTests(unittest.TestCase):
         self.assertIn("ph-toolbar-scroll", self.content_js)
         self.assertIn("overflow-y: auto", self.content_js)
 
+    def test_scroll_container_declared_before_use(self):
+        # scrollContainer must be declared (createElement) before it is used
+        # (setting .id / .style / .appendChild). A missing declaration caused a
+        # ReferenceError that prevented the toolbar from rendering.
+        decl_idx = self.content_js.find('scrollContainer = document.createElement("div")')
+        use_idx  = self.content_js.find('scrollContainer.id = "ph-toolbar-scroll"')
+        self.assertGreater(decl_idx, -1, "scrollContainer createElement declaration is missing")
+        self.assertGreater(use_idx,  -1, "scrollContainer.id assignment is missing")
+        self.assertLess(decl_idx, use_idx, "scrollContainer must be declared before it is used")
+
+    def test_chrome_storage_guarded_in_main_world(self):
+        # content.js runs in the MAIN world where chrome.storage is undefined.
+        # Calls to chrome.storage.local must be guarded to avoid a TypeError crash
+        # that previously prevented the toolbar from rendering.
+        self.assertIn(
+            'typeof chrome !== "undefined" && chrome.storage',
+            self.content_js,
+            "chrome.storage guard is missing in content.js",
+        )
+
     def test_drag_clamp(self):
         # Dragging must clamp position to viewport
         self.assertIn("innerWidth - bw", self.content_js)
