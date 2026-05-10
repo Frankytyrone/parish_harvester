@@ -25,6 +25,59 @@
 
   const _inStandaloneMode = () => typeof window.ph_mark_download_url !== "function";
 
+  // ── Safe message bridge ───────────────────────────────────────────────────
+  // content.js runs in the MAIN world where chrome.runtime can be undefined
+  // (e.g. after an extension reload).  _safeSendMessage tries the direct API
+  // first and falls back to the window.postMessage ↔ isolated.js bridge.
+  // callback(response, errorString) — errorString is non-null on failure.
+  const _safeSendMessage = (message, callback) => {
+    const TIMEOUT_MS = 15000;
+
+    // ── Direct path ──────────────────────────────────────────────────────
+    if (typeof chrome !== "undefined" && chrome?.runtime?.sendMessage) {
+      try {
+        chrome.runtime.sendMessage(message, (res) => {
+          const lastErr = chrome.runtime?.lastError;
+          if (lastErr) {
+            callback(null, lastErr.message);
+          } else {
+            callback(res || null, null);
+          }
+        });
+        return;
+      } catch (_directErr) {
+        // Fall through to bridge
+      }
+    }
+
+    // ── Bridge path via isolated.js ──────────────────────────────────────
+    const reqId = `ph-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let settled = false;
+    let timer = null;
+
+    const onResponse = (event) => {
+      if (event.source !== window) return;
+      if (event.data?.direction !== "from-isolated-response") return;
+      if (event.data?.reqId !== reqId) return;
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      window.removeEventListener("message", onResponse);
+      callback(event.data.response || null, event.data.error || null);
+    };
+
+    window.addEventListener("message", onResponse);
+
+    timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onResponse);
+      callback(null, "Extension message bridge timed out. Check GitHub settings and reload the page.");
+    }, TIMEOUT_MS);
+
+    window.postMessage({ direction: "from-main", reqId, message }, "*");
+  };
+
   const standaloneAddStep = (step) => {
     if (!_inStandaloneMode()) return;
     // Replace an existing download/image/html step if one already exists
@@ -2778,17 +2831,22 @@
       // Pre-populate fields from the active training session (set by the
       // sidepanel when the operator clicks a parish to open it for training).
       if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.get(["ph_training_parish", "ph_last_diocese"], (r) => {
-          const tp = r.ph_training_parish;
-          if (tp) {
-            if (tp.key && !keyInput.value) keyInput.value = tp.key;
-            if (tp.name && !nameInput.value) nameInput.value = tp.name;
-            if (tp.diocese && !dioceseInput.value) dioceseInput.value = tp.diocese;
-          } else if (r.ph_last_diocese && !dioceseInput.value) {
-            // Fallback: pre-fill diocese from the last push (legacy behaviour).
-            dioceseInput.value = r.ph_last_diocese;
-          }
-        });
+        try {
+          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese"], (r) => {
+            if (chrome.runtime?.lastError) return;
+            const tp = r.ph_training_parish;
+            if (tp) {
+              if (tp.key && !keyInput.value) keyInput.value = tp.key;
+              if (tp.name && !nameInput.value) nameInput.value = tp.name;
+              if (tp.diocese && !dioceseInput.value) dioceseInput.value = tp.diocese;
+            } else if (r.ph_last_diocese && !dioceseInput.value) {
+              // Fallback: pre-fill diocese from the last push (legacy behaviour).
+              dioceseInput.value = r.ph_last_diocese;
+            }
+          });
+        } catch (_storageErr) {
+          // Extension context may have been invalidated — silently ignore.
+        }
       }
 
       const stepCountEl = document.createElement("div");
@@ -2824,7 +2882,7 @@
         "width:100%",
         "margin-bottom:4px",
       ].join(";");
-      pushBtn.addEventListener("click", async () => {
+      pushBtn.addEventListener("click", () => {
         const key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
         const name = nameInput.value.trim();
         const diocese = dioceseInput.value.trim();
@@ -2837,29 +2895,24 @@
         pushBtn.textContent = "⏳ Pushing…";
         showStatus("⏳ Pushing recipe to GitHub…", "info");
 
-        try {
-          const response = await new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage({ type: "push_recipe", parish_key: key, recipe }, (res) => {
-              if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
-              resolve(res);
-            });
-          });
+        _safeSendMessage({ type: "push_recipe", parish_key: key, recipe }, (response, bridgeError) => {
+          pushBtn.disabled = false;
+          pushBtn.textContent = "⬆ Push Recipe to GitHub";
+          if (bridgeError) {
+            showStatus(`❌ ${bridgeError}`, "error");
+            return;
+          }
           if (response && response.ok) {
             showStatus(`✅ Recipe saved! ${response.url}`, "ok");
             if (diocese && typeof chrome !== "undefined" && chrome.storage) {
-              chrome.storage.local.set({ ph_last_diocese: diocese });
+              try { chrome.storage.local.set({ ph_last_diocese: diocese }); } catch (_e) {}
             }
             clearStandaloneRecipe();
             refreshStepCount();
           } else {
-            showStatus(`❌ ${(response && response.error) || "Unknown error"}`, "error");
+            showStatus(`❌ ${(response && response.error) || "Unknown error. Check GitHub settings."}`, "error");
           }
-        } catch (err) {
-          showStatus(`❌ ${err.message}`, "error");
-        } finally {
-          pushBtn.disabled = false;
-          pushBtn.textContent = "⬆ Push Recipe to GitHub";
-        }
+        });
       });
       pushSection.appendChild(pushBtn);
 
