@@ -266,7 +266,7 @@ parish_harvester/
 │   ├── fetcher.py        # Parse evidence file, calculate URLs, download
 │   ├── replay.py         # Replays trained recipe steps
 │   ├── harvest_log.py    # Harvest log writer and summary printer
-│   ├── liturgical.py     # Catholic liturgical calendar 2026 (for Greenlough)
+│   ├── liturgical.py     # Catholic liturgical calendar generator (for Greenlough)
 │   ├── report.py         # Generate report.json and report.txt
 │   ├── stitcher.py       # Stitch A–Z mega PDF
 │   └── utils.py          # Date maths: rewrite_date_url, rewrite_greenlough_url, etc.
