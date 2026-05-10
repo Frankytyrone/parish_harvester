@@ -2775,11 +2775,21 @@
       pushSection.appendChild(nameInput);
       pushSection.appendChild(dioceseInput);
 
-      // Pre-populate diocese from storage (only available in ISOLATED world)
-      if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.get(["ph_last_diocese"], (r) => {
-          if (r.ph_last_diocese) dioceseInput.value = r.ph_last_diocese;
-        });
+      // Pre-populate all three fields from storage, keyed by hostname.
+      // content.js runs in the MAIN world where chrome.storage is unavailable,
+      // so we route the read through background.js via sendMessage.
+      if (typeof chrome !== "undefined" && chrome.runtime) {
+        chrome.runtime.sendMessage(
+          { type: "ph_storage_get", hostname: window.location.hostname },
+          (res) => {
+            if (chrome.runtime.lastError) return; // extension not ready yet
+            if (res && res.ok && res.data) {
+              if (res.data.key)    keyInput.value     = res.data.key;
+              if (res.data.name)   nameInput.value    = res.data.name;
+              if (res.data.diocese) dioceseInput.value = res.data.diocese;
+            }
+          }
+        );
       }
 
       const stepCountEl = document.createElement("div");
@@ -2837,8 +2847,15 @@
           });
           if (response && response.ok) {
             showStatus(`✅ Recipe saved! ${response.url}`, "ok");
-            if (diocese && typeof chrome !== "undefined" && chrome.storage) {
-              chrome.storage.local.set({ ph_last_diocese: diocese });
+            // Save all three fields by hostname so they are pre-filled next visit.
+            // Route through background.js because chrome.storage is not available
+            // in the MAIN world where content.js runs.
+            if (typeof chrome !== "undefined" && chrome.runtime) {
+              chrome.runtime.sendMessage({
+                type: "ph_storage_set",
+                hostname: window.location.hostname,
+                data: { key, name, diocese },
+              });
             }
             clearStandaloneRecipe();
             refreshStepCount();

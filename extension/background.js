@@ -272,6 +272,48 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
+// ── Per-hostname parish field storage ─────────────────────────────────────
+//
+// content.js runs in MAIN world where chrome.storage is unavailable.
+// These handlers let content.js route storage reads/writes through the
+// service worker, which has full chrome.storage access.
+//
+// ph_storage_get:
+//   Message: { type: "ph_storage_get", hostname: string }
+//   Reply:   { ok: true, data: {key,name,diocese}|null } | { ok: false, error }
+//
+// ph_storage_set:
+//   Message: { type: "ph_storage_set", hostname: string, data: {key,name,diocese} }
+//   Reply:   { ok: true } | { ok: false, error }
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "ph_storage_get") return false;
+  (async () => {
+    try {
+      const storageKey = `ph_parish_${message.hostname}`;
+      const result = await chrome.storage.local.get([storageKey]);
+      sendResponse({ ok: true, data: result[storageKey] || null });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err) });
+    }
+  })();
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "ph_storage_set") return false;
+  (async () => {
+    try {
+      const storageKey = `ph_parish_${message.hostname}`;
+      await chrome.storage.local.set({ [storageKey]: message.data });
+      sendResponse({ ok: true });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err) });
+    }
+  })();
+  return true;
+});
+
 // ── Recipe push ───────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
