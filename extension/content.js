@@ -2775,10 +2775,19 @@
       pushSection.appendChild(nameInput);
       pushSection.appendChild(dioceseInput);
 
-      // Pre-populate diocese from storage (only available in ISOLATED world)
+      // Pre-populate fields from the active training session (set by the
+      // sidepanel when the operator clicks a parish to open it for training).
       if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.get(["ph_last_diocese"], (r) => {
-          if (r.ph_last_diocese) dioceseInput.value = r.ph_last_diocese;
+        chrome.storage.local.get(["ph_training_parish", "ph_last_diocese"], (r) => {
+          const tp = r.ph_training_parish;
+          if (tp) {
+            if (tp.key && !keyInput.value) keyInput.value = tp.key;
+            if (tp.name && !nameInput.value) nameInput.value = tp.name;
+            if (tp.diocese && !dioceseInput.value) dioceseInput.value = tp.diocese;
+          } else if (r.ph_last_diocese && !dioceseInput.value) {
+            // Fallback: pre-fill diocese from the last push (legacy behaviour).
+            dioceseInput.value = r.ph_last_diocese;
+          }
         });
       }
 
