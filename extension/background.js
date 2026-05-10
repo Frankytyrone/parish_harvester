@@ -118,7 +118,7 @@ chrome.action.onClicked.addListener((tab) => {
   if (!tab?.id) {
     return;
   }
-  void sendToTab(tab.id, { type: "toggle_toolbar" });
+  void sendToTab(tab.id, { type: "show_toolbar" });
 });
 
 

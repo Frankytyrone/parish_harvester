@@ -56,10 +56,6 @@ async function sendToActiveTab(message) {
   );
 }
 
-document.getElementById("show-toolbar").addEventListener("click", () => {
-  void sendToActiveTab({ type: "show_toolbar" });
-});
-
 document.getElementById("open-operator").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("sidepanel.html") });
   setStatusText("Opened operator console.");
@@ -89,3 +85,5 @@ document.getElementById("gh-save").addEventListener("click", () => {
     setTimeout(() => { ghStatusEl.textContent = ""; }, 3000);
   });
 });
+
+void sendToActiveTab({ type: "show_toolbar" });
