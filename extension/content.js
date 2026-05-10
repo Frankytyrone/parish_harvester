@@ -25,6 +25,109 @@
 
   const _inStandaloneMode = () => typeof window.ph_mark_download_url !== "function";
 
+  // ── Safe message bridge ───────────────────────────────────────────────────
+  // content.js runs in the MAIN world where chrome.runtime can be undefined
+  // (e.g. after an extension reload).  _safeSendMessage tries the direct API
+  // first and falls back to the window.postMessage ↔ isolated.js bridge.
+  // callback(response, errorString) — errorString is non-null on failure.
+  const _safeSendMessage = (message, callback) => {
+    const TIMEOUT_MS = 15000;
+
+    // ── Direct path ──────────────────────────────────────────────────────
+    if (typeof chrome !== "undefined" && chrome?.runtime?.sendMessage) {
+      try {
+        chrome.runtime.sendMessage(message, (res) => {
+          const lastErr = chrome.runtime?.lastError;
+          if (lastErr) {
+            callback(null, lastErr.message);
+          } else {
+            callback(res || null, null);
+          }
+        });
+        return;
+      } catch (_directErr) {
+        // Fall through to bridge
+      }
+    }
+
+    // ── Bridge path via isolated.js ──────────────────────────────────────
+    const reqId = `ph-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let settled = false;
+    let timer = null;
+
+    const onResponse = (event) => {
+      if (event.source !== window) return;
+      if (event.data?.direction !== "from-isolated-response") return;
+      if (event.data?.reqId !== reqId) return;
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      window.removeEventListener("message", onResponse);
+      callback(event.data.response || null, event.data.error || null);
+    };
+
+    window.addEventListener("message", onResponse);
+
+    timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onResponse);
+      callback(null, "Extension bridge timed out. Reload the page and try again. If the problem persists, check that your GitHub PAT is saved in Settings.");
+    }, TIMEOUT_MS);
+
+    window.postMessage({ direction: "from-main", reqId, message }, "*");
+  };
+
+  // ── Parish key / name inference from URL ─────────────────────────────────
+  // Mirrors the _pdUrlToKey() logic used in sidepanel.js so the push form can
+  // auto-populate fields without requiring manual entry.
+  const _inferParishKeyFromUrl = (url) => {
+    if (!url) return "";
+    try {
+      const parsed = new URL(url);
+      let hostname = parsed.hostname.toLowerCase().replace(/^www\d*\./, "");
+      if (/\bi\d+\.wp\.com\b/.test(hostname)) {
+        const parts = parsed.pathname.replace(/^\//, "").split("/");
+        if (parts.length > 0) {
+          const real = parts[0].toLowerCase().replace(/^www\d*\./, "");
+          const segs = real.split(".");
+          if (segs.length >= 2) return segs[0];
+        }
+      }
+      if (
+        hostname === "filesafe.space" || hostname.endsWith(".filesafe.space") ||
+        hostname === "google.com"     || hostname.endsWith(".google.com")
+      ) {
+        return "";
+      }
+      return hostname.split(".")[0] || "";
+    } catch (_e) {
+      return "";
+    }
+  };
+
+  const _inferDisplayNameFromUrl = (url) => {
+    const key = _inferParishKeyFromUrl(url);
+    if (!key) return "";
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  };
+
+  // Persist per-domain parish context after a successful push.
+  const _cacheParishByDomain = (url, key, name, diocese) => {
+    const hostname = (() => { try { return new URL(url).hostname; } catch (_e) { return ""; } })();
+    if (!hostname || !key) return;
+    if (typeof chrome === "undefined" || !chrome.storage) return;
+    try {
+      chrome.storage.local.get(["ph_parish_by_domain"], (r) => {
+        if (chrome.runtime?.lastError) return;
+        const cache = (r.ph_parish_by_domain && typeof r.ph_parish_by_domain === "object")
+          ? r.ph_parish_by_domain : {};
+        cache[hostname] = { key, name: name || key, diocese: diocese || "", ts: Date.now() };
+        try { chrome.storage.local.set({ ph_parish_by_domain: cache }); } catch (_e) {}
+      });
+    } catch (_e) {}
+  };
+
   const standaloneAddStep = (step) => {
     if (!_inStandaloneMode()) return;
     // Replace an existing download/image/html step if one already exists
@@ -1716,10 +1819,12 @@
         statusBar.style.background = "#14532d";
         statusBar.style.color = "#86efac";
       }
+      // Success banners stay visible longer so the user can read the URL.
+      const displayMs = (type === "error") ? 12000 : (type === "info" || type === "warn") ? 6000 : 10000;
       statusTimer = setTimeout(() => {
         statusBar.style.opacity = "0";
         setTimeout(() => { statusBar.style.display = "none"; }, 300);
-      }, 6000);
+      }, displayMs);
     };
 
     // ── Body container ─────────────────────────────────────────────────────
@@ -2748,6 +2853,29 @@
       pushTitle.textContent = "⬆ Push Recipe to GitHub";
       pushSection.appendChild(pushTitle);
 
+      // GitHub settings check — warn early if PAT/repo are not configured.
+      const ghConfigNote = document.createElement("div");
+      ghConfigNote.style.cssText = "font-size:9px;display:none;margin-bottom:5px;padding:3px 6px;border-radius:3px;";
+      pushSection.appendChild(ghConfigNote);
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        try {
+          chrome.storage.local.get(["gh_pat", "gh_repo"], (r) => {
+            if (chrome.runtime?.lastError) return;
+            if (!r.gh_pat || !r.gh_repo) {
+              ghConfigNote.style.display = "block";
+              ghConfigNote.style.background = "#7f1d1d";
+              ghConfigNote.style.color = "#fca5a5";
+              ghConfigNote.textContent = "⚠️ GitHub PAT / repo not set — open the extension popup → ⚙️ Settings before pushing.";
+            } else {
+              ghConfigNote.style.display = "block";
+              ghConfigNote.style.background = "#14532d";
+              ghConfigNote.style.color = "#86efac";
+              ghConfigNote.textContent = `✓ GitHub configured for ${r.gh_repo}`;
+            }
+          });
+        } catch (_e) {}
+      }
+
       const makeInput = (placeholder, id) => {
         const inp = document.createElement("input");
         inp.type = "text";
@@ -2768,27 +2896,46 @@
         return inp;
       };
 
-      const keyInput = makeInput("Parish key — e.g. ardmoreparish", "ph-parish-key");
-      const nameInput = makeInput("Display name — e.g. Ardmore Parish", "ph-display-name");
-      const dioceseInput = makeInput("Diocese — e.g. derry_diocese", "ph-diocese");
+      const keyInput = makeInput("Parish key (auto-detected if blank)", "ph-parish-key");
+      const nameInput = makeInput("Display name (auto-detected if blank)", "ph-display-name");
+      const dioceseInput = makeInput("Diocese (optional)", "ph-diocese");
       pushSection.appendChild(keyInput);
       pushSection.appendChild(nameInput);
       pushSection.appendChild(dioceseInput);
 
-      // Pre-populate fields from the active training session (set by the
-      // sidepanel when the operator clicks a parish to open it for training).
+      // Auto-detect label — shown when fields were filled automatically.
+      const autoDetectNote = document.createElement("div");
+      autoDetectNote.style.cssText = "font-size:9px;color:#86efac;margin-bottom:3px;display:none;";
+      pushSection.appendChild(autoDetectNote);
+
+      const _applyParishContext = (ctx) => {
+        if (!ctx) return;
+        if (ctx.key && !keyInput.value) {
+          keyInput.value = ctx.key;
+          autoDetectNote.style.display = "block";
+          autoDetectNote.textContent = `✓ Auto-filled: ${ctx.key}`;
+        }
+        if (ctx.name && !nameInput.value) nameInput.value = ctx.name;
+        if (ctx.diocese && !dioceseInput.value) dioceseInput.value = ctx.diocese;
+      };
+
+      // Pre-populate fields: ph_training_parish → per-domain cache → last diocese.
       if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.get(["ph_training_parish", "ph_last_diocese"], (r) => {
-          const tp = r.ph_training_parish;
-          if (tp) {
-            if (tp.key && !keyInput.value) keyInput.value = tp.key;
-            if (tp.name && !nameInput.value) nameInput.value = tp.name;
-            if (tp.diocese && !dioceseInput.value) dioceseInput.value = tp.diocese;
-          } else if (r.ph_last_diocese && !dioceseInput.value) {
-            // Fallback: pre-fill diocese from the last push (legacy behaviour).
-            dioceseInput.value = r.ph_last_diocese;
-          }
-        });
+        try {
+          const hostname = (() => { try { return new URL(window.location.href).hostname; } catch (_e) { return ""; } })();
+          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese", "ph_parish_by_domain"], (r) => {
+            if (chrome.runtime?.lastError) return;
+            if (r.ph_training_parish) {
+              _applyParishContext(r.ph_training_parish);
+            } else if (hostname && r.ph_parish_by_domain?.[hostname]) {
+              _applyParishContext(r.ph_parish_by_domain[hostname]);
+            } else if (r.ph_last_diocese && !dioceseInput.value) {
+              dioceseInput.value = r.ph_last_diocese;
+            }
+          });
+        } catch (_storageErr) {
+          // Extension context may have been invalidated — silently ignore.
+        }
       }
 
       const stepCountEl = document.createElement("div");
@@ -2824,42 +2971,62 @@
         "width:100%",
         "margin-bottom:4px",
       ].join(";");
-      pushBtn.addEventListener("click", async () => {
-        const key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
-        const name = nameInput.value.trim();
+      pushBtn.addEventListener("click", () => {
+        // Resolve key and name — prefer typed values, fall back to URL inference.
+        let key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
+        let name = nameInput.value.trim();
         const diocese = dioceseInput.value.trim();
-        if (!key) { showStatus("❌ Parish key is required.", "error"); return; }
-        if (!name) { showStatus("❌ Display name is required.", "error"); return; }
+
+        if (!key) {
+          key = _inferParishKeyFromUrl(standaloneStartUrl || window.location.href);
+          if (key) {
+            keyInput.value = key;
+            autoDetectNote.style.display = "block";
+            autoDetectNote.textContent = `✓ Key inferred from URL: ${key}`;
+          }
+        }
+        if (!name) {
+          name = _inferDisplayNameFromUrl(standaloneStartUrl || window.location.href) || key;
+          if (name) nameInput.value = name;
+        }
+
+        if (!key) {
+          showStatus("❌ Could not infer parish key. Please enter it above.", "error");
+          return;
+        }
         if (standaloneSteps.length === 0) { showStatus("⚠️ No steps recorded yet.", "warn"); return; }
 
-        const recipe = buildStandaloneRecipe(key, name, diocese);
+        const recipe = buildStandaloneRecipe(key, name || key, diocese);
         pushBtn.disabled = true;
         pushBtn.textContent = "⏳ Pushing…";
         showStatus("⏳ Pushing recipe to GitHub…", "info");
 
-        try {
-          const response = await new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage({ type: "push_recipe", parish_key: key, recipe }, (res) => {
-              if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
-              resolve(res);
-            });
-          });
+        _safeSendMessage({ type: "push_recipe", parish_key: key, recipe }, (response, bridgeError) => {
+          pushBtn.disabled = false;
+          pushBtn.textContent = "⬆ Push Recipe to GitHub";
+          if (bridgeError) {
+            showStatus(`❌ ${bridgeError}`, "error");
+            return;
+          }
           if (response && response.ok) {
-            showStatus(`✅ Recipe saved! ${response.url}`, "ok");
-            if (diocese && typeof chrome !== "undefined" && chrome.storage) {
-              chrome.storage.local.set({ ph_last_diocese: diocese });
+            const verb = response.updated ? "updated" : "created";
+            const path = response.filePath || `parishes/recipes/${key}.json`;
+            const linkUrl = response.url || "";
+            const linkPart = linkUrl ? ` → ${linkUrl}` : ` → ${path}`;
+            showStatus(`✅ Recipe ${verb}!${linkPart}`, "ok");
+            // Persist diocese and per-domain context for next time.
+            if (typeof chrome !== "undefined" && chrome.storage) {
+              try {
+                if (diocese) chrome.storage.local.set({ ph_last_diocese: diocese });
+              } catch (_e) {}
             }
+            _cacheParishByDomain(standaloneStartUrl || window.location.href, key, name || key, diocese);
             clearStandaloneRecipe();
             refreshStepCount();
           } else {
-            showStatus(`❌ ${(response && response.error) || "Unknown error"}`, "error");
+            showStatus(`❌ ${(response && response.error) || "Unknown error. Check GitHub settings in the popup."}`, "error");
           }
-        } catch (err) {
-          showStatus(`❌ ${err.message}`, "error");
-        } finally {
-          pushBtn.disabled = false;
-          pushBtn.textContent = "⬆ Push Recipe to GitHub";
-        }
+        });
       });
       pushSection.appendChild(pushBtn);
 
