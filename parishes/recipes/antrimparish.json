@@ -1,7 +1,7 @@
 {
   "parish_key": "antrimparish",
-  "display_name": "Antrim",
-  "recorded_date": "2026-04-28",
+  "display_name": "Antrimparish",
+  "recorded_date": "2026-05-10",
   "start_url": "https://www.antrimparish.com/bulletinpage/",
   "steps": [
     {
@@ -9,9 +9,13 @@
       "url": "https://www.antrimparish.com/bulletinpage/"
     },
     {
+      "action": "click",
+      "selector": "div#content"
+    },
+    {
       "action": "download",
-      "url_pattern": "*.pdf",
-      "captured_url": "https://www-static.antrimparish.com/wp-content/uploads/2026/04/26th-April-2026.pdf"
+      "url": "https://www-static.antrimparish.com/wp-content/uploads/2026/05/10th-May-2026.pdf"
     }
-  ]
+  ],
+  "version": 1
 }
