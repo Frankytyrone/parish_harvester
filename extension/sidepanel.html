@@ -92,6 +92,25 @@
         padding: 4px 6px; background: #0f172a; color: #f9fafb;
         font-size: 10px; margin-bottom: 6px; font-family: inherit;
       }
+      .pd-broken-banner {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 6px;
+        margin-bottom: 6px;
+        border-radius: 4px;
+        border: 1px solid #7f1d1d;
+        background: #450a0a;
+        color: #fecaca;
+        font-size: 10px;
+      }
+      #pd-broken-toggle {
+        width: auto;
+        margin-left: auto;
+        padding: 2px 7px;
+        font-size: 9px;
+        background: #991b1b;
+      }
       .pd-excl-label { font-size: 9px; color: #9ca3af; flex-shrink: 0; }
     </style>
   </head>
@@ -147,6 +166,10 @@
           <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">
             <span style="font-size:10px;color:#6b7280;flex:1;">Browse parishes, open bulletin pages, update links, and control the mega PDF.</span>
             <button id="pd-refresh" type="button">↺ Refresh</button>
+          </div>
+          <div id="pd-broken-banner" class="pd-broken-banner">
+            <span id="pd-broken-text">⚠️ 0 Parishes need attention</span>
+            <button id="pd-broken-toggle" type="button">Show Broken Only</button>
           </div>
           <input id="pd-search" type="search" placeholder="Search parish name…" />
           <div id="parish-dir-loading" style="font-size:10px;color:#6b7280;display:none;">⏳ Loading…</div>

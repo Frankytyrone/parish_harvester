@@ -15,6 +15,9 @@ from .fetcher import FetchResult
 
 # Path to the JSON log file (project root)
 _LOG_PATH = Path(__file__).resolve().parent.parent / "harvest_log.json"
+_CONSECUTIVE_FAILURES_PATH = (
+    Path(__file__).resolve().parent.parent / "parishes" / "consecutive_failures.json"
+)
 
 
 def log_result(
@@ -134,3 +137,37 @@ def print_summary(n: int = 20) -> None:
     ok_count = sum(1 for e in recent if e.get("status") == "ok")
     fail_count = sum(1 for e in recent if e.get("status") == "failed")
     print(f"\n  ✅ {ok_count} ok   💥 {fail_count} failed   (of last {len(recent)})\n")
+
+
+def update_consecutive_failures(
+    results: list[FetchResult], failures_path: Path | None = None
+) -> dict[str, int]:
+    """Update per-parish consecutive failure counts and persist to JSON."""
+    path = failures_path or _CONSECUTIVE_FAILURES_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(existing, dict):
+            existing = {}
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing = {}
+
+    counts: dict[str, int] = {}
+    for key, value in existing.items():
+        try:
+            counts[key] = max(0, int(value))
+        except (TypeError, ValueError):
+            counts[key] = 0
+
+    for result in results:
+        key = (result.key or "").strip()
+        if not key:
+            continue
+        if result.status in ("ok", "html_link"):
+            counts[key] = 0
+        else:
+            counts[key] = counts.get(key, 0) + 1
+
+    path.write_text(json.dumps(counts, indent=2, ensure_ascii=False), encoding="utf-8")
+    return counts

@@ -29,7 +29,7 @@ from harvester.config import (
 from harvester.dashboard_generator import generate_dashboard
 from harvester.email_notifier import send_harvest_notification
 from harvester.fetcher import FetchResult, fetch_all, parse_evidence_file
-from harvester.harvest_log import log_result, print_summary
+from harvester.harvest_log import log_result, print_summary, update_consecutive_failures
 from harvester.report import generate_report
 from harvester.stitcher import stitch_mega_pdf
 from train import run_training
@@ -206,6 +206,8 @@ def main() -> int:
     if not all_results:
         print("⚠️  No results to report.", file=sys.stderr)
         return 1
+
+    update_consecutive_failures(all_results)
 
     # Generate combined report (across all dioceses)
     print("\n── Report ──────────────────────────────────────────────────")
