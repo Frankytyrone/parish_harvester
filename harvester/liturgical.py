@@ -40,7 +40,7 @@ def _easter_sunday(year: int) -> date:
     return date(year, month, day)
 
 
-def _next_sunday(d: date) -> date:
+def _sunday_on_or_after(d: date) -> date:
     return d + timedelta(days=(6 - d.weekday()) % 7)
 
 
@@ -52,14 +52,14 @@ def get_liturgical_sundays(year: int) -> dict[date, str]:
     names: dict[date, str] = {}
 
     easter = _easter_sunday(year)
-    epiphany = _next_sunday(date(year, 1, 2))
+    epiphany = _sunday_on_or_after(date(year, 1, 2))
     baptism = epiphany + timedelta(days=7)
     lent_1 = easter - timedelta(days=42)
     palm = easter - timedelta(days=7)
     pentecost = easter + timedelta(days=49)
     trinity = easter + timedelta(days=56)
     corpus = easter + timedelta(days=63)
-    first_advent = _next_sunday(date(year, 11, 27))
+    first_advent = _sunday_on_or_after(date(year, 11, 27))
     christ_king = first_advent - timedelta(days=7)
     all_saints = date(year, 11, 1)
     christmas = date(year, 12, 25)
@@ -115,7 +115,7 @@ def get_liturgical_sundays(year: int) -> dict[date, str]:
     names[christmas] = "Christmas_Day"
 
     # Sunday in the octave of Christmas; if absent, celebrated on Dec 30.
-    holy_family = _next_sunday(christmas + timedelta(days=1))
+    holy_family = _sunday_on_or_after(christmas + timedelta(days=1))
     if holy_family.year != year:
         holy_family = date(year, 12, 30)
     names[holy_family] = "The_Holy_Family"
