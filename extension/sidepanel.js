@@ -392,7 +392,16 @@ function _pdBuildRow(parish, excludes) {
   nameEl.textContent = parish.name;
   nameEl.title = parish.pageUrl || parish.bulletinUrls[0] || parish.key;
   if (parish.pageUrl || parish.bulletinUrls[0]) {
-    nameEl.addEventListener("click", () => chrome.tabs.create({ url: parish.pageUrl || parish.bulletinUrls[0] }));
+    nameEl.addEventListener("click", () => {
+      chrome.storage.local.set({
+        ph_training_parish: {
+          key: parish.key,
+          name: parish.name,
+          diocese: parish.diocese,
+        },
+      });
+      chrome.tabs.create({ url: parish.pageUrl || parish.bulletinUrls[0] });
+    });
   }
   row.appendChild(nameEl);
 
