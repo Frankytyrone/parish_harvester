@@ -333,8 +333,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         // Always overwrite with the freshly-recorded steps and metadata.
         ...incoming,
         // Keep the original display_name / diocese unless the new one is non-empty.
-        display_name: (incoming.display_name && incoming.display_name.trim()) ? incoming.display_name : existingRecipe.display_name,
-        diocese:      (incoming.diocese      && incoming.diocese.trim())      ? incoming.diocese      : existingRecipe.diocese,
+        display_name: (incoming.display_name && incoming.display_name.trim()) ? incoming.display_name.trim() : existingRecipe.display_name,
+        diocese:      (incoming.diocese      && incoming.diocese.trim())      ? incoming.diocese.trim()      : existingRecipe.diocese,
       } : incoming;
 
       // Set recorded_date to today.

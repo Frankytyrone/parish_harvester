@@ -2896,9 +2896,9 @@
         return inp;
       };
 
-      const keyInput = makeInput("Parish key — e.g. ardmoreparish (auto-detected if blank)", "ph-parish-key");
-      const nameInput = makeInput("Display name — e.g. Ardmore Parish (auto-detected if blank)", "ph-display-name");
-      const dioceseInput = makeInput("Diocese — e.g. derry_diocese (optional)", "ph-diocese");
+      const keyInput = makeInput("Parish key (auto-detected if blank)", "ph-parish-key");
+      const nameInput = makeInput("Display name (auto-detected if blank)", "ph-display-name");
+      const dioceseInput = makeInput("Diocese (optional)", "ph-diocese");
       pushSection.appendChild(keyInput);
       pushSection.appendChild(nameInput);
       pushSection.appendChild(dioceseInput);
