@@ -369,7 +369,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       let dispatchOk = false;
       let dispatchError = "";
       try {
-        const [owner, repoName] = gh_repo.split("/");
         const dispatchResp = await fetch(
           `https://api.github.com/repos/${gh_repo}/actions/workflows/harvest.yml/dispatches`,
           {

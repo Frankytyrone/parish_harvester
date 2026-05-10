@@ -230,7 +230,7 @@ def main() -> int:
             print(f"  📄 Updated     : {dest.name}")
         else:
             status_r = next((r for r in all_results if r.key == target_parish_key), None)
-            reason = (status_r.error if status_r else "unknown")
+            reason = getattr(status_r, "error", None) or "unknown"
             print(f"  ⚠️  No PDF downloaded for '{target_parish_key}': {reason}")
 
         # Load contacts for display name lookup

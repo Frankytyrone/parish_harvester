@@ -3014,7 +3014,7 @@
             const linkUrl = response.url || "";
             const linkPart = linkUrl ? ` → ${linkUrl}` : ` → ${path}`;
             if (response.dispatchOk) {
-              showStatus(`✅ Recipe ${verb}. Triggering instant Mega PDF rebuild… ${linkPart}`, "ok");
+              showStatus(`✅ Recipe ${verb}! Triggering instant Mega PDF rebuild… ${linkPart}`, "ok");
             } else if (response.dispatchError) {
               showStatus(
                 `✅ Recipe ${verb}!${linkPart} ⚠️ Rebuild trigger failed: ${response.dispatchError}`,
