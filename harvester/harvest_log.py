@@ -155,11 +155,10 @@ def update_consecutive_failures(
 
     counts: dict[str, int] = {}
     for key, value in existing.items():
-        if isinstance(key, str):
-            try:
-                counts[key] = max(0, int(value))
-            except (TypeError, ValueError):
-                counts[key] = 0
+        try:
+            counts[key] = max(0, int(value))
+        except (TypeError, ValueError):
+            counts[key] = 0
 
     for result in results:
         key = (result.key or "").strip()

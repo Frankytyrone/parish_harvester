@@ -319,7 +319,7 @@ let _pdConsecutiveFailures = {}; // key -> number
 let _pdShowBrokenOnly = false;
 
 function _pdFailureCount(parishKey) {
-  return Number(_pdConsecutiveFailures?.[parishKey] || 0);
+  return Number(_pdConsecutiveFailures[parishKey] || 0);
 }
 
 function _pdIsBroken(parishKey) {
@@ -399,7 +399,10 @@ function _pdRenderAll(searchTerm, excludes) {
   }
 
   if (!container.children.length) {
-    container.textContent = lc ? "No matching parishes." : (_pdShowBrokenOnly ? "No broken parishes found." : "No parishes loaded.");
+    let emptyMessage = "No parishes loaded.";
+    if (lc) emptyMessage = "No matching parishes.";
+    else if (_pdShowBrokenOnly) emptyMessage = "No broken parishes found.";
+    container.textContent = emptyMessage;
     container.style.color = "#6b7280";
     container.style.fontSize = "10px";
   }
