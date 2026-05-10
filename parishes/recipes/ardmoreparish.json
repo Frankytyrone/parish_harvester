@@ -10,10 +10,18 @@
     },
     {
       "action": "click",
+      "selector": "a:has-text(\"Sunday, 10th May 2026\")",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(1) > div > a"
+      ]
+    },
+    {
+      "action": "click",
       "selector": "a:has-text(\"6th Sunday of Easter\")",
       "fallback_selectors": [
         "a[href$='.pdf']",
-        "div#xlaANMzone_2427a9 > div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(2) > a:nth-of-type(1)"
+        "div#xlaANMzone_873c7d > div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(2) > a:nth-of-type(1)"
       ]
     }
   ],
