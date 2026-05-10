@@ -1819,10 +1819,12 @@
         statusBar.style.background = "#14532d";
         statusBar.style.color = "#86efac";
       }
+      // Success banners stay visible longer so the user can read the URL.
+      const displayMs = (type === "error") ? 12000 : (type === "info" || type === "warn") ? 6000 : 10000;
       statusTimer = setTimeout(() => {
         statusBar.style.opacity = "0";
         setTimeout(() => { statusBar.style.display = "none"; }, 300);
-      }, 6000);
+      }, displayMs);
     };
 
     // ── Body container ─────────────────────────────────────────────────────
@@ -2851,6 +2853,29 @@
       pushTitle.textContent = "⬆ Push Recipe to GitHub";
       pushSection.appendChild(pushTitle);
 
+      // GitHub settings check — warn early if PAT/repo are not configured.
+      const ghConfigNote = document.createElement("div");
+      ghConfigNote.style.cssText = "font-size:9px;display:none;margin-bottom:5px;padding:3px 6px;border-radius:3px;";
+      pushSection.appendChild(ghConfigNote);
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        try {
+          chrome.storage.local.get(["gh_pat", "gh_repo"], (r) => {
+            if (chrome.runtime?.lastError) return;
+            if (!r.gh_pat || !r.gh_repo) {
+              ghConfigNote.style.display = "block";
+              ghConfigNote.style.background = "#7f1d1d";
+              ghConfigNote.style.color = "#fca5a5";
+              ghConfigNote.textContent = "⚠️ GitHub PAT / repo not set — open the extension popup → ⚙️ Settings before pushing.";
+            } else {
+              ghConfigNote.style.display = "block";
+              ghConfigNote.style.background = "#14532d";
+              ghConfigNote.style.color = "#86efac";
+              ghConfigNote.textContent = `✓ GitHub configured for ${r.gh_repo}`;
+            }
+          });
+        } catch (_e) {}
+      }
+
       const makeInput = (placeholder, id) => {
         const inp = document.createElement("input");
         inp.type = "text";
@@ -2984,7 +3009,11 @@
             return;
           }
           if (response && response.ok) {
-            showStatus(`✅ Recipe saved! ${response.url || "parishes/recipes/" + key + ".json"}`, "ok");
+            const verb = response.updated ? "updated" : "created";
+            const path = response.filePath || `parishes/recipes/${key}.json`;
+            const linkUrl = response.url || "";
+            const linkPart = linkUrl ? ` → ${linkUrl}` : ` → ${path}`;
+            showStatus(`✅ Recipe ${verb}!${linkPart}`, "ok");
             // Persist diocese and per-domain context for next time.
             if (typeof chrome !== "undefined" && chrome.storage) {
               try {
