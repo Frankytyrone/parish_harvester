@@ -280,6 +280,7 @@ def load_manual_overrides(parishes_dir: Path | None = None) -> dict[str, dict[st
             continue
         key = key.strip()
         if not key:
+            print("  ⚠️ Skipping manual override entry with empty parish key.")
             continue
         url = str(payload.get("url", "")).strip()
         if not url.startswith(("http://", "https://")):
@@ -287,11 +288,12 @@ def load_manual_overrides(parishes_dir: Path | None = None) -> dict[str, dict[st
         override_type = str(payload.get("type", "")).strip().lower() or "download"
         if override_type not in valid_types:
             lowered = url.lower()
-            if lowered.endswith(".docx"):
+            path_part = lowered.split("?", 1)[0]
+            if path_part.endswith(".docx"):
                 override_type = "docx"
-            elif lowered.endswith((".jpg", ".jpeg", ".png", ".webp")):
+            elif path_part.endswith((".jpg", ".jpeg", ".png", ".webp")):
                 override_type = "image"
-            elif lowered.endswith(".pdf") or ".pdf?" in lowered:
+            elif path_part.endswith(".pdf"):
                 override_type = "download"
             else:
                 override_type = "html"

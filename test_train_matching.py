@@ -199,6 +199,8 @@ https://www.antrimparish.com
         self.assertIn("_tryAutoShowToolbar", content_js)
         self.assertIn("chrome.runtime.onMessage.addListener", content_js)
         self.assertIn("ph_ping", content_js)
+        self.assertIn("sendResponse({ ok: handled })", content_js)
+        self.assertIn('if (message.type === "ph_ping") return true;', content_js)
         # Must print the confirmation message when toolbar is auto-shown
         self.assertIn("Parish Trainer toolbar ready", content_js)
 

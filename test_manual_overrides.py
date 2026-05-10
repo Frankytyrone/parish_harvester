@@ -21,6 +21,10 @@ class ManualOverrideTests(unittest.IsolatedAsyncioTestCase):
                         "bad_url": {"url": "javascript:alert(1)", "type": "download"},
                         "bad_payload": "nope",
                         "unknown_type": {"url": "https://example.org/listing", "type": "mystery"},
+                        "unknown_pdf": {"url": "https://example.org/current.pdf", "type": "mystery"},
+                        "unknown_pdf_query": {"url": "https://example.org/current.pdf?download=1", "type": "mystery"},
+                        "unknown_docx": {"url": "https://example.org/current.docx", "type": "mystery"},
+                        "unknown_image": {"url": "https://example.org/current.jpg", "type": "mystery"},
                     }
                 ),
                 encoding="utf-8",
@@ -33,6 +37,10 @@ class ManualOverrideTests(unittest.IsolatedAsyncioTestCase):
                 {
                     "good": {"url": "https://example.org/bulletin.pdf", "type": "download"},
                     "unknown_type": {"url": "https://example.org/listing", "type": "html"},
+                    "unknown_pdf": {"url": "https://example.org/current.pdf", "type": "download"},
+                    "unknown_pdf_query": {"url": "https://example.org/current.pdf?download=1", "type": "download"},
+                    "unknown_docx": {"url": "https://example.org/current.docx", "type": "docx"},
+                    "unknown_image": {"url": "https://example.org/current.jpg", "type": "image"},
                 },
             )
 

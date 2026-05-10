@@ -126,7 +126,11 @@ chrome.action.onClicked.addListener((tab) => {
 // present, so this does not affect normal browsing sessions.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "complete") {
-    void sendToTab(tabId, { type: "show_toolbar" }, { allowInject: false });
+    void sendToTab(tabId, { type: "show_toolbar" }, { allowInject: false }).then((result) => {
+      if (!result.ok && result.reason !== "unsupported_url" && result.reason !== "receiver_unavailable") {
+        console.debug("Parish Trainer: auto-show toolbar failed", result);
+      }
+    });
   }
 });
 

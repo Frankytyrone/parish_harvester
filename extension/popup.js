@@ -1,6 +1,6 @@
 const statusEl = document.getElementById("status");
 
-function setStatus(text) {
+function setStatusText(text) {
   statusEl.textContent = text;
 }
 
@@ -24,11 +24,11 @@ function formatDispatchError(result) {
 async function sendToActiveTab(message) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) {
-    setStatus("No active tab.");
+    setStatusText("No active tab.");
     return;
   }
   if (!/^https?:\/\//i.test(tab.url || "")) {
-    setStatus("This tab is not scriptable. Open a normal http/https page.");
+    setStatusText("This tab is not scriptable. Open a normal http/https page.");
     return;
   }
 
@@ -41,22 +41,22 @@ async function sendToActiveTab(message) {
     },
     (result) => {
       if (chrome.runtime.lastError) {
-        setStatus(`Could not communicate with extension background: ${chrome.runtime.lastError.message}`);
+        setStatusText(`Could not communicate with extension background: ${chrome.runtime.lastError.message}`);
         return;
       }
       if (!result?.ok) {
-        setStatus(formatDispatchError(result));
+        setStatusText(formatDispatchError(result));
         return;
       }
 
       if (message.type === "show_toolbar") {
-        setStatus("Toolbar shown.");
+        setStatusText("Toolbar shown.");
       } else if (message.type === "mark_html") {
-        setStatus("Marked HTML page.");
+        setStatusText("Marked HTML page.");
       } else if (message.type === "mark_file") {
-        setStatus("Marked current URL as file.");
+        setStatusText("Marked current URL as file.");
       } else if (message.type === "mark_image") {
-        setStatus("Marked bulletin image.");
+        setStatusText("Marked bulletin image.");
       }
     }
   );
@@ -68,7 +68,7 @@ document.getElementById("show-toolbar").addEventListener("click", () => {
 
 document.getElementById("open-operator").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("sidepanel.html") });
-  setStatus("Opened operator console.");
+  setStatusText("Opened operator console.");
 });
 
 document.getElementById("mark-html").addEventListener("click", () => {
