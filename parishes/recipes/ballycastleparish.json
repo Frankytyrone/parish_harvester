@@ -1,7 +1,7 @@
 {
   "parish_key": "ballycastleparish",
-  "display_name": "Ballycastle",
-  "recorded_date": "2026-04-28",
+  "display_name": "Ballycastleparish",
+  "recorded_date": "2026-05-10",
   "start_url": "https://www.ballycastleparish.com/bulletins",
   "steps": [
     {
@@ -10,16 +10,12 @@
     },
     {
       "action": "click",
-      "selector": "a:has-text('April')",
+      "selector": "a:has-text(\"10th May 2026\")",
       "fallback_selectors": [
         "a[href$='.pdf']",
-        "a[href*='.pdf']",
-        "div#yui_3_17_2_1_1777381228315_69 > a"
+        "div#yui_3_17_2_1_1778450562523_69 > a"
       ]
-    },
-    {
-      "action": "download",
-      "url_pattern": "*.pdf"
     }
-  ]
+  ],
+  "version": 1
 }
