@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import subprocess
 import tempfile
@@ -15,6 +16,8 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 from playwright.async_api import (
@@ -60,6 +63,10 @@ _MAX_ATTEMPTS: int = 3
 # Seconds to wait between retry attempts
 _RETRY_DELAY_S: float = 3.0
 _HEADER_DASH_CLASS = r"[-\u2013\u2014]"
+_MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
+_MISTRAL_MODEL = "mistral-small-latest"
+_MISTRAL_TIMEOUT_S = 30
+_MISTRAL_MAX_LINKS = 120
 
 
 # ---------------------------------------------------------------------------
@@ -959,6 +966,255 @@ async def _fetch_from_manual_override(
     )
 
 
+def _mistral_is_enabled() -> bool:
+    return bool(os.getenv("MISTRAL_API_KEY", "").strip())
+
+
+def _normalize_mistral_url(raw: str) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    text = text.strip().strip("`").strip("'\"")
+    match = re.search(r"https?://\S+", text)
+    if match:
+        text = match.group(0)
+    text = text.rstrip("),.;]>")
+    parsed = urlparse(text)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    return text
+
+
+def _build_auto_healed_steps(url: str) -> list[dict[str, str]]:
+    path = urlparse(url).path.lower()
+    if path.endswith((".jpg", ".jpeg", ".png", ".webp")):
+        return [{"action": "image", "url": url}]
+    return [
+        {"action": "goto", "url": url},
+        {"action": "download"},
+    ]
+
+
+def _write_auto_healed_recipe(
+    entry: ParishEntry,
+    recipe_path: Path,
+    url: str,
+    target: date,
+) -> None:
+    payload: dict = {}
+    if recipe_path.exists():
+        try:
+            payload = json.loads(recipe_path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {}
+    payload["parish_key"] = entry.key
+    payload["display_name"] = entry.display_name
+    payload["recorded_date"] = target.isoformat()
+    payload["start_url"] = payload.get("start_url") or entry.bulletin_page or entry.example_url or url
+    payload["steps"] = _build_auto_healed_steps(url)
+    recipe_path.parent.mkdir(parents=True, exist_ok=True)
+    recipe_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+async def _extract_condensed_page_links(
+    scrape_url: str,
+    browser: Browser,
+) -> tuple[str, list[tuple[str, str]]]:
+    context = await browser.new_context()
+    page = await context.new_page()
+    try:
+        await page.goto(
+            scrape_url.replace(" ", "%20"),
+            timeout=20_000,
+            wait_until="domcontentloaded",
+        )
+        try:
+            await page.wait_for_load_state("networkidle", timeout=5_000)
+        except PlaywrightTimeoutError:
+            pass
+        raw_links = await page.eval_on_selector_all(
+            "a[href]",
+            """
+            (els) => els.map(el => ({
+                href: el.getAttribute('href') || '',
+                text: (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim(),
+            }))
+            """,
+        )
+        links: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for item in raw_links:
+            if not isinstance(item, dict):
+                continue
+            href = str(item.get("href", "")).strip()
+            if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+                continue
+            resolved = urljoin(page.url, href)
+            parsed = urlparse(resolved)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                continue
+            norm = resolved.lower()
+            if norm in seen:
+                continue
+            seen.add(norm)
+            label = re.sub(r"\s+", " ", str(item.get("text", ""))).strip()
+            if len(label) > 140:
+                label = f"{label[:137]}..."
+            links.append((resolved, label))
+            if len(links) >= _MISTRAL_MAX_LINKS:
+                break
+        return page.url, links
+    finally:
+        try:
+            await context.close()
+        except Exception:
+            pass
+
+
+def _build_mistral_prompt(page_url: str, links: list[tuple[str, str]]) -> str:
+    lines = [
+        "Identify the link that points to the most recent weekly parish bulletin or newsletter.",
+        "Return ONLY the exact URL as plain text, no markdown, no explanation.",
+        f"Page URL: {page_url}",
+        "Links:",
+    ]
+    for idx, (url, label) in enumerate(links, start=1):
+        lines.append(f"{idx}. {label or '(no text)'} -> {url}")
+    return "\n".join(lines)
+
+
+def _call_mistral_for_bulletin_url(page_url: str, links: list[tuple[str, str]]) -> str:
+    api_key = os.getenv("MISTRAL_API_KEY", "").strip()
+    if not api_key:
+        return ""
+    request_body = {
+        "model": _MISTRAL_MODEL,
+        "temperature": 0,
+        "max_tokens": 80,
+        "messages": [
+            {
+                "role": "user",
+                "content": _build_mistral_prompt(page_url, links),
+            }
+        ],
+    }
+    request = Request(
+        _MISTRAL_API_URL,
+        data=json.dumps(request_body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=_MISTRAL_TIMEOUT_S) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore").strip()
+        raise RuntimeError(f"Mistral API HTTP {exc.code}: {detail[:200]}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"Mistral API request failed: {exc.reason}") from exc
+
+    choices = payload.get("choices") or []
+    if not choices:
+        return ""
+    content = (choices[0].get("message") or {}).get("content", "")
+    if isinstance(content, list):
+        content = "".join(
+            str(part.get("text", ""))
+            for part in content
+            if isinstance(part, dict)
+        )
+    return _normalize_mistral_url(str(content))
+
+
+async def _try_mistral_auto_heal(
+    entry: ParishEntry,
+    target: date,
+    target_url: str,
+    dest: Path,
+    browser: Browser,
+    recipe_path: Path,
+    failure_reason: str,
+) -> FetchResult | None:
+    if not _mistral_is_enabled():
+        return None
+
+    seed_urls: list[str] = []
+    for candidate in [entry.bulletin_page, *_scrape_seed_urls(entry, target_url)]:
+        candidate = candidate.strip()
+        if candidate and candidate not in seed_urls:
+            seed_urls.append(candidate)
+
+    if not seed_urls:
+        return None
+
+    print(f"  🤖 {entry.key}: attempting Mistral fallback after {failure_reason}")
+    for scrape_url in seed_urls:
+        try:
+            page_url, links = await _extract_condensed_page_links(scrape_url, browser)
+        except Exception as exc:
+            print(f"  ↩️  {entry.key}: Mistral fallback page scan failed for {scrape_url}: {exc}")
+            continue
+
+        if not links:
+            print(f"  ↩️  {entry.key}: no links found for Mistral fallback on {page_url}")
+            continue
+
+        try:
+            ai_url = await asyncio.to_thread(_call_mistral_for_bulletin_url, page_url, links)
+        except Exception as exc:
+            print(f"  ↩️  {entry.key}: Mistral fallback request failed: {exc}")
+            continue
+
+        if not ai_url:
+            print(f"  ↩️  {entry.key}: Mistral fallback did not return a usable URL")
+            continue
+
+        print(f"  🤖 {entry.key}: Mistral suggested {ai_url}")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_recipe = Path(tmpdir) / "auto_heal_recipe.json"
+            tmp_recipe.write_text(
+                json.dumps(
+                    {
+                        "parish_key": entry.key,
+                        "display_name": entry.display_name,
+                        "recorded_date": target.isoformat(),
+                        "start_url": page_url,
+                        "steps": _build_auto_healed_steps(ai_url),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            try:
+                healed_path, healed_file_type, _healed_source_url = await replay_recipe(
+                    recipe_path=tmp_recipe,
+                    dest=dest,
+                    browser=browser,
+                )
+                if _is_real_pdf(healed_path, entry.key):
+                    _write_auto_healed_recipe(entry, recipe_path, ai_url, target)
+                    print(f"  🤖 {entry.key}: recipe auto-healed via Mistral")
+                    return FetchResult(
+                        key=entry.key,
+                        display_name=entry.display_name,
+                        status="ok",
+                        url=ai_url,
+                        file_path=healed_path,
+                        file_type=healed_file_type,
+                        is_fallback=True,
+                    )
+            except Exception as exc:
+                print(f"  ↩️  {entry.key}: Mistral candidate failed {ai_url}: {exc}")
+            finally:
+                if dest.exists() and not _is_real_pdf(dest, entry.key):
+                    dest.unlink(missing_ok=True)
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Core fetch logic
 # ---------------------------------------------------------------------------
@@ -980,6 +1236,7 @@ async def _fetch_entry(
     dest = output_dir / safe_filename(key, ".pdf")
     last_err = "No valid content found"
     recipe_error = ""
+    ai_heal_attempted = False
 
     manual_override = (manual_overrides or {}).get(key)
     if manual_override:
@@ -1035,9 +1292,18 @@ async def _fetch_entry(
             if dest.exists() and not _is_real_pdf(dest, key):
                 dest.unlink(missing_ok=True)
 
-        # Recipe exists but failed: do NOT fall through to the heuristic scraper.
-        # A trained recipe is the source of truth — if it fails the site has
-        # changed and the recipe needs to be re-trained, not guessed at.
+        healed = await _try_mistral_auto_heal(
+            entry=entry,
+            target=target,
+            target_url=target_url,
+            dest=dest,
+            browser=browser,
+            recipe_path=recipe_path,
+            failure_reason=recipe_error or "recipe replay failed",
+        )
+        if healed is not None:
+            return healed
+
         return FetchResult(
             key=key,
             display_name=entry.display_name,
@@ -1106,6 +1372,20 @@ async def _fetch_entry(
                     if dest.exists() and not _is_real_pdf(dest, key):
                         dest.unlink(missing_ok=True)
 
+        if last_err != "No valid content found":
+            ai_heal_attempted = True
+            healed = await _try_mistral_auto_heal(
+                entry=entry,
+                target=target,
+                target_url=target_url,
+                dest=dest,
+                browser=browser,
+                recipe_path=recipe_path,
+                failure_reason=last_err,
+            )
+            if healed is not None:
+                return healed
+
     # Prediction failed, or entry is html_link: scrape bulletin pages.
     for scrape_url in _scrape_seed_urls(entry, target_url):
         scraped = await _scrape_and_download(entry, target, scrape_url, dest, browser)
@@ -1115,6 +1395,19 @@ async def _fetch_entry(
 
     if recipe_error:
         last_err = f"{recipe_error}; {last_err}"
+
+    if not ai_heal_attempted:
+        healed = await _try_mistral_auto_heal(
+            entry=entry,
+            target=target,
+            target_url=target_url,
+            dest=dest,
+            browser=browser,
+            recipe_path=recipe_path,
+            failure_reason=last_err,
+        )
+        if healed is not None:
+            return healed
 
     # html_link parishes return clickable URL only when scraping could not find a file.
     if entry.content_type == "html_link":
