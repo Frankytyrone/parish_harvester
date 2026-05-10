@@ -32,6 +32,7 @@
         display: flex;
         gap: 6px;
         flex-wrap: wrap;
+        margin-bottom: 10px;
       }
       button {
         border: none;
@@ -46,6 +47,46 @@
         margin: 10px 0 0;
         line-height: 1.35;
       }
+      .section {
+        background: #1e293b;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        padding: 8px;
+        margin-top: 10px;
+      }
+      .section-title {
+        font-size: 10px;
+        font-weight: 600;
+        color: #93c5fd;
+        margin-bottom: 6px;
+      }
+      label {
+        font-size: 10px;
+        color: #93c5fd;
+        display: block;
+        margin-bottom: 2px;
+      }
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        border: 1px solid #374151;
+        border-radius: 4px;
+        padding: 4px 6px;
+        background: #0f172a;
+        color: #f9fafb;
+        font-size: 10px;
+        margin-bottom: 5px;
+        box-sizing: border-box;
+        font-family: inherit;
+      }
+      button.green {
+        background: #16a34a;
+      }
+      #gh-save-status {
+        margin-top: 4px;
+        font-size: 10px;
+        line-height: 1.35;
+      }
     </style>
   </head>
   <body>
@@ -55,11 +96,21 @@
       <div class="row">
         <button id="show-toolbar" type="button">Show Toolbar</button>
         <button id="open-operator" type="button">Open Operator Console</button>
-        <button id="mark-file" type="button">Mark Current URL as File</button>
-        <button id="mark-html" type="button">Mark Page as HTML</button>
       </div>
-      <p class="note">Page actions require a normal <code>http://</code> or <code>https://</code> tab. The extension auto-recovers page scripts when possible; if an action still fails, refresh the tab and retry.</p>
-      <p class="note">Tip: Open Operator Console to set parish-level mega-PDF overrides and save corrections to GitHub.</p>
+
+      <!-- GitHub Settings -->
+      <div class="section">
+        <div class="section-title">🔑 GitHub Settings</div>
+        <label for="gh-pat">Personal Access Token</label>
+        <input id="gh-pat" type="password" placeholder="ghp_…" />
+        <label for="gh-repo">Repository (owner/repo)</label>
+        <input id="gh-repo" type="text" placeholder="Frankytyrone/parish_harvester" />
+        <button id="gh-save" type="button" class="green">💾 Save settings</button>
+        <p id="gh-save-status"></p>
+      </div>
+
+      <p class="note">Page actions (PDF, image, crop, links) are on the floating toolbar. Click <strong>Show Toolbar</strong> if it is hidden.</p>
+      <p class="note">Tip: Open Operator Console to browse parishes, update links, and manage the mega PDF.</p>
     </div>
     <script src="popup.js"></script>
   </body>

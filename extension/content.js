@@ -2876,7 +2876,7 @@
       body.appendChild(pushSection);
     }
 
-
+    const scrollContainer = document.createElement("div");
     scrollContainer.id = "ph-toolbar-scroll";
     scrollContainer.style.cssText = "overflow-y: auto;flex: 1 1 auto;min-height: 0;";
     scrollContainer.appendChild(body);
