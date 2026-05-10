@@ -147,6 +147,7 @@ const PD_EVIDENCE_FILES = {
 };
 const MEGA_EXCLUDES_PATH = "parishes/mega_excludes.json";
 const MANUAL_OVERRIDES_PATH = "parishes/manual_overrides.json";
+const CONSECUTIVE_FAILURES_PATH = "parishes/consecutive_failures.json";
 
 // Replicate Python's _url_to_key logic
 function _pdUrlToKey(url, headerName = "") {
@@ -312,6 +313,35 @@ function _pdGetOverride(parishKey) {
   return raw;
 }
 
+// ── Consecutive failures ────────────────────────────────────────────────────
+
+let _pdConsecutiveFailures = {}; // key -> number
+let _pdShowBrokenOnly = false;
+
+function _pdFailureCount(parishKey) {
+  return Number(_pdConsecutiveFailures?.[parishKey] || 0);
+}
+
+function _pdIsBroken(parishKey) {
+  return _pdFailureCount(parishKey) >= 2;
+}
+
+async function _pdLoadConsecutiveFailures() {
+  try {
+    const { content } = await _pdGhFetch(CONSECUTIVE_FAILURES_PATH);
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== "object") return {};
+    const normalized = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      const n = Number(value);
+      normalized[key] = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+    }
+    return normalized;
+  } catch (_e) {
+    return {};
+  }
+}
+
 // ── Recipe status cache ────────────────────────────────────────────────────
 const _pdRecipeCache = {}; // key → "ok" | "dead" | "none"
 
@@ -352,6 +382,7 @@ function _pdRenderAll(searchTerm, excludes) {
   const byDiocese = {};
   for (const p of _pdAllParishes) {
     if (lc && !p.name.toLowerCase().includes(lc) && !(p.key || "").includes(lc)) continue;
+    if (_pdShowBrokenOnly && !_pdIsBroken(p.key)) continue;
     if (!byDiocese[p.diocese]) byDiocese[p.diocese] = [];
     byDiocese[p.diocese].push(p);
   }
@@ -368,9 +399,27 @@ function _pdRenderAll(searchTerm, excludes) {
   }
 
   if (!container.children.length) {
-    container.textContent = lc ? "No matching parishes." : "No parishes loaded.";
+    container.textContent = lc ? "No matching parishes." : (_pdShowBrokenOnly ? "No broken parishes found." : "No parishes loaded.");
     container.style.color = "#6b7280";
     container.style.fontSize = "10px";
+  }
+}
+
+function _pdUpdateBrokenInboxUi() {
+  const banner = document.getElementById("pd-broken-banner");
+  const text = document.getElementById("pd-broken-text");
+  const toggleBtn = document.getElementById("pd-broken-toggle");
+  if (!banner || !text || !toggleBtn) return;
+
+  const brokenCount = _pdAllParishes.filter((p) => _pdIsBroken(p.key)).length;
+  if (brokenCount > 0) {
+    banner.style.display = "flex";
+    text.textContent = `⚠️ ${brokenCount} Parish${brokenCount === 1 ? "" : "es"} ${brokenCount === 1 ? "needs" : "need"} attention`;
+    toggleBtn.textContent = _pdShowBrokenOnly ? "Show All" : "Show Broken Only";
+  } else {
+    banner.style.display = "none";
+    _pdShowBrokenOnly = false;
+    toggleBtn.textContent = "Show Broken Only";
   }
 }
 
@@ -658,11 +707,15 @@ async function loadParishDirectory() {
   errorEl.style.display   = "none";
   container.innerHTML     = "";
   _pdAllParishes = []; _pdDioceseTexts = {}; _pdExcludes = null; _pdOverrides = null;
+  _pdConsecutiveFailures = {};
+  _pdShowBrokenOnly = false;
+  _pdUpdateBrokenInboxUi();
 
   try {
-    const [excludes, _overrides, ...evidenceResults] = await Promise.all([
+    const [excludes, _overrides, consecutiveFailures, ...evidenceResults] = await Promise.all([
       _pdLoadExcludes(),
       _pdLoadOverrides(),
+      _pdLoadConsecutiveFailures(),
       ...Object.entries(PD_EVIDENCE_FILES).map(([diocese, path]) =>
         _pdGhFetch(path)
           .then(({ content }) => ({ diocese, path, content }))
@@ -675,6 +728,7 @@ async function loadParishDirectory() {
       _pdDioceseTexts[r.diocese] = { text: r.content, path: r.path };
       _pdAllParishes.push(..._pdParseEvidence(r.content, r.diocese));
     }
+    _pdConsecutiveFailures = consecutiveFailures || {};
 
     if (_pdAllParishes.length === 0) {
       errorEl.textContent = "⚠️ No parishes loaded — check GitHub settings.";
@@ -683,6 +737,7 @@ async function loadParishDirectory() {
     }
 
     loadingEl.style.display = "none";
+    _pdUpdateBrokenInboxUi();
     _pdRenderAll("", excludes);
 
     // Asynchronously load recipe status and refresh dots
@@ -714,10 +769,18 @@ document.getElementById("pd-refresh").addEventListener("click", () => {
   Object.keys(_pdRecipeCache).forEach((k) => delete _pdRecipeCache[k]);
   _pdExcludes = null;
   _pdOverrides = null;
+  _pdConsecutiveFailures = {};
+  _pdShowBrokenOnly = false;
   loadParishDirectory();
 });
 document.getElementById("pd-search").addEventListener("input", function () {
   if (_pdAllParishes.length > 0) _pdRenderAll(this.value, _pdExcludes || []);
+});
+document.getElementById("pd-broken-toggle").addEventListener("click", function () {
+  if (_pdAllParishes.length === 0) return;
+  _pdShowBrokenOnly = !_pdShowBrokenOnly;
+  _pdUpdateBrokenInboxUi();
+  _pdRenderAll(document.getElementById("pd-search").value || "", _pdExcludes || []);
 });
 
 // ── Crop done notification ─────────────────────────────────────────────────
