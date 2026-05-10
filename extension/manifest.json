@@ -3,6 +3,7 @@
   "name": "Parish Trainer",
   "version": "1.0.0",
   "permissions": ["activeTab", "scripting", "contextMenus", "storage"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },

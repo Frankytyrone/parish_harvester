@@ -11,17 +11,41 @@ async function withActiveTab(callback) {
     setStatus("No active tab.", "err");
     return;
   }
-  callback(tab.id);
+  callback(tab);
+}
+
+function _dispatchErrorText(result) {
+  if (!result) return "Could not communicate with page. Try refreshing.";
+  if (result.reason === "unsupported_url") {
+    return "This tab cannot be scripted. Open a normal http/https page.";
+  }
+  if (result.reason === "inject_failed") {
+    return "Page script bridge failed to load. Refresh the page and try again.";
+  }
+  if (result.reason === "receiver_unavailable") {
+    return "Page bridge not responding. Refresh the tab and try again.";
+  }
+  return result.error || "Could not communicate with page.";
 }
 
 async function sendToActiveTab(message, successText) {
-  await withActiveTab((tabId) => {
-    chrome.tabs.sendMessage(tabId, message, () => {
+  await withActiveTab((tab) => {
+    if (!/^https?:\/\//i.test(tab.url || "")) {
+      setStatus("This tab is not scriptable. Open a normal http/https page.", "err");
+      return;
+    }
+    chrome.runtime.sendMessage({
+      type: "dispatch_to_tab",
+      tabId: tab.id,
+      payload: message,
+      allowInject: true,
+    }, (result) => {
       if (chrome.runtime.lastError) {
-        setStatus(
-          "Could not communicate with page. Try refreshing.",
-          "err"
-        );
+        setStatus(`Could not communicate with extension background: ${chrome.runtime.lastError.message}`, "err");
+        return;
+      }
+      if (!result?.ok) {
+        setStatus(`❌ ${_dispatchErrorText(result)}`, "err");
         return;
       }
       setStatus(successText, "ok");
@@ -664,16 +688,21 @@ chrome.runtime.onMessage.addListener((message) => {
 
   setStatus(`✂️ Crop saved (${Math.round(width)}×${Math.round(height)})`, "ok");
 
-  void withActiveTab((tabId) => {
-    chrome.tabs.sendMessage(tabId, {
-      type: "mark_crop",
-      x,
-      y,
-      width,
-      height,
-      pageX,
-      pageY,
-      element_selector: elementSelector,
+  void withActiveTab((tab) => {
+    chrome.runtime.sendMessage({
+      type: "dispatch_to_tab",
+      tabId: tab.id,
+      payload: {
+        type: "mark_crop",
+        x,
+        y,
+        width,
+        height,
+        pageX,
+        pageY,
+        element_selector: elementSelector,
+      },
+      allowInject: true,
     });
   });
 });

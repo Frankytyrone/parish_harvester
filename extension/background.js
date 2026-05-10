@@ -1,11 +1,98 @@
-async function sendToTab(tabId, message) {
-  if (!tabId) return false;
+const SCRIPTABLE_PROTOCOLS = new Set(["http:", "https:"]);
+
+function _tabUrlIsScriptable(url) {
+  if (!url || typeof url !== "string") return false;
   try {
-    await chrome.tabs.sendMessage(tabId, message);
-    return true;
+    return SCRIPTABLE_PROTOCOLS.has(new URL(url).protocol);
   } catch (_err) {
     return false;
   }
+}
+
+async function _sendMessageToTab(tabId, message) {
+  try {
+    await chrome.tabs.sendMessage(tabId, message);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+async function _injectTrainerScripts(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["isolated.js"],
+      world: "ISOLATED",
+    });
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content.js"],
+      world: "MAIN",
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+async function sendToTab(tabId, message, options = {}) {
+  const { allowInject = true } = options;
+  if (!tabId) {
+    return { ok: false, reason: "no_tab_id", error: "No tab ID supplied." };
+  }
+
+  let tab;
+  try {
+    tab = await chrome.tabs.get(tabId);
+  } catch (err) {
+    return { ok: false, reason: "tab_not_found", error: String(err) };
+  }
+
+  if (!_tabUrlIsScriptable(tab?.url || "")) {
+    return {
+      ok: false,
+      reason: "unsupported_url",
+      error: "Active tab is not a regular http/https page.",
+      tabUrl: tab?.url || "",
+    };
+  }
+
+  const firstAttempt = await _sendMessageToTab(tabId, message);
+  if (firstAttempt.ok) {
+    return { ok: true, route: "direct" };
+  }
+
+  if (!allowInject) {
+    return {
+      ok: false,
+      reason: "receiver_unavailable",
+      error: firstAttempt.error || "Could not reach page receiver.",
+      tabUrl: tab?.url || "",
+    };
+  }
+
+  const injected = await _injectTrainerScripts(tabId);
+  if (!injected.ok) {
+    return {
+      ok: false,
+      reason: "inject_failed",
+      error: injected.error || "Failed to inject extension scripts.",
+      tabUrl: tab?.url || "",
+    };
+  }
+
+  const secondAttempt = await _sendMessageToTab(tabId, message);
+  if (secondAttempt.ok) {
+    return { ok: true, route: "reinject" };
+  }
+
+  return {
+    ok: false,
+    reason: "receiver_unavailable",
+    error: secondAttempt.error || "Content script did not receive message.",
+    tabUrl: tab?.url || "",
+  };
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -39,8 +126,30 @@ chrome.action.onClicked.addListener((tab) => {
 // present, so this does not affect normal browsing sessions.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "complete") {
-    void sendToTab(tabId, { type: "show_toolbar" });
+    void sendToTab(tabId, { type: "show_toolbar" }, { allowInject: false }).then((result) => {
+      if (!result.ok && result.reason !== "unsupported_url" && result.reason !== "receiver_unavailable") {
+        console.debug("Parish Trainer: auto-show toolbar failed", result);
+      }
+    });
   }
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "dispatch_to_tab") return false;
+  (async () => {
+    const tabId = Number(message.tabId || 0);
+    const payload = message.payload || {};
+    const allowInject = message.allowInject !== false;
+    const result = await sendToTab(tabId, payload, { allowInject });
+    sendResponse(result);
+  })().catch((err) => {
+    sendResponse({
+      ok: false,
+      reason: "dispatch_error",
+      error: String(err),
+    });
+  });
+  return true;
 });
 
 // ── GitHub recipe push ────────────────────────────────────────────────────

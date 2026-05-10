@@ -2962,102 +2962,114 @@
     return bar;
   };
 
-  // ── Message listener from isolated world / side panel ────────────────────
+  // ── Message listener from isolated world / popup / side panel ─────────────
+
+  const _handleIncomingMessage = (message) => {
+    if (!message || typeof message !== "object") return false;
+    if (message.type === "ph_ping") return true;
+
+    if (message.type === "toggle_toolbar") {
+      const bar = _getToolbarNode();
+      if (!bar) {
+        _ensureToolbar(true);
+      } else if (bar.dataset.phHidden === "true" || bar.style.display === "none") {
+        _ensureToolbar(true);
+      } else {
+        bar.dataset.phHidden = "true";
+        bar.style.display = "none";
+      }
+      return true;
+    }
+
+    if (message.type === "show_toolbar") {
+      _ensureToolbar(true);
+      return true;
+    }
+
+    const type = message.type;
+    if (type === "mark_html") {
+      if (window.ph_mark_html) {
+        window.ph_mark_html({ url: window.location.href });
+      } else {
+        // Standalone mode
+        standaloneAddStep({ action: "html", url: window.location.href });
+      }
+      addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
+      return true;
+    }
+    if (type === "mark_file") {
+      if (window.ph_mark_download_url) {
+        window.ph_mark_download_url({ url: window.location.href });
+      } else {
+        // Standalone mode
+        standaloneAddStep({ action: "download", url: window.location.href });
+      }
+      addSessionStep("mark_file", `📄 File: ${window.location.pathname}`);
+      return true;
+    }
+    if (type === "mark_image" && message.url) {
+      if (window.ph_mark_image) {
+        window.ph_mark_image({ url: message.url });
+      } else {
+        // Standalone mode
+        standaloneAddStep({ action: "image", url: message.url });
+      }
+      addSessionStep("mark_image", `🖼️ Image: ${message.url.slice(-45)}`);
+      return true;
+    }
+    if (type === "start_crop") {
+      startCrop();
+      return true;
+    }
+    if (type === "start_pick_link") {
+      _ensureToolbar(true);
+      window.dispatchEvent(new CustomEvent("ph-start-pick-link"));
+      return true;
+    }
+    if (type === "start_pick_iframe") {
+      _ensureToolbar(true);
+      window.dispatchEvent(new CustomEvent("ph-start-pick-iframe"));
+      return true;
+    }
+    if (type === "start_pick_image") {
+      _ensureToolbar(true);
+      window.dispatchEvent(new CustomEvent("ph-start-pick-image-mode"));
+      return true;
+    }
+    if (type === "mark_crop") {
+      const payload = message?.x != null ? message : null;
+      if (!payload) return false;
+      if (cropSignature(payload) === lastCropSignature) return true;
+      if (!window.ph_mark_crop) {
+        console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
+        return true;
+      }
+      window.ph_mark_crop(payload);
+      return true;
+    }
+    if (type === "document_url_detected") {
+      const url = message?.url || "";
+      _ensureToolbar(true);
+      window.dispatchEvent(new CustomEvent("ph-document-detected", { detail: { url } }));
+      return true;
+    }
+    return false;
+  };
 
   window.addEventListener("message", (event) => {
     if (event.source !== window) return;
     if (event.data && event.data.direction === "from-isolated") {
-      const message = event.data.message;
-
-      if (message?.type === "toggle_toolbar") {
-        const bar = _getToolbarNode();
-        if (!bar) {
-          _ensureToolbar(true);
-        } else if (bar.dataset.phHidden === "true" || bar.style.display === "none") {
-          _ensureToolbar(true);
-        } else {
-          bar.dataset.phHidden = "true";
-          bar.style.display = "none";
-        }
-        return;
-      }
-
-      if (message?.type === "show_toolbar") {
-        _ensureToolbar(true);
-        return;
-      }
-
-      const type = message?.type;
-      if (type === "mark_html") {
-        if (window.ph_mark_html) {
-          window.ph_mark_html({ url: window.location.href });
-        } else {
-          // Standalone mode
-          standaloneAddStep({ action: "html", url: window.location.href });
-        }
-        addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
-        return;
-      }
-      if (type === "mark_file") {
-        if (window.ph_mark_download_url) {
-          window.ph_mark_download_url({ url: window.location.href });
-        } else {
-          // Standalone mode
-          standaloneAddStep({ action: "download", url: window.location.href });
-        }
-        addSessionStep("mark_file", `📄 File: ${window.location.pathname}`);
-        return;
-      }
-      if (type === "mark_image" && message?.url) {
-        if (window.ph_mark_image) {
-          window.ph_mark_image({ url: message.url });
-        } else {
-          // Standalone mode
-          standaloneAddStep({ action: "image", url: message.url });
-        }
-        addSessionStep("mark_image", `🖼️ Image: ${message.url.slice(-45)}`);
-        return;
-      }
-      if (type === "start_crop") {
-        startCrop();
-        return;
-      }
-      if (type === "start_pick_link") {
-        // Show the toolbar if hidden so the confirmation panel is visible
-        _ensureToolbar(true);
-        // startPickLinkMode and showPickConfirmation live in the toolbar closure,
-        // so we trigger via a custom event that the toolbar can hear.
-        window.dispatchEvent(new CustomEvent("ph-start-pick-link"));
-        return;
-      }
-      if (type === "start_pick_iframe") {
-        _ensureToolbar(true);
-        window.dispatchEvent(new CustomEvent("ph-start-pick-iframe"));
-        return;
-      }
-      if (type === "start_pick_image") {
-        _ensureToolbar(true);
-        window.dispatchEvent(new CustomEvent("ph-start-pick-image-mode"));
-        return;
-      }
-      if (type === "mark_crop") {
-        const payload = message?.x != null ? message : null;
-        if (!payload) return;
-        if (cropSignature(payload) === lastCropSignature) return;
-        if (!window.ph_mark_crop) {
-          console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
-          return;
-        }
-        window.ph_mark_crop(payload);
-      }
-      if (type === "document_url_detected") {
-        const url = message?.url || "";
-        _ensureToolbar(true);
-        window.dispatchEvent(new CustomEvent("ph-document-detected", { detail: { url } }));
-        return;
-      }
+      _handleIncomingMessage(event.data.message);
     }
   });
+
+  if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      const handled = _handleIncomingMessage(message);
+      sendResponse({ ok: handled });
+      return true;
+    });
+  }
 
   // ── Click recording ───────────────────────────────────────────────────────
 
