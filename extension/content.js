@@ -78,6 +78,56 @@
     window.postMessage({ direction: "from-main", reqId, message }, "*");
   };
 
+  // ── Parish key / name inference from URL ─────────────────────────────────
+  // Mirrors the _pdUrlToKey() logic used in sidepanel.js so the push form can
+  // auto-populate fields without requiring manual entry.
+  const _inferParishKeyFromUrl = (url) => {
+    if (!url) return "";
+    try {
+      const parsed = new URL(url);
+      let hostname = parsed.hostname.toLowerCase().replace(/^www\d*\./, "");
+      if (/\bi\d+\.wp\.com\b/.test(hostname)) {
+        const parts = parsed.pathname.replace(/^\//, "").split("/");
+        if (parts.length > 0) {
+          const real = parts[0].toLowerCase().replace(/^www\d*\./, "");
+          const segs = real.split(".");
+          if (segs.length >= 2) return segs[0];
+        }
+      }
+      if (
+        hostname === "filesafe.space" || hostname.endsWith(".filesafe.space") ||
+        hostname === "google.com"     || hostname.endsWith(".google.com")
+      ) {
+        return "";
+      }
+      return hostname.split(".")[0] || "";
+    } catch (_e) {
+      return "";
+    }
+  };
+
+  const _inferDisplayNameFromUrl = (url) => {
+    const key = _inferParishKeyFromUrl(url);
+    if (!key) return "";
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  };
+
+  // Persist per-domain parish context after a successful push.
+  const _cacheParishByDomain = (url, key, name, diocese) => {
+    const hostname = (() => { try { return new URL(url).hostname; } catch (_e) { return ""; } })();
+    if (!hostname || !key) return;
+    if (typeof chrome === "undefined" || !chrome.storage) return;
+    try {
+      chrome.storage.local.get(["ph_parish_by_domain"], (r) => {
+        if (chrome.runtime?.lastError) return;
+        const cache = (r.ph_parish_by_domain && typeof r.ph_parish_by_domain === "object")
+          ? r.ph_parish_by_domain : {};
+        cache[hostname] = { key, name: name || key, diocese: diocese || "", ts: Date.now() };
+        try { chrome.storage.local.set({ ph_parish_by_domain: cache }); } catch (_e) {}
+      });
+    } catch (_e) {}
+  };
+
   const standaloneAddStep = (step) => {
     if (!_inStandaloneMode()) return;
     // Replace an existing download/image/html step if one already exists
@@ -2821,26 +2871,40 @@
         return inp;
       };
 
-      const keyInput = makeInput("Parish key — e.g. ardmoreparish", "ph-parish-key");
-      const nameInput = makeInput("Display name — e.g. Ardmore Parish", "ph-display-name");
-      const dioceseInput = makeInput("Diocese — e.g. derry_diocese", "ph-diocese");
+      const keyInput = makeInput("Parish key — e.g. ardmoreparish (auto-detected if blank)", "ph-parish-key");
+      const nameInput = makeInput("Display name — e.g. Ardmore Parish (auto-detected if blank)", "ph-display-name");
+      const dioceseInput = makeInput("Diocese — e.g. derry_diocese (optional)", "ph-diocese");
       pushSection.appendChild(keyInput);
       pushSection.appendChild(nameInput);
       pushSection.appendChild(dioceseInput);
 
-      // Pre-populate fields from the active training session (set by the
-      // sidepanel when the operator clicks a parish to open it for training).
+      // Auto-detect label — shown when fields were filled automatically.
+      const autoDetectNote = document.createElement("div");
+      autoDetectNote.style.cssText = "font-size:9px;color:#86efac;margin-bottom:3px;display:none;";
+      pushSection.appendChild(autoDetectNote);
+
+      const _applyParishContext = (ctx) => {
+        if (!ctx) return;
+        if (ctx.key && !keyInput.value) {
+          keyInput.value = ctx.key;
+          autoDetectNote.style.display = "block";
+          autoDetectNote.textContent = `✓ Auto-filled: ${ctx.key}`;
+        }
+        if (ctx.name && !nameInput.value) nameInput.value = ctx.name;
+        if (ctx.diocese && !dioceseInput.value) dioceseInput.value = ctx.diocese;
+      };
+
+      // Pre-populate fields: ph_training_parish → per-domain cache → last diocese.
       if (typeof chrome !== "undefined" && chrome.storage) {
         try {
-          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese"], (r) => {
+          const hostname = (() => { try { return new URL(window.location.href).hostname; } catch (_e) { return ""; } })();
+          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese", "ph_parish_by_domain"], (r) => {
             if (chrome.runtime?.lastError) return;
-            const tp = r.ph_training_parish;
-            if (tp) {
-              if (tp.key && !keyInput.value) keyInput.value = tp.key;
-              if (tp.name && !nameInput.value) nameInput.value = tp.name;
-              if (tp.diocese && !dioceseInput.value) dioceseInput.value = tp.diocese;
+            if (r.ph_training_parish) {
+              _applyParishContext(r.ph_training_parish);
+            } else if (hostname && r.ph_parish_by_domain?.[hostname]) {
+              _applyParishContext(r.ph_parish_by_domain[hostname]);
             } else if (r.ph_last_diocese && !dioceseInput.value) {
-              // Fallback: pre-fill diocese from the last push (legacy behaviour).
               dioceseInput.value = r.ph_last_diocese;
             }
           });
@@ -2883,14 +2947,31 @@
         "margin-bottom:4px",
       ].join(";");
       pushBtn.addEventListener("click", () => {
-        const key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
-        const name = nameInput.value.trim();
+        // Resolve key and name — prefer typed values, fall back to URL inference.
+        let key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
+        let name = nameInput.value.trim();
         const diocese = dioceseInput.value.trim();
-        if (!key) { showStatus("❌ Parish key is required.", "error"); return; }
-        if (!name) { showStatus("❌ Display name is required.", "error"); return; }
+
+        if (!key) {
+          key = _inferParishKeyFromUrl(standaloneStartUrl || window.location.href);
+          if (key) {
+            keyInput.value = key;
+            autoDetectNote.style.display = "block";
+            autoDetectNote.textContent = `✓ Key inferred from URL: ${key}`;
+          }
+        }
+        if (!name) {
+          name = _inferDisplayNameFromUrl(standaloneStartUrl || window.location.href) || key;
+          if (name) nameInput.value = name;
+        }
+
+        if (!key) {
+          showStatus("❌ Could not infer parish key. Please enter it above.", "error");
+          return;
+        }
         if (standaloneSteps.length === 0) { showStatus("⚠️ No steps recorded yet.", "warn"); return; }
 
-        const recipe = buildStandaloneRecipe(key, name, diocese);
+        const recipe = buildStandaloneRecipe(key, name || key, diocese);
         pushBtn.disabled = true;
         pushBtn.textContent = "⏳ Pushing…";
         showStatus("⏳ Pushing recipe to GitHub…", "info");
@@ -2903,14 +2984,18 @@
             return;
           }
           if (response && response.ok) {
-            showStatus(`✅ Recipe saved! ${response.url}`, "ok");
-            if (diocese && typeof chrome !== "undefined" && chrome.storage) {
-              try { chrome.storage.local.set({ ph_last_diocese: diocese }); } catch (_e) {}
+            showStatus(`✅ Recipe saved! ${response.url || "parishes/recipes/" + key + ".json"}`, "ok");
+            // Persist diocese and per-domain context for next time.
+            if (typeof chrome !== "undefined" && chrome.storage) {
+              try {
+                if (diocese) chrome.storage.local.set({ ph_last_diocese: diocese });
+              } catch (_e) {}
             }
+            _cacheParishByDomain(standaloneStartUrl || window.location.href, key, name || key, diocese);
             clearStandaloneRecipe();
             refreshStepCount();
           } else {
-            showStatus(`❌ ${(response && response.error) || "Unknown error. Check GitHub settings."}`, "error");
+            showStatus(`❌ ${(response && response.error) || "Unknown error. Check GitHub settings in the popup."}`, "error");
           }
         });
       });
