@@ -192,6 +192,31 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
           git push || true
 
+      - name: Prepare standalone Mega PDF artifact
+        id: prepare_mega_pdf
+        if: always()
+        run: |
+          echo "mega_pdf_ready=false" >> "$GITHUB_OUTPUT"
+          if [ -f Bulletins/report.json ]; then
+            TARGET_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date',''))")
+            MEGA_PDF="Bulletins/all_bulletins_${TARGET_DATE}.pdf"
+            if [ -f "${MEGA_PDF}" ]; then
+              cp "${MEGA_PDF}" Bulletins/mega_bulletin.pdf
+              echo "mega_pdf_ready=true" >> "$GITHUB_OUTPUT"
+              echo "Prepared standalone Mega PDF: Bulletins/mega_bulletin.pdf"
+            else
+              echo "Mega PDF not found at expected path: ${MEGA_PDF}"
+            fi
+          fi
+
+      - name: Upload Mega Bulletin PDF artifact
+        if: always() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mega-Bulletin-PDF
+          path: Bulletins/mega_bulletin.pdf
+          retention-days: 30
+
       - name: Upload Bulletins artifact
         if: always()
         uses: actions/upload-artifact@v4
