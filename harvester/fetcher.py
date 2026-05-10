@@ -1086,7 +1086,7 @@ def _build_mistral_prompt(page_url: str, links: list[tuple[str, str]]) -> str:
 def _call_mistral_for_bulletin_url(page_url: str, links: list[tuple[str, str]]) -> str:
     api_key = os.getenv("MISTRAL_API_KEY", "").strip()
     if not api_key:
-        return ""
+        raise RuntimeError("MISTRAL_API_KEY is not configured")
     request_body = {
         "model": _MISTRAL_MODEL,
         "temperature": 0,
@@ -1119,7 +1119,7 @@ def _call_mistral_for_bulletin_url(page_url: str, links: list[tuple[str, str]]) 
 
     choices = payload.get("choices") or []
     if not choices:
-        return ""
+        raise RuntimeError("Mistral API returned no choices")
     content = (choices[0].get("message") or {}).get("content", "")
     if isinstance(content, list):
         content = "".join(
@@ -1140,6 +1140,7 @@ async def _try_mistral_auto_heal(
     failure_reason: str,
 ) -> FetchResult | None:
     if not _mistral_is_enabled():
+        print(f"  ℹ️  {entry.key}: skipping Mistral fallback because MISTRAL_API_KEY is not configured")
         return None
 
     seed_urls: list[str] = []
