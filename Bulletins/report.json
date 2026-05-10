@@ -1,15 +1,15 @@
 {
-  "target_date": "2026-05-03",
+  "target_date": "2026-05-10",
   "summary": {
-    "downloaded": 29,
+    "downloaded": 59,
     "html_links": 7,
-    "failed": 9
+    "failed": 30
   },
   "downloaded": [
     {
       "parish": "ardmoreparish",
       "display_name": "Ardmore",
-      "url": "http://www.ardmoreparish.com/pdf/030526.pdf",
+      "url": "http://www.ardmoreparish.com/pdf/100526.pdf",
       "file": "ardmoreparish.pdf",
       "file_type": "pdf"
     },
@@ -23,77 +23,77 @@
     {
       "parish": "buncranaparish",
       "display_name": "Buncrana",
-      "url": "https://www.buncranaparish.com/pdf/030526.pdf",
+      "url": "https://www.buncranaparish.com/pdf/100526.pdf",
       "file": "buncranaparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "carndonaghparish",
       "display_name": "Carndonagh",
-      "url": "http://www.carndonaghparish.com/pdf/030526.pdf",
+      "url": "http://www.carndonaghparish.com/pdf/100526.pdf",
       "file": "carndonaghparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "castledergparish",
       "display_name": "Castlederg",
-      "url": "https://www.castledergparish.com/pdf/030526.pdf",
+      "url": "https://www.castledergparish.com/pdf/100526.pdf",
       "file": "castledergparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "clonmanyparish",
       "display_name": "Clonmany",
-      "url": "https://clonmanyparish.ie/wp-content/uploads/2026/05/2026-05-03.pdf",
+      "url": "https://clonmanyparish.ie/wp-content/uploads/2026/05/2026-05-10.pdf",
       "file": "clonmanyparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "culdaffparish",
       "display_name": "Culdaff",
-      "url": "http://www.culdaffparish.com/pdf/030526.pdf",
+      "url": "http://www.culdaffparish.com/pdf/100526.pdf",
       "file": "culdaffparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "culmoreparish",
       "display_name": "Culmoe",
-      "url": "http://culmoreparish.com/pdf/030526.pdf",
+      "url": "http://culmoreparish.com/pdf/100526.pdf",
       "file": "culmoreparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "dmaparish",
       "display_name": "DMA Parish (Claudy area)",
-      "url": "https://dmaparish.com/pdf/030526.pdf",
+      "url": "https://dmaparish.com/pdf/100526.pdf",
       "file": "dmaparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "drumquinparish",
       "display_name": "Drumquin",
-      "url": "https://drumquinparish.com/pdf/030526.pdf",
+      "url": "https://drumquinparish.com/pdf/100526.pdf",
       "file": "drumquinparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "parishofdungiven",
       "display_name": "Dungiven",
-      "url": "https://parishofdungiven.com/pdf/030526.pdf",
+      "url": "https://parishofdungiven.com/pdf/100526.pdf",
       "file": "parishofdungiven.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "errigalparish",
       "display_name": "Errigal",
-      "url": "https://www.errigalparish.com/pdf/030526.pdf",
+      "url": "https://www.errigalparish.com/pdf/100526.pdf",
       "file": "errigalparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "fahanparish",
       "display_name": "Fahan",
-      "url": "http://www.fahanparish.com/pdf/030526.pdf",
+      "url": "http://www.fahanparish.com/pdf/100526.pdf",
       "file": "fahanparish.pdf",
       "file_type": "pdf"
     },
@@ -107,7 +107,7 @@
     {
       "parish": "parishofkilrea",
       "display_name": "Kilrea",
-      "url": "https://www.parishofkilrea.com/pdf/030526.pdf",
+      "url": "https://www.parishofkilrea.com/pdf/100526.pdf",
       "file": "parishofkilrea.pdf",
       "file_type": "pdf"
     },
@@ -121,14 +121,21 @@
     {
       "parish": "leckpatrickparish",
       "display_name": "Leckpatrick",
-      "url": "https://www.leckpatrickparish.com/pdf/030526.pdf",
+      "url": "https://www.leckpatrickparish.com/pdf/100526.pdf",
       "file": "leckpatrickparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "limavadyparish",
+      "display_name": "Limavady",
+      "url": "https://www.limavadyparish.org/onewebmedia/10-5-26.pdf",
+      "file": "limavadyparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "magheraparishderry",
       "display_name": "Maghera (Derry)",
-      "url": "http://www.magheraparishderry.com/pdf/030526.pdf",
+      "url": "http://www.magheraparishderry.com/pdf/100526.pdf",
       "file": "magheraparishderry.pdf",
       "file_type": "pdf"
     },
@@ -142,7 +149,7 @@
     {
       "parish": "movilleparish",
       "display_name": "Moville",
-      "url": "https://movilleparish.com/pdf/030526.pdf",
+      "url": "https://movilleparish.com/pdf/100526.pdf",
       "file": "movilleparish.pdf",
       "file_type": "pdf"
     },
@@ -163,7 +170,7 @@
     {
       "parish": "steugenescathedral",
       "display_name": "St Eugene's Cathedral (Templemore)",
-      "url": "https://steugenescathedral.com/pdf/030526.pdf",
+      "url": "https://steugenescathedral.com/pdf/100526.pdf",
       "file": "steugenescathedral.pdf",
       "file_type": "pdf"
     },
@@ -191,7 +198,7 @@
     {
       "parish": "drumraghparish",
       "display_name": "Drumragh",
-      "url": "https://www.drumraghparish.com/pdf/030526.pdf",
+      "url": "https://www.drumraghparish.com/pdf/100526.pdf",
       "file": "drumraghparish.pdf",
       "file_type": "pdf"
     },
@@ -205,8 +212,211 @@
     {
       "parish": "holyfamily-parish",
       "display_name": "Holy Family",
-      "url": "https://www.holyfamily-parish.com/pdf/030526.pdf",
+      "url": "https://www.holyfamily-parish.com/pdf/100526.pdf",
       "file": "holyfamily-parish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "steelstownparish",
+      "display_name": "Steelstown",
+      "url": "http://steelstownparish.com/pdf/PrayingForOneAnother.pdf",
+      "file": "steelstownparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "aghagallonandballinderryparish",
+      "display_name": "Aghagallon and Ballinderry",
+      "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-10th-May-2026.pdf",
+      "file": "aghagallonandballinderryparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "ballycastleparish",
+      "display_name": "Ballycastle",
+      "url": "https://www.ballycastleparish.com/s/10th-May-2026-01.pdf",
+      "file": "ballycastleparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "ballymenaparish",
+      "display_name": "Ballymena",
+      "url": "https://ballymenaparish.org/bulletin-and-parish-documents/",
+      "file": "ballymenaparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "ballymoneyparish",
+      "display_name": "Ballymoney",
+      "url": "https://www.ballymoneyparish.com/media/other/31871/26-05-10pdf.pdf",
+      "file": "ballymoneyparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "bangorparish",
+      "display_name": "Bangor",
+      "url": "https://www.bangorparish.com/wp-content/uploads/26-APR-2026-NEWSLETTER.pdf",
+      "file": "bangorparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "parishofbright",
+      "display_name": "Bright",
+      "url": "https://parishofbright.net/wp-content/uploads/2026/05/Bulletin-10-05-2026.pdf",
+      "file": "parishofbright.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "carrickparish",
+      "display_name": "Carrickfergus",
+      "url": "https://www.carrickparish.org/_files/ugd/15976c_5f21098419c34a44b3eb2af4680e6607.pdf",
+      "file": "carrickparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "dunsfordandardglassparish",
+      "display_name": "Dunsford and Ardglass",
+      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-3rd-MAY-2026.pdf",
+      "file": "dunsfordandardglassparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "glenariffeparish",
+      "display_name": "Glenariffe",
+      "url": "https://glenariffeparish.org/wp-content/uploads/2026/05/Sixth-Sunday-of-Easter-2026.pdf",
+      "file": "glenariffeparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "glenavyandkilleadparish",
+      "display_name": "Glenavy and Killead",
+      "url": "https://www.glenavyandkilleadparish.com/bulletins/",
+      "file": "glenavyandkilleadparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "loughshoreparishes",
+      "display_name": "Loughshore",
+      "url": "https://www.loughshoreparishes.org/sunday-bulletin/",
+      "file": "loughshoreparishes.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "holycrossparishbelfast",
+      "display_name": "Holy Cross Belfast",
+      "url": "http://www.holycrossparishbelfast.com/pdf/GiftAidForm.pdf",
+      "file": "holycrossparishbelfast.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "parishoflisburn",
+      "display_name": "Lisburn",
+      "url": "https://parishoflisburn.org/wp-content/uploads/2026/05/10-05-26-Blaris-Bulletin_Small.pdf",
+      "file": "parishoflisburn.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "ourladyqueenofpeacekilwee",
+      "display_name": "Our Lady Queen of Peace",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_df44b5f1cd2c48329dce71049e783129.pdf",
+      "file": "ourladyqueenofpeacekilwee.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "stmacnissirandalstown",
+      "display_name": "St MacNissi Randalstown",
+      "url": "https://www.stmacnissirandalstown.com/_files/ugd/725b73_66c1fa81d91c4be180a0b8781d635b71.pdf",
+      "file": "stmacnissirandalstown.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "sacredheartparishbelfast",
+      "display_name": "Sacred Heart Belfast",
+      "url": "https://www.sacredheartparishbelfast.com/gallery/Parish%20Bulletin%2012th%20April%202026.pdf",
+      "file": "sacredheartparishbelfast.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "saulandballeeparish",
+      "display_name": "Saul and Ballee",
+      "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf",
+      "file": "saulandballeeparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "saintannesparish",
+      "display_name": "Saint Annes",
+      "url": "https://www.saintannesparish.net/wp-content/uploads/2026/05/100526_Bulletin-6th_Sunday-Easter.pdf",
+      "file": "saintannesparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "stbernadettesparish",
+      "display_name": "St Bernadettes",
+      "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 10th May 2026.pdf",
+      "file": "stbernadettesparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "stbrigidsparishbelfast",
+      "display_name": "St Brigids Belfast",
+      "url": "https://stbrigidsparishbelfast.org/assets/documents/Parish-Bulletin-10.05.26-FOR-PRINTING.pdf",
+      "file": "stbrigidsparishbelfast.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "st-colmcilles",
+      "display_name": "St Colmcilles",
+      "url": "https://st-colmcilles.net/wp-content/uploads/2026/05/Parish-Bulletin-10052026.pdf",
+      "file": "st-colmcilles.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "saintmichaelthearchangel",
+      "display_name": "St Michael the Archangel",
+      "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1777627011919",
+      "file": "saintmichaelthearchangel.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "stoliverplunkettparish",
+      "display_name": "St Oliver Plunkett",
+      "url": "https://stoliverplunkettparish.ie/wp-content/uploads/2026/01/25-Jan-26.pdf",
+      "file": "stoliverplunkettparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "holy-familyparish",
+      "display_name": "Holy Family",
+      "url": "https://www.holy-familyparish.com/app/uploads/2026/05/6th-Sunday-of-Easter.pub_.pdf",
+      "file": "holy-familyparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "stmarysportglenone",
+      "display_name": "Port Glenone",
+      "url": "https://stmarysportglenone.co.uk/wp-content/uploads/2020/03/Prayer-to-Virgin-Mary-for-Protection.pdf",
+      "file": "stmarysportglenone.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "saintmalachysparish",
+      "display_name": "Saint Malachy's",
+      "url": "https://www.saintmalachysparish.com/documents/bulletin.pdf",
+      "file": "saintmalachysparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "stmarysonthehill",
+      "display_name": "St Mary's on the Hill",
+      "url": "https://www.stmarysonthehill.online/_files/ugd/e92d66_883ed2b901ca4908aeca2d15e16f2ef7.pdf",
+      "file": "stmarysonthehill.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "stpatricksdownpatrick",
+      "display_name": "St Patrick's Downpatrick",
+      "url": "https://stpatricksdownpatrick.com/wp-content/uploads/2024/10/ProPresenter7.pdf",
+      "file": "stpatricksdownpatrick.pdf",
       "file_type": "pdf"
     }
   ],
@@ -242,40 +452,34 @@
       "url": "https://longtowerchurch.org/"
     },
     {
-      "parish": "steelstownparish",
-      "display_name": "Steelstown",
-      "url": "http://www.steelstownparish.com/"
+      "parish": "stmatthewsparish",
+      "display_name": "St Matthew's",
+      "url": "https://www.stmatthewsparish.com/news"
     }
   ],
   "failed": [
     {
       "parish": "bellaghyparish",
       "display_name": "Bellaghy",
-      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/Newsletter-3-May-2026-1.pdf",
+      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/Newsletter-10-May-2026-1.pdf",
       "error": "Page.goto: net::ERR_ABORTED at https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf\nCall log:\n  - navigating to \"https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf\", waiting until \"domcontentloaded\"\n"
     },
     {
       "parish": "parishofclaudy",
       "display_name": "Claudy",
-      "url": "http://parishofclaudy.com/onewebmedia/NEWSLETTER 3-5-26.docx",
-      "error": "Total timeout exceeded"
+      "url": "http://parishofclaudy.com/onewebmedia/NEWSLETTER 10-5-26.docx",
+      "error": "Page.goto: net::ERR_ABORTED at http://parishofclaudy.com/onewebmedia/NEWSLETTER%2010-5-26.docx\nCall log:\n  - navigating to \"http://parishofclaudy.com/onewebmedia/NEWSLETTER%2010-5-26.docx\", waiting until \"domcontentloaded\"\n"
     },
     {
       "parish": "greenlough",
       "display_name": "Greenlough",
-      "url": "http://www.greenlough.com/publications/newsletter/5th_Sunday_of_Easter_[2026-5-3].pdf",
+      "url": "http://www.greenlough.com/publications/newsletter/6th_Sunday_of_Easter_[2026-5-10].pdf",
       "error": "Page.goto: net::ERR_ABORTED at http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf\nCall log:\n  - navigating to \"http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf\", waiting until \"domcontentloaded\"\n"
-    },
-    {
-      "parish": "limavadyparish",
-      "display_name": "Limavady",
-      "url": "https://www.limavadyparish.org/onewebmedia/3-5-26.pdf",
-      "error": "Total timeout exceeded"
     },
     {
       "parish": "malinparish",
       "display_name": "Malin",
-      "url": "https://malinparish.ie/wp-content/uploads/2026/05/Bulletin-3-May-2026.pdf",
+      "url": "https://malinparish.ie/wp-content/uploads/2026/05/Bulletin-10-May-2026.pdf",
       "error": "Page.goto: net::ERR_ABORTED at https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf\nCall log:\n  - navigating to \"https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf\", waiting until \"domcontentloaded\"\n"
     },
     {
@@ -287,7 +491,7 @@
     {
       "parish": "watersideparish",
       "display_name": "Waterside (& Strathfoyle amalgamated)",
-      "url": "https://watersideparish.net/wp-content/uploads/2026/04/newsletter_030526oo.pdf",
+      "url": "https://watersideparish.net/wp-content/uploads/2026/04/newsletter_100526oo.pdf",
       "error": "Page.goto: net::ERR_ABORTED at https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf\nCall log:\n  - navigating to \"https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf\", waiting until \"domcontentloaded\"\n"
     },
     {
@@ -301,6 +505,138 @@
       "display_name": "Urney and Castlefin",
       "url": "http://urneyandcastlefinparish.com/?page_id=1227",
       "error": "Page.goto: net::ERR_NAME_NOT_RESOLVED at http://urneyandcastlefinparish.com/?page_id=1227\nCall log:\n  - navigating to \"http://urneyandcastlefinparish.com/?page_id=1227\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "parish": "antrimparish",
+      "display_name": "Antrim",
+      "url": "https://www.antrimparish.com/bulletinpage/",
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "ballyclareballygowan",
+      "display_name": "Ballyclare and Ballygowan",
+      "url": "https://ballyclareballygowan.com/notice%20board.htm",
+      "error": "Total timeout exceeded"
+    },
+    {
+      "parish": "derriaghycatholicparish",
+      "display_name": "Derriaghy",
+      "url": "https://derriaghycatholicparish.com",
+      "error": "Recipe replay failed: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://derriaghycatholicparish.com/?page_id=262\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "parish": "parishofhannahstown",
+      "display_name": "Hannahstown",
+      "url": "https://www.parishofhannahstown.com/weekly-bulletins",
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "holyrosaryparishbelfast",
+      "display_name": "Holy Rosary Belfast",
+      "url": "https://www.holyrosaryparishbelfast.net/weekly-bulletin",
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "kilmoreandkillyleagh",
+      "display_name": "Kilmore and Killyleagh",
+      "url": "https://www.kilmoreandkillyleagh.com",
+      "error": "Total timeout exceeded"
+    },
+    {
+      "parish": "parishofmaghera",
+      "display_name": "Maghera",
+      "url": "https://www.parishofmaghera.com/copy-of-sunday-missalette",
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "portaferryparish",
+      "display_name": "Portaferry",
+      "url": "https://portaferryparish.com/bulletin",
+      "error": "Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf"
+    },
+    {
+      "parish": "portstewartparish",
+      "display_name": "Portstewart",
+      "url": "https://portstewartparish.website/mdocs-posts/",
+      "error": "Total timeout exceeded"
+    },
+    {
+      "parish": "stagnesbelfast",
+      "display_name": "St Agnes Belfast",
+      "url": "https://www.stagnesbelfast.com/",
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "saintanthony",
+      "display_name": "Saint Anthony",
+      "url": "http://www.saintanthony.co.uk",
+      "error": "Recipe replay failed: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"http://www.saintanthony.co.uk/\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "parish": "stgerardsparish",
+      "display_name": "St Gerards",
+      "url": "https://stgerardsparish.org/parish-news-events/",
+      "error": "Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "parish": "stpatricksbelfast",
+      "display_name": "St Patricks Belfast",
+      "url": "https://www.stpatricksbelfast.org/category/weekly-bulletins/",
+      "error": "Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "parish": "stteresasparish",
+      "display_name": "St Teresas",
+      "url": "https://stteresasparish.church/parish-news/",
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "stmarysbelfast",
+      "display_name": "St Mary's Belfast",
+      "url": "https://www.stmarysbelfast.org/news",
+      "error": "Recipe replay failed: Page.goto: net::ERR_CERT_COMMON_NAME_INVALID at https://www.stmarysbelfast.org/news\nCall log:\n  - navigating to \"https://www.stmarysbelfast.org/news\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "parish": "christtheredeemer",
+      "display_name": "Christ the Redeemer",
+      "url": "https://www.christtheredeemer.co.uk/parish-bulletin",
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "corpuschristiparishbelfast",
+      "display_name": "Corpus Christi Belfast",
+      "url": "https://www.corpuschristiparishbelfast.com/news",
+      "error": "Recipe replay failed: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.corpuschristiparishbelfast.com/news\nCall log:\n  - navigating to \"https://www.corpuschristiparishbelfast.com/news\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "parish": "drumbocarryduff",
+      "display_name": "Drumbo and Carryduff",
+      "url": "https://www.drumbocarryduff.ie/#sbp-bulletin",
+      "error": "Recipe replay failed: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.drumbocarryduff.ie/#sbp-bulletin\nCall log:\n  - navigating to \"https://www.drumbocarryduff.ie/#sbp-bulletin\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "parish": "holytrinityparishbelfast",
+      "display_name": "Holy Trinity Belfast",
+      "url": "https://holytrinityparishbelfast.com/newsletters/",
+      "error": "Recipe replay failed: Recipe has no steps"
+    },
+    {
+      "parish": "nativityparish",
+      "display_name": "Nativity",
+      "url": "https://www.nativityparish.com/news",
+      "error": "Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "parish": "stlukesparishbelfast",
+      "display_name": "St Luke's Belfast",
+      "url": "https://www.stlukesparishbelfast.com/news",
+      "error": "Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.stlukesparishbelfast.com/news\nCall log:\n  - navigating to \"https://www.stlukesparishbelfast.com/news\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "parish": "stvincentdepaulparishbelfast",
+      "display_name": "St Vincent de Paul Belfast",
+      "url": "https://www.stvincentdepaulparishbelfast.com/news",
+      "error": "Recipe replay failed: Recipe has no steps"
     }
   ]
 }
