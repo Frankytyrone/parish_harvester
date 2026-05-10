@@ -72,7 +72,7 @@
       if (settled) return;
       settled = true;
       window.removeEventListener("message", onResponse);
-      callback(null, "Extension message bridge timed out. Check GitHub settings and reload the page.");
+      callback(null, "Extension bridge timed out. Reload the page and try again. If the problem persists, check that your GitHub PAT is saved in Settings.");
     }, TIMEOUT_MS);
 
     window.postMessage({ direction: "from-main", reqId, message }, "*");
