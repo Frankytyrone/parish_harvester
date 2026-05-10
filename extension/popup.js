@@ -51,12 +51,6 @@ async function sendToActiveTab(message) {
 
       if (message.type === "show_toolbar") {
         setStatusText("Toolbar shown.");
-      } else if (message.type === "mark_html") {
-        setStatusText("Marked HTML page.");
-      } else if (message.type === "mark_file") {
-        setStatusText("Marked current URL as file.");
-      } else if (message.type === "mark_image") {
-        setStatusText("Marked bulletin image.");
       }
     }
   );
@@ -71,10 +65,27 @@ document.getElementById("open-operator").addEventListener("click", () => {
   setStatusText("Opened operator console.");
 });
 
-document.getElementById("mark-html").addEventListener("click", () => {
-  void sendToActiveTab({ type: "mark_html" });
+// ── GitHub Settings ────────────────────────────────────────────────────────
+
+chrome.storage.local.get(["gh_pat", "gh_repo"], (r) => {
+  const patInput  = document.getElementById("gh-pat");
+  const repoInput = document.getElementById("gh-repo");
+  if (patInput  && r.gh_pat)  patInput.value  = r.gh_pat;
+  if (repoInput && r.gh_repo) repoInput.value = r.gh_repo;
 });
 
-document.getElementById("mark-file").addEventListener("click", () => {
-  void sendToActiveTab({ type: "mark_file" });
+document.getElementById("gh-save").addEventListener("click", () => {
+  const pat  = (document.getElementById("gh-pat").value  || "").trim();
+  const repo = (document.getElementById("gh-repo").value || "").trim();
+  const ghStatusEl = document.getElementById("gh-save-status");
+  if (!pat || !repo) {
+    ghStatusEl.textContent = "❌ Both PAT and repository are required.";
+    ghStatusEl.style.color = "#fca5a5";
+    return;
+  }
+  chrome.storage.local.set({ gh_pat: pat, gh_repo: repo }, () => {
+    ghStatusEl.textContent = "✅ Settings saved.";
+    ghStatusEl.style.color = "#86efac";
+    setTimeout(() => { ghStatusEl.textContent = ""; }, 3000);
+  });
 });
