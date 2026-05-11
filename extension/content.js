@@ -2760,8 +2760,10 @@
             showStatus("❌ Could not communicate with page. Try refreshing.", "error");
           }
         } else {
-          console.warn("Parish Trainer: ph_mark_html binding is unavailable.");
-          showStatus("❌ Could not communicate with page. Try refreshing.", "error");
+          // Standalone extension mode — record html step
+          standaloneAddStep({ action: "html", url: window.location.href });
+          addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
+          showStatus("✅ Marked as HTML bulletin page.");
         }
       })
     );
@@ -3264,6 +3266,10 @@
 
   if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type === "get_standalone_steps") {
+        sendResponse({ ok: true, count: standaloneSteps.length });
+        return true;
+      }
       const handled = _handleIncomingMessage(message);
       sendResponse({ ok: handled });
       return true;
