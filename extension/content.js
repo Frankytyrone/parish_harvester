@@ -15,6 +15,9 @@
   let pickedImages = []; // accumulates {url, el} when picking multiple
   let _stepsListEl = null; // set by createToolbar
   let _refreshRecipeCount = null; // callback set by createToolbar
+  let aiTrainingMode = false;
+  let aiTrainingSamples = [];
+  let aiPredictionUrl = "";
 
   // ── Standalone recipe accumulator ────────────────────────────────────────
   // When the Playwright training bindings (window.ph_*) are absent, the
@@ -112,18 +115,37 @@
     return key.charAt(0).toUpperCase() + key.slice(1);
   };
 
+  const _hostnameFromUrl = (url) => {
+    try {
+      return new URL(url).hostname;
+    } catch (_e) {
+      return "";
+    }
+  };
+
   // Persist per-domain parish context after a successful push.
   const _cacheParishByDomain = (url, key, name, diocese) => {
-    const hostname = (() => { try { return new URL(url).hostname; } catch (_e) { return ""; } })();
+    const hostname = _hostnameFromUrl(url);
     if (!hostname || !key) return;
     if (typeof chrome === "undefined" || !chrome.storage) return;
     try {
-      chrome.storage.local.get(["ph_parish_by_domain"], (r) => {
+      chrome.storage.local.get(["ph_parish_by_domain", "ph_hostname_map"], (r) => {
         if (chrome.runtime?.lastError) return;
         const cache = (r.ph_parish_by_domain && typeof r.ph_parish_by_domain === "object")
           ? r.ph_parish_by_domain : {};
         cache[hostname] = { key, name: name || key, diocese: diocese || "", ts: Date.now() };
-        try { chrome.storage.local.set({ ph_parish_by_domain: cache }); } catch (_e) {}
+        const hostnameMap = (r.ph_hostname_map && typeof r.ph_hostname_map === "object")
+          ? r.ph_hostname_map : {};
+        hostnameMap[hostname] = {
+          parish_key: key,
+          display_name: name || key,
+          diocese: diocese || "",
+          start_url: url || "",
+          ts: Date.now(),
+        };
+        try {
+          chrome.storage.local.set({ ph_parish_by_domain: cache, ph_hostname_map: hostnameMap });
+        } catch (_e) {}
       });
     } catch (_e) {}
   };
@@ -152,6 +174,14 @@
         break;
       }
     }
+  };
+
+  const standaloneRemoveStepRef = (stepRef) => {
+    if (!_inStandaloneMode()) return false;
+    const idx = standaloneSteps.lastIndexOf(stepRef);
+    if (idx < 0) return false;
+    standaloneSteps.splice(idx, 1);
+    return true;
   };
 
   const buildStandaloneRecipe = (parishKey, displayName, diocese) => {
@@ -819,6 +849,10 @@
   };
 
   const startPickLinkMode = (onPick, showStatus) => {
+    if (aiTrainingMode) {
+      if (showStatus) showStatus("🤖 AI Training Mode is ON — turn it off to use pick-link mode.", "warn");
+      return;
+    }
     if (pickLinkActive) stopPickLinkMode();
     pickLinkActive = true;
     document.body.style.cursor = "crosshair";
@@ -843,7 +877,7 @@
     document.documentElement.appendChild(highlight);
     pickLinkHighlightEl = highlight;
 
-    const CANDIDATE_SELECTOR = 'a[href],button,[role="button"],[role="link"]';
+    const CANDIDATE_SELECTOR = 'a,button,[role="button"],[role="link"],input[type="submit"],input[type="button"]';
 
     const onMouseMove = (e) => {
       if (!pickLinkActive) return;
@@ -874,8 +908,9 @@
         e.target.closest("#ph-floating-toolbar")
       )
         return;
-      const el =
-        e.target instanceof Element ? e.target.closest(CANDIDATE_SELECTOR) : null;
+      const el = e.target instanceof Element
+        ? (e.target.closest(CANDIDATE_SELECTOR) || e.target)
+        : null;
       if (!el) return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -890,14 +925,17 @@
       }
     };
 
-    document.addEventListener("mousemove", onMouseMove, true);
-    document.addEventListener("click", onClick, true);
-    document.addEventListener("keydown", onKeyDown, true);
-    pickLinkCancelListeners = [
-      { el: document, type: "mousemove", fn: onMouseMove },
-      { el: document, type: "click", fn: onClick },
-      { el: document, type: "keydown", fn: onKeyDown },
-    ];
+    setTimeout(() => {
+      if (!pickLinkActive) return;
+      document.addEventListener("mousemove", onMouseMove, true);
+      document.addEventListener("click", onClick, true);
+      document.addEventListener("keydown", onKeyDown, true);
+      pickLinkCancelListeners = [
+        { el: document, type: "mousemove", fn: onMouseMove },
+        { el: document, type: "click", fn: onClick },
+        { el: document, type: "keydown", fn: onKeyDown },
+      ];
+    }, 0);
   };
 
   // ── Pick Image Mode ───────────────────────────────────────────────────────
@@ -1038,6 +1076,63 @@
       addSessionStep("mark_file", `📄 File: ${url.slice(-50)}`);
       if (showStatus) showStatus("✅ File URL saved (standalone). Use ⬆ Push Recipe to save to GitHub.");
     }
+  };
+
+  const _aiSamplesStorageKey = (hostname) => `ph_ai_samples_${hostname}`;
+
+  const _saveAiSamplesForHostname = (hostname) => {
+    if (!hostname || typeof chrome === "undefined" || !chrome.storage) return;
+    try {
+      chrome.storage.local.set({ [_aiSamplesStorageKey(hostname)]: aiTrainingSamples.slice(-6) });
+    } catch (_e) {}
+  };
+
+  const _recordAiTrainingSample = (sample) => {
+    if (!sample || !sample.url) return;
+    const normUrl = String(sample.url).trim();
+    if (!normUrl) return;
+    if (aiTrainingSamples.some((s) => String(s.url).trim() === normUrl)) return;
+    aiTrainingSamples.push({
+      url: normUrl,
+      label: String(sample.label || "").trim().slice(0, 160),
+      timestamp: Number(sample.timestamp || Date.now()),
+    });
+    if (aiTrainingSamples.length > 6) {
+      aiTrainingSamples = aiTrainingSamples.slice(-6);
+    }
+    const host = _hostnameFromUrl(window.location.href);
+    if (host) _saveAiSamplesForHostname(host);
+  };
+
+  const _recordCurrentPdfAsAiSample = () => {
+    if (!aiTrainingMode) return;
+    const href = window.location.href || "";
+    if (/\.pdf(\?|#|$)/i.test(href)) {
+      _recordAiTrainingSample({ url: href, label: document.title || "PDF", timestamp: Date.now() });
+    }
+  };
+
+  const _collectCondensedPageLinks = () => {
+    const links = [];
+    const seen = new Set();
+    const nodes = Array.from(document.querySelectorAll("a[href]"));
+    for (const node of nodes) {
+      const href = (node.getAttribute("href") || "").trim();
+      if (!href || href.startsWith("#") || /^javascript:|^mailto:|^tel:/i.test(href)) continue;
+      let resolved = "";
+      try {
+        resolved = new URL(href, window.location.href).toString();
+      } catch (_e) {
+        continue;
+      }
+      const norm = resolved.toLowerCase();
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+      const text = (node.innerText || node.textContent || "").replace(/\s+/g, " ").trim().slice(0, 140);
+      links.push({ url: resolved, label: text });
+      if (links.length >= 80) break;
+    }
+    return links;
   };
 
   // ── Iframe picker panel ───────────────────────────────────────────────────
@@ -1830,6 +1925,18 @@
     // ── Body container ─────────────────────────────────────────────────────
     const body = document.createElement("div");
     body.style.cssText = "padding:8px;display:flex;flex-direction:column;gap:6px;";
+    const hostnameMoveBanner = document.createElement("div");
+    hostnameMoveBanner.style.cssText = [
+      "display:none",
+      "background:#78350f",
+      "color:#fde68a",
+      "border:1px solid #f59e0b",
+      "border-radius:6px",
+      "padding:6px",
+      "font-size:10px",
+      "line-height:1.4",
+    ].join(";");
+    body.appendChild(hostnameMoveBanner);
 
     // Helper: small styled button
     const makeSmallBtn = (label, bg, onClick, tooltip) => {
@@ -1913,6 +2020,18 @@
       const text = (selectedEl.innerText || selectedEl.textContent || "")
         .trim()
         .slice(0, 60);
+      const pendingStep = {
+        action: "click",
+        selector,
+        href: selectedEl.getAttribute("href") || "",
+        text,
+      };
+      const savedImmediately = !window.ph_record_click;
+      if (savedImmediately) {
+        standaloneAddStep(pendingStep);
+        addSessionStep("click", `🔗 Click: "${text || selector}"`);
+        showStatus(`✅ Click step saved: "${text || selector}"`);
+      }
 
       guidedPanel.innerHTML = "";
 
@@ -1979,15 +2098,7 @@
               showStatus("❌ Could not record click.", "error");
             }
           } else {
-            // Standalone extension mode — record click into standaloneSteps
-            standaloneAddStep({
-              action: "click",
-              selector: selector,
-              href: selectedEl.getAttribute("href") || "",
-              text: text,
-            });
-            addSessionStep("click", `🔗 Click: "${text || selector}"`);
-            showStatus(`✅ Click step recorded: "${text || selector}"`);
+            showStatus(`✅ Keeping click step: "${text || selector}"`);
           }
           resetGuidedPanel();
         },
@@ -1998,6 +2109,10 @@
         "🔄 Pick again",
         "#374151",
         () => {
+          if (savedImmediately) {
+            standaloneRemoveStepRef(pendingStep);
+            undoSessionStep();
+          }
           resetGuidedPanel();
           startPickLinkMode(showPickConfirmation, showStatus);
         },
@@ -2007,6 +2122,23 @@
 
       btnRow.appendChild(looksRightBtn);
       btnRow.appendChild(pickAgainBtn);
+      if (savedImmediately) {
+        const undoBtn = makeSmallBtn(
+          "↩ Undo",
+          "#92400e",
+          () => {
+            const undone = standaloneRemoveStepRef(pendingStep);
+            if (undone) {
+              undoSessionStep();
+              showStatus("↩ Click step removed.", "info");
+            }
+            resetGuidedPanel();
+          },
+          "Remove this click step"
+        );
+        undoBtn.style.width = "auto";
+        btnRow.appendChild(undoBtn);
+      }
       guidedPanel.appendChild(btnRow);
 
       // Briefly highlight the chosen element on the page
@@ -2838,6 +2970,149 @@
     });
     advancedBodyEl.appendChild(captureAreaBtn);
 
+    const aiInfo = document.createElement("div");
+    aiInfo.style.cssText = "display:none;font-size:9px;color:#fbbf24;line-height:1.4;margin-top:5px;";
+    const aiResult = document.createElement("div");
+    aiResult.style.cssText = "display:none;background:#0f172a;border:1px solid #374151;border-radius:4px;padding:6px;margin-top:5px;font-size:9px;color:#d1d5db;line-height:1.4;word-break:break-all;";
+    const aiBtn = makeBtn("🤖 AI Training Mode", () => {
+      if (aiTrainingMode && aiTrainingSamples.length >= 2) {
+        const links = _collectCondensedPageLinks();
+        if (links.length === 0) {
+          showStatus("❌ No links found on this page for AI prediction.", "error");
+          return;
+        }
+        aiBtn.disabled = true;
+        aiBtn.textContent = "⏳ Asking AI…";
+        aiInfo.style.display = "block";
+        aiInfo.textContent = "⏳ Asking Mistral AI to predict the newest bulletin…";
+        chrome.storage.local.get(["mistral_api_key"], async (r) => {
+          const key = (r.mistral_api_key || "").trim();
+          if (!key) {
+            aiBtn.disabled = false;
+            aiInfo.textContent = "❌ Add Mistral API Key in popup GitHub Settings first.";
+            aiBtn.textContent = `🤖 Ask AI (${aiTrainingSamples.length} samples) — click to predict next bulletin`;
+            return;
+          }
+          const prompt = `I am looking for the most recent weekly parish bulletin PDF on this page. Here are ${aiTrainingSamples.length} examples of what past bulletin links looked like: ${JSON.stringify(aiTrainingSamples.slice(-6))}. Here are all the current links on the page: ${JSON.stringify(links)}. Return ONLY the exact URL of the most recent bulletin, no explanation.`;
+          try {
+            const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${key}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "mistral-small-latest",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.1,
+              }),
+            });
+            if (!resp.ok) throw new Error(`Mistral API error ${resp.status}`);
+            const data = await resp.json();
+            const content = String(data?.choices?.[0]?.message?.content || "").trim();
+            const urlMatch = content.match(/https?:\/\/\S+/i);
+            const predictedUrl = urlMatch ? urlMatch[0].replace(/[)\].,]+$/, "") : "";
+            if (!predictedUrl) throw new Error("No URL returned");
+            aiPredictionUrl = predictedUrl;
+            aiResult.replaceChildren();
+            const urlLine = document.createElement("div");
+            urlLine.textContent = `Predicted URL: ${predictedUrl}`;
+            aiResult.appendChild(urlLine);
+            const btnRow = document.createElement("div");
+            btnRow.style.cssText = "display:flex;gap:5px;margin-top:6px;";
+            const yesBtn = document.createElement("button");
+            yesBtn.type = "button";
+            yesBtn.textContent = "✅ That's right — use this";
+            yesBtn.style.cssText = "border:none;border-radius:4px;padding:4px 6px;background:#16a34a;color:#fff;cursor:pointer;font-size:9px;font-family:inherit;";
+            yesBtn.addEventListener("click", () => {
+              markDownloadUrlSafe(predictedUrl, showStatus, true);
+              const host = _hostnameFromUrl(window.location.href);
+              if (host) _saveAiSamplesForHostname(host);
+              aiResult.style.display = "none";
+              aiPredictionUrl = "";
+            });
+            const noBtn = document.createElement("button");
+            noBtn.type = "button";
+            noBtn.textContent = "❌ Wrong — try again";
+            noBtn.style.cssText = "border:none;border-radius:4px;padding:4px 6px;background:#374151;color:#fff;cursor:pointer;font-size:9px;font-family:inherit;";
+            noBtn.addEventListener("click", () => {
+              aiPredictionUrl = "";
+              aiResult.style.display = "none";
+              aiInfo.textContent = "🤖 Add more samples, then ask AI again.";
+            });
+            btnRow.appendChild(yesBtn);
+            btnRow.appendChild(noBtn);
+            aiResult.appendChild(btnRow);
+            aiResult.style.display = "block";
+            aiInfo.textContent = "✅ AI prediction ready. Confirm below.";
+          } catch (err) {
+            aiInfo.textContent = `❌ ${String(err.message || err)}`;
+          } finally {
+            aiBtn.disabled = false;
+            aiBtn.style.background = "#d97706";
+            aiBtn.textContent = `🤖 Ask AI (${aiTrainingSamples.length} samples) — click to predict next bulletin`;
+          }
+        });
+        return;
+      }
+
+      aiTrainingMode = !aiTrainingMode;
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        try { chrome.storage.local.set({ ph_ai_mode_active: aiTrainingMode }); } catch (_e) {}
+      }
+      if (aiTrainingMode) {
+        stopPickLinkMode();
+        stopPickImageMode();
+        _recordCurrentPdfAsAiSample();
+      }
+      const count = aiTrainingSamples.length;
+      aiBtn.style.background = aiTrainingMode ? "#d97706" : "#2563eb";
+      if (aiTrainingMode && count >= 2) {
+        aiBtn.textContent = `🤖 Ask AI (${count} samples) — click to predict next bulletin`;
+      } else if (count >= 2) {
+        aiBtn.textContent = `🤖 Ask AI (${count} saved samples)`;
+      } else if (aiTrainingMode) {
+        aiBtn.textContent = "🤖 AI Mode ON — click up to 6 recent bulletins to teach the AI";
+      } else {
+        aiBtn.textContent = "🤖 AI Training Mode";
+      }
+      aiInfo.style.display = aiTrainingMode ? "block" : "none";
+      aiInfo.textContent = aiTrainingMode
+        ? "🤖 AI Mode ON — click up to 6 recent bulletins to teach the AI"
+        : "";
+    });
+    aiBtn.id = "ph-ai-training-btn";
+    aiBtn.style.marginTop = "5px";
+    advancedBodyEl.appendChild(aiBtn);
+    advancedBodyEl.appendChild(aiInfo);
+    advancedBodyEl.appendChild(aiResult);
+    if (typeof chrome !== "undefined" && chrome.storage) {
+      const host = _hostnameFromUrl(window.location.href);
+      if (host) {
+        try {
+          chrome.storage.local.get([_aiSamplesStorageKey(host), "ph_ai_mode_active"], (r) => {
+            const saved = r[_aiSamplesStorageKey(host)];
+            if (Array.isArray(saved) && saved.length) {
+              aiTrainingSamples = saved.slice(-6);
+              if (aiTrainingSamples.length >= 2) {
+                aiBtn.textContent = `🤖 Ask AI (${aiTrainingSamples.length} saved samples)`;
+              }
+            }
+            if (r.ph_ai_mode_active) {
+              aiTrainingMode = true;
+              aiBtn.style.background = "#d97706";
+              aiBtn.textContent = aiTrainingSamples.length >= 2
+                ? `🤖 Ask AI (${aiTrainingSamples.length} samples) — click to predict next bulletin`
+                : "🤖 AI Mode ON — click up to 6 recent bulletins to teach the AI";
+              aiInfo.style.display = "block";
+              aiInfo.textContent = "🤖 AI Mode ON — click up to 6 recent bulletins to teach the AI";
+              _recordCurrentPdfAsAiSample();
+            }
+          });
+        } catch (_e) {}
+      }
+    }
+
     // ── Identify page (moved from main body to Advanced) ──────────────────
     identifyBtn.style.marginTop = "5px";
     advancedBodyEl.appendChild(identifyBtn);
@@ -2910,10 +3185,20 @@
 
       const keyInput = makeInput("Parish key (auto-detected if blank)", "ph-parish-key");
       const nameInput = makeInput("Display name (auto-detected if blank)", "ph-display-name");
-      const dioceseInput = makeInput("Diocese (optional)", "ph-diocese");
+      const dioceseInfo = document.createElement("div");
+      dioceseInfo.style.cssText = [
+        "margin-bottom:4px",
+        "font-size:10px",
+        "padding:4px 6px",
+        "border-radius:4px",
+        "background:#0f172a",
+        "border:1px solid #374151",
+        "color:#d1d5db",
+      ].join(";");
+      let resolvedDiocese = "";
       pushSection.appendChild(keyInput);
       pushSection.appendChild(nameInput);
-      pushSection.appendChild(dioceseInput);
+      pushSection.appendChild(dioceseInfo);
 
       // Auto-detect label — shown when fields were filled automatically.
       const autoDetectNote = document.createElement("div");
@@ -2922,28 +3207,51 @@
 
       const _applyParishContext = (ctx) => {
         if (!ctx) return;
+        const ctxKey = (ctx.key || ctx.parish_key || "").trim();
+        const ctxName = (ctx.name || ctx.display_name || "").trim();
+        const ctxDiocese = (ctx.diocese || "").trim();
+        if (ctxDiocese) resolvedDiocese = ctxDiocese;
         if (ctx.key && !keyInput.value) {
           keyInput.value = ctx.key;
           autoDetectNote.style.display = "block";
           autoDetectNote.textContent = `✓ Auto-filled: ${ctx.key}`;
         }
-        if (ctx.name && !nameInput.value) nameInput.value = ctx.name;
-        if (ctx.diocese && !dioceseInput.value) dioceseInput.value = ctx.diocese;
+        if (ctxKey && !keyInput.value) keyInput.value = ctxKey;
+        if (ctxName && !nameInput.value) nameInput.value = ctxName;
       };
 
-      // Pre-populate fields: ph_training_parish → per-domain cache → last diocese.
+      const _renderDiocese = () => {
+        dioceseInfo.textContent = resolvedDiocese
+          ? `Diocese: ${resolvedDiocese}`
+          : "Diocese: (open this parish from the operator console)";
+      };
+      _renderDiocese();
+
+      // Pre-populate fields: ph_hostname_map → ph_training_parish → lookup_parish_for_url → per-domain cache → last diocese.
       if (typeof chrome !== "undefined" && chrome.storage) {
         try {
-          const hostname = (() => { try { return new URL(window.location.href).hostname; } catch (_e) { return ""; } })();
-          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese", "ph_parish_by_domain"], (r) => {
+          const hostname = _hostnameFromUrl(window.location.href);
+          chrome.storage.local.get(
+            ["ph_training_parish", "ph_last_diocese", "ph_parish_by_domain", "ph_hostname_map"],
+            (r) => {
             if (chrome.runtime?.lastError) return;
-            if (r.ph_training_parish) {
+            const hostMapCtx = hostname && r.ph_hostname_map?.[hostname] ? r.ph_hostname_map[hostname] : null;
+            if (hostMapCtx) {
+              _applyParishContext(hostMapCtx);
+            } else if (r.ph_training_parish) {
               _applyParishContext(r.ph_training_parish);
             } else if (hostname && r.ph_parish_by_domain?.[hostname]) {
               _applyParishContext(r.ph_parish_by_domain[hostname]);
-            } else if (r.ph_last_diocese && !dioceseInput.value) {
-              dioceseInput.value = r.ph_last_diocese;
             }
+            if (!resolvedDiocese && r.ph_last_diocese) {
+              resolvedDiocese = r.ph_last_diocese;
+            }
+            _renderDiocese();
+          });
+          _safeSendMessage({ type: "lookup_parish_for_url", url: window.location.href }, (res, _err) => {
+            if (!res || !res.ok || !res.parish) return;
+            _applyParishContext(res.parish);
+            _renderDiocese();
           });
         } catch (_storageErr) {
           // Extension context may have been invalidated — silently ignore.
@@ -2957,6 +3265,20 @@
       };
       refreshStepCount();
       pushSection.appendChild(stepCountEl);
+      const dispatchErrorBanner = document.createElement("div");
+      dispatchErrorBanner.style.cssText = [
+        "display:none",
+        "font-size:10px",
+        "line-height:1.4",
+        "background:#7c2d12",
+        "color:#fdba74",
+        "border:1px solid #fb923c",
+        "border-radius:4px",
+        "padding:6px",
+        "margin-bottom:5px",
+        "word-break:break-word",
+      ].join(";");
+      pushSection.appendChild(dispatchErrorBanner);
 
       // Keep count in sync with session steps
       const origRefreshRecipeCount = _refreshRecipeCount;
@@ -2987,7 +3309,7 @@
         // Resolve key and name — prefer typed values, fall back to URL inference.
         let key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
         let name = nameInput.value.trim();
-        const diocese = dioceseInput.value.trim();
+        const diocese = resolvedDiocese.trim();
 
         if (!key) {
           key = _inferParishKeyFromUrl(standaloneStartUrl || window.location.href);
@@ -3016,6 +3338,8 @@
         _safeSendMessage({ type: "push_recipe", parish_key: key, recipe }, (response, bridgeError) => {
           pushBtn.disabled = false;
           pushBtn.textContent = "⬆ Push Recipe to GitHub";
+          dispatchErrorBanner.style.display = "none";
+          dispatchErrorBanner.replaceChildren();
           if (bridgeError) {
             showStatus(`❌ ${bridgeError}`, "error");
             return;
@@ -3032,6 +3356,19 @@
                 `✅ Recipe ${verb}!${linkPart} ⚠️ Rebuild trigger failed: ${response.dispatchError}`,
                 "ok",
               );
+              const msg = document.createElement("div");
+              msg.textContent = `⚠️ ${response.dispatchError}`;
+              const dismissBtn = document.createElement("button");
+              dismissBtn.type = "button";
+              dismissBtn.textContent = "Dismiss";
+              dismissBtn.style.cssText = "margin-top:6px;border:none;border-radius:4px;padding:3px 8px;background:#ea580c;color:#fff;cursor:pointer;font-size:10px;font-family:inherit;";
+              dismissBtn.addEventListener("click", () => {
+                dispatchErrorBanner.style.display = "none";
+                dispatchErrorBanner.replaceChildren();
+              });
+              dispatchErrorBanner.appendChild(msg);
+              dispatchErrorBanner.appendChild(dismissBtn);
+              dispatchErrorBanner.style.display = "block";
             } else {
               showStatus(`✅ Recipe ${verb}!${linkPart}`, "ok");
             }
@@ -3076,6 +3413,57 @@
 
       body.appendChild(pushSection);
     }
+
+    const maybeShowHostnameMoveBanner = () => {
+      if (typeof chrome === "undefined" || !chrome.storage) return;
+      const currentUrl = window.location.href;
+      const currentHostname = _hostnameFromUrl(currentUrl);
+      if (!currentHostname) return;
+      chrome.storage.local.get(["ph_hostname_map"], (r) => {
+        const hostInfo = r?.ph_hostname_map?.[currentHostname];
+        const parishKey = hostInfo?.parish_key || hostInfo?.key || "";
+        if (!parishKey) return;
+        _safeSendMessage({ type: "fetch_github_file", path: `parishes/recipes/${parishKey}.json` }, (resp) => {
+          if (!resp?.ok || !resp.content) return;
+          let recipe = null;
+          try {
+            recipe = JSON.parse(resp.content);
+          } catch (_e) {
+            return;
+          }
+          const oldHostname = _hostnameFromUrl(recipe?.start_url || "");
+          if (!oldHostname || oldHostname === currentHostname) return;
+          hostnameMoveBanner.replaceChildren();
+          const text = document.createElement("div");
+          text.textContent = `⚠️ This site may have moved. Previous recipe used: ${oldHostname}. Current page: ${currentHostname}. Click to update the recipe's start URL.`;
+          const updateBtn = document.createElement("button");
+          updateBtn.type = "button";
+          updateBtn.textContent = "Update start_url";
+          updateBtn.style.cssText = "margin-top:6px;border:none;border-radius:4px;padding:4px 8px;background:#d97706;color:#fff;cursor:pointer;font-size:10px;font-family:inherit;";
+          updateBtn.addEventListener("click", () => {
+            updateBtn.disabled = true;
+            updateBtn.textContent = "Updating…";
+            _safeSendMessage(
+              { type: "update_recipe_start_url", parish_key: parishKey, start_url: currentUrl },
+              (updateResp) => {
+                if (updateResp?.ok) {
+                  hostnameMoveBanner.style.display = "none";
+                  showStatus("✅ Recipe start_url updated for this hostname.", "ok");
+                } else {
+                  updateBtn.disabled = false;
+                  updateBtn.textContent = "Update start_url";
+                  showStatus(`❌ ${updateResp?.error || "Could not update recipe start_url."}`, "error");
+                }
+              }
+            );
+          });
+          hostnameMoveBanner.appendChild(text);
+          hostnameMoveBanner.appendChild(updateBtn);
+          hostnameMoveBanner.style.display = "block";
+        });
+      });
+    };
+    maybeShowHostnameMoveBanner();
 
     const scrollContainer = document.createElement("div");
     scrollContainer.id = "ph-toolbar-scroll";
@@ -3287,6 +3675,22 @@
         event.target.closest("#ph-floating-toolbar")
       )
         return;
+      if (aiTrainingMode) {
+        const targetLink = event.target instanceof Element ? event.target.closest("a[href]") : null;
+        if (targetLink) {
+          const href = targetLink.getAttribute("href") || "";
+          try {
+            const url = new URL(href, window.location.href).toString();
+            const label = (targetLink.innerText || targetLink.textContent || "").replace(/\s+/g, " ").trim();
+            _recordAiTrainingSample({ url, label, timestamp: Date.now() });
+            const aiBtn = document.getElementById("ph-ai-training-btn");
+            if (aiBtn && aiTrainingSamples.length >= 2) {
+              aiBtn.textContent = `🤖 Ask AI (${aiTrainingSamples.length} samples) — click to predict next bulletin`;
+            }
+          } catch (_e) {}
+        }
+        return;
+      }
       // Skip clicks during pick-link mode (handled by the dedicated handler)
       if (pickLinkActive) return;
 

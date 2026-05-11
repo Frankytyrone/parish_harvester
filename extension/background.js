@@ -121,7 +121,7 @@ chrome.action.onClicked.addListener((tab) => {
   if (!tab?.id) {
     return;
   }
-  void sendToTab(tab.id, { type: "show_toolbar" });
+  void sendToTab(tab.id, { type: "toggle_toolbar" });
 });
 
 
@@ -201,6 +201,43 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
   })();
 
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "lookup_parish_for_url") return false;
+  (async () => {
+    try {
+      const lookupUrl = String(message.url || "").trim();
+      const hostname = (() => {
+        try {
+          return new URL(lookupUrl).hostname;
+        } catch (_e) {
+          return "";
+        }
+      })();
+      const data = await chrome.storage.local.get([
+        "ph_hostname_map",
+        "ph_training_parish",
+        "ph_evidence_hostname_map",
+      ]);
+      if (hostname && data.ph_hostname_map?.[hostname]) {
+        sendResponse({ ok: true, parish: data.ph_hostname_map[hostname], source: "ph_hostname_map" });
+        return;
+      }
+      if (data.ph_training_parish) {
+        sendResponse({ ok: true, parish: data.ph_training_parish, source: "ph_training_parish" });
+        return;
+      }
+      if (hostname && data.ph_evidence_hostname_map?.[hostname]) {
+        sendResponse({ ok: true, parish: data.ph_evidence_hostname_map[hostname], source: "ph_evidence_hostname_map" });
+        return;
+      }
+      sendResponse({ ok: false });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err) });
+    }
+  })();
   return true;
 });
 
@@ -366,6 +403,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
       const result = await putResp.json();
       const htmlUrl = result?.content?.html_url || `https://github.com/${gh_repo}/blob/main/${filePath}`;
+      try {
+        const hostname = recipe?.start_url ? new URL(recipe.start_url).hostname : "";
+        if (hostname) {
+          const existingHostMap = (await chrome.storage.local.get(["ph_hostname_map"])).ph_hostname_map || {};
+          existingHostMap[hostname] = {
+            parish_key: key,
+            display_name: recipe.display_name || key,
+            diocese: recipe.diocese || "",
+            start_url: recipe.start_url || "",
+            ts: Date.now(),
+          };
+          await chrome.storage.local.set({ ph_hostname_map: existingHostMap });
+        }
+      } catch (_e) {}
 
       // After saving the recipe, immediately trigger a workflow_dispatch so
       // the Mega PDF is rebuilt for just this parish right away.
@@ -394,6 +445,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         dispatchOk = dispatchResp.status === 204;
         if (!dispatchOk) {
           dispatchError = await _githubApiError(dispatchResp);
+          if (dispatchResp.status === 403 || String(dispatchError).includes("403")) {
+            dispatchError = "Your GitHub PAT is missing the 'workflow' scope. Go to github.com/settings/tokens, click your token, tick the 'workflow' checkbox, and save. Then update the token in the toolbar settings.";
+          }
         }
       } catch (dispatchErr) {
         dispatchError = String(dispatchErr);
@@ -413,4 +467,60 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   })();
 
   return true; // keep message channel open for async response
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "update_recipe_start_url") return false;
+  (async () => {
+    try {
+      const { gh_pat, gh_repo } = await chrome.storage.local.get(["gh_pat", "gh_repo"]);
+      if (!gh_pat || !gh_repo) {
+        sendResponse({ ok: false, error: "GitHub PAT or repo not configured." });
+        return;
+      }
+      const key = String(message.parish_key || "").trim();
+      const startUrl = String(message.start_url || "").trim();
+      if (!key || !startUrl) {
+        sendResponse({ ok: false, error: "Missing parish_key or start_url." });
+        return;
+      }
+      const filePath = `parishes/recipes/${key}.json`;
+      const apiBase = `https://api.github.com/repos/${gh_repo}/contents/${filePath}`;
+      const headers = {
+        Authorization: `token ${gh_pat}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      };
+      const getResp = await fetch(apiBase, { headers });
+      if (!getResp.ok) {
+        sendResponse({ ok: false, error: await _githubApiError(getResp) });
+        return;
+      }
+      const existing = await getResp.json();
+      const decoded = decodeURIComponent(
+        atob((existing.content || "").replace(/\n/g, ""))
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const recipe = JSON.parse(decoded);
+      recipe.start_url = startUrl;
+      const payload = {
+        message: `recipe: update start_url ${key} [from extension]`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(recipe, null, 2)))),
+        sha: existing.sha,
+      };
+      const putResp = await fetch(apiBase, { method: "PUT", headers, body: JSON.stringify(payload) });
+      if (!putResp.ok) {
+        sendResponse({ ok: false, error: await _githubApiError(putResp) });
+        return;
+      }
+      const result = await putResp.json();
+      sendResponse({ ok: true, url: result?.content?.html_url || `https://github.com/${gh_repo}/blob/main/${filePath}` });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err) });
+    }
+  })();
+  return true;
 });

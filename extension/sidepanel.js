@@ -172,6 +172,14 @@ function _pdUrlToKey(url, headerName = "") {
   }
 }
 
+function _pdHostFromUrl(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (_e) {
+    return "";
+  }
+}
+
 function _pdParseEvidence(text, dioceseName) {
   const parishes = [];
   let cur = null;
@@ -731,6 +739,18 @@ async function loadParishDirectory() {
       _pdDioceseTexts[r.diocese] = { text: r.content, path: r.path };
       _pdAllParishes.push(..._pdParseEvidence(r.content, r.diocese));
     }
+    try {
+      const evidenceHostMap = {};
+      for (const p of _pdAllParishes) {
+        const urls = [p.pageUrl, ...(p.bulletinUrls || [])].filter(Boolean);
+        for (const url of urls) {
+          const host = _pdHostFromUrl(url);
+          if (!host) continue;
+          evidenceHostMap[host] = { parish_key: p.key, display_name: p.name, diocese: p.diocese };
+        }
+      }
+      chrome.storage.local.set({ ph_evidence_hostname_map: evidenceHostMap });
+    } catch (_e) {}
     _pdConsecutiveFailures = consecutiveFailures || {};
 
     if (_pdAllParishes.length === 0) {
