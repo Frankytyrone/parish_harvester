@@ -1978,6 +1978,16 @@
             } catch (_e) {
               showStatus("❌ Could not record click.", "error");
             }
+          } else {
+            // Standalone extension mode — record click into standaloneSteps
+            standaloneAddStep({
+              action: "click",
+              selector: selector,
+              href: selectedEl.getAttribute("href") || "",
+              text: text,
+            });
+            addSessionStep("click", `🔗 Click: "${text || selector}"`);
+            showStatus(`✅ Click step recorded: "${text || selector}"`);
           }
           resetGuidedPanel();
         },
