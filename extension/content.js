@@ -1128,8 +1128,9 @@
       const norm = resolved.toLowerCase();
       if (seen.has(norm)) continue;
       seen.add(norm);
-      const text = (node.innerText || node.textContent || "").replace(/\s+/g, " ").trim().slice(0, 140);
-      links.push({ url: resolved, label: text });
+      const fullText = (node.innerText || node.textContent || "").replace(/\s+/g, " ").trim();
+      const label = fullText.length > 140 ? `${fullText.slice(0, 137)}...` : fullText;
+      links.push({ url: resolved, label });
       if (links.length >= 80) break;
     }
     return links;
@@ -2993,7 +2994,16 @@
             aiBtn.textContent = `🤖 Ask AI (${aiTrainingSamples.length} samples) — click to predict next bulletin`;
             return;
           }
-          const prompt = `I am looking for the most recent weekly parish bulletin PDF on this page. Here are ${aiTrainingSamples.length} examples of what past bulletin links looked like: ${JSON.stringify(aiTrainingSamples.slice(-6))}. Here are all the current links on the page: ${JSON.stringify(links)}. Return ONLY the exact URL of the most recent bulletin, no explanation.`;
+          const safeSamples = aiTrainingSamples.slice(-6).map((s) => ({
+            url: String(s.url || "").replace(/\s+/g, " ").slice(0, 500),
+            label: String(s.label || "").replace(/\s+/g, " ").replace(/[`<>]/g, "").slice(0, 160),
+            timestamp: Number(s.timestamp || Date.now()),
+          }));
+          const safeLinks = links.map((l) => ({
+            url: String(l.url || "").replace(/\s+/g, " ").slice(0, 500),
+            label: String(l.label || "").replace(/\s+/g, " ").replace(/[`<>]/g, "").slice(0, 160),
+          }));
+          const prompt = `I am looking for the most recent weekly parish bulletin PDF on this page. Here are ${safeSamples.length} examples of what past bulletin links looked like: ${JSON.stringify(safeSamples)}. Here are all the current links on the page: ${JSON.stringify(safeLinks)}. Return ONLY the exact URL of the most recent bulletin, no explanation.`;
           try {
             const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
               method: "POST",
@@ -3010,8 +3020,10 @@
             if (!resp.ok) throw new Error(`Mistral API error ${resp.status}`);
             const data = await resp.json();
             const content = String(data?.choices?.[0]?.message?.content || "").trim();
-            const urlMatch = content.match(/https?:\/\/\S+/i);
-            const predictedUrl = urlMatch ? urlMatch[0].replace(/[)\].,]+$/, "") : "";
+            const urlMatch = content.match(/https?:\/\/[^\s"'<>`]+/i);
+            const predictedUrl = urlMatch
+              ? urlMatch[0].replace(/^[("'[]+|[)\]'",>.]+$/g, "")
+              : "";
             if (!predictedUrl) throw new Error("No URL returned");
             aiPredictionUrl = predictedUrl;
             aiResult.replaceChildren();
