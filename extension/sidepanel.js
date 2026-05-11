@@ -460,13 +460,14 @@ function _pdUpdateStaleBannerUi(staleBulletins) {
     toggleBtn.style.background = "#991b1b";
 
     list.innerHTML = "";
+    const formatDaysOld = (days) => `${days} day${days === 1 ? "" : "s"}`;
     for (const item of stale) {
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(127,29,29,0.5);";
 
       const label = document.createElement("div");
       const daysOld = Number(item?.days_old);
-      label.textContent = `${item?.display_name || item?.key || "Unknown"}${Number.isFinite(daysOld) ? ` — ${daysOld} day(s)` : ""}`;
+      label.textContent = `${item?.display_name || item?.key || "Unknown"}${Number.isFinite(daysOld) ? ` — ${formatDaysOld(daysOld)}` : ""}`;
       label.style.cssText = "font-size:10px;line-height:1.3;flex:1;";
       row.appendChild(label);
 

@@ -230,22 +230,27 @@ jobs:
             echo "⏭️  Google Drive upload skipped — GDRIVE_SERVICE_ACCOUNT or GDRIVE_FOLDER_ID secret not set."
             exit 0
           fi
-          pip install rclone-python 2>/dev/null || true
-          curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip 2>/dev/null
-          unzip -q rclone-current-linux-amd64.zip
-          RCLONE_BIN=$(find . -name 'rclone' -type f | head -1)
-          chmod +x "$RCLONE_BIN"
+          if ! command -v rclone >/dev/null 2>&1; then
+            sudo apt-get update -y >/dev/null
+            sudo apt-get install -y rclone >/dev/null
+          fi
+          RCLONE_BIN=$(command -v rclone)
           mkdir -p ~/.config/rclone
-          echo "${GDRIVE_SERVICE_ACCOUNT}" > /tmp/gdrive_sa.json
+          SA_FILE=$(mktemp)
+          trap 'rm -f "${SA_FILE}"' EXIT
+          umask 077
+          echo "${GDRIVE_SERVICE_ACCOUNT}" > "${SA_FILE}"
           cat > ~/.config/rclone/rclone.conf << EOF
           [gdrive]
           type = drive
           scope = drive
-          service_account_file = /tmp/gdrive_sa.json
+          service_account_file = ${SA_FILE}
           root_folder_id = ${GDRIVE_FOLDER_ID}
           EOF
           TARGET_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))" 2>/dev/null || echo "unknown")
+          # Keep one canonical "latest" file in Drive (very high cutoff avoids chunking for this file size).
           "$RCLONE_BIN" copy Bulletins/mega_bulletin.pdf gdrive: --drive-upload-cutoff 1000G --verbose 2>&1 | tail -5
+          # Also keep a dated immutable archive copy.
           "$RCLONE_BIN" copyto Bulletins/mega_bulletin.pdf "gdrive:parish_bulletin_${TARGET_DATE}.pdf" --verbose 2>&1 | tail -5
           echo "✅ Mega PDF uploaded to Google Drive folder ${GDRIVE_FOLDER_ID}"
 

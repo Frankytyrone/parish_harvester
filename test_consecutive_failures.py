@@ -117,6 +117,24 @@ class ConsecutiveFailuresTests(unittest.TestCase):
             self.assertEqual(payload["stale"][0]["key"], "dashparish")
             self.assertEqual(payload["stale"][0]["reason"], "date_in_url")
 
+    def test_update_stale_bulletins_uses_strictly_more_than_8_days(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stale_path = Path(tmp) / "stale_bulletins.json"
+            boundary_date = (date.today() - timedelta(days=8)).strftime("%Y-%m-%d")
+            payload = update_stale_bulletins(
+                [
+                    FetchResult(
+                        key="boundaryparish",
+                        display_name="Boundary Parish",
+                        status="ok",
+                        url=f"https://example.com/bulletin-{boundary_date}.pdf",
+                    )
+                ],
+                bulletins_path=stale_path,
+            )
+            self.assertEqual(payload["stale"], [])
+            self.assertEqual(payload["unknown_date"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

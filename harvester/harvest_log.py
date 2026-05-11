@@ -178,7 +178,12 @@ def update_consecutive_failures(
 
 
 def _extract_date_from_url(url: str) -> date | None:
-    """Extract a date from *url* using common bulletin filename patterns."""
+    """Extract a date from *url* using common bulletin filename patterns.
+
+    Tried in order from most explicit to most compact:
+    YYYY-MM-DD, DD-MM-YYYY/DD_MM_YYYY/DD/MM/YYYY, DDMMYY, and DDMMYYYY.
+    Returns the first valid ``date`` parsed; invalid calendar dates are skipped.
+    """
     text = url or ""
     patterns = (
         (
@@ -264,7 +269,9 @@ def update_stale_bulletins(
             )
 
     payload: dict[str, object] = {
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "generated_at": datetime.now(timezone.utc)
+        .replace(tzinfo=None)
+        .isoformat(timespec="seconds"),
         "stale": stale,
         "unknown_date": unknown_date,
     }
