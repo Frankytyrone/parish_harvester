@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "parish_key": "bellaghyparish",
+  "display_name": "Bellaghyparish",
+  "diocese": "",
+  "start_url": "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf"
+    },
+    {
+      "action": "download",
+      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf"
+    }
+  ],
+  "recorded_date": "2026-05-11"
+}
