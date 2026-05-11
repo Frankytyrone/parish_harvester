@@ -176,6 +176,7 @@ async function runDiagnostics() {
         _updateDiagRow(patRow, "❌", `GitHub PAT check failed (HTTP ${patRes.status})`);
       }
     } catch (_e) {
+      console.error("Parish Trainer: GitHub PAT check failed:", _e);
       _updateDiagRow(patRow, "❌", "GitHub PAT check failed — network error");
     }
   }
@@ -199,6 +200,7 @@ async function runDiagnostics() {
         _updateDiagRow(repoRow, "❌", `Repo check failed (HTTP ${repoRes.status})`);
       }
     } catch (_e) {
+      console.error("Parish Trainer: Repo check failed:", _e);
       _updateDiagRow(repoRow, "❌", "Repo check failed — network error");
     }
   }
@@ -225,6 +227,7 @@ async function runDiagnostics() {
         _updateDiagRow(mistralRow, "❌", `Mistral check failed (HTTP ${mistralRes.status})`);
       }
     } catch (_e) {
+      console.error("Parish Trainer: Mistral check failed:", _e);
       _updateDiagRow(mistralRow, "❌", "Mistral check failed — network error");
     }
   }
@@ -278,7 +281,8 @@ if (diagCopyBtn) {
       const orig = diagCopyBtn.textContent;
       diagCopyBtn.textContent = "✅ Copied!";
       setTimeout(() => { diagCopyBtn.textContent = orig; }, 2000);
-    }).catch(() => {
+    }).catch((_e) => {
+      console.error("Parish Trainer: clipboard copy failed:", _e);
       diagCopyBtn.textContent = "❌ Copy failed";
       setTimeout(() => { diagCopyBtn.textContent = "📋 Copy Debug Info"; }, 2000);
     });
