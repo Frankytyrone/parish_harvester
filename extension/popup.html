@@ -111,7 +111,7 @@
   </head>
   <body>
     <div class="wrap">
-      <h1>Parish Trainer</h1>
+      <h1>Parish Trainer <span id="ext-version" style="font-size:11px;color:#93c5fd;font-weight:400;"></span></h1>
       <p id="status">Ready.</p>
       <div class="row">
         <button id="open-operator" type="button">Open Operator Console</button>
@@ -131,6 +131,14 @@
 
       <p class="note">Page actions (PDF, image, crop, links) are on the floating toolbar.</p>
       <p class="note">Tip: Open Operator Console to browse parishes, update links, and manage the mega PDF.</p>
+
+      <details class="section" id="diag-section">
+        <summary class="section-title">🔍 Diagnostics</summary>
+        <div class="section-content">
+          <button id="run-diag" type="button">Run Diagnostics</button>
+          <div id="diag-results" style="margin-top:8px;line-height:1.7;font-size:11px;"></div>
+        </div>
+      </details>
     </div>
     <script src="popup.js"></script>
   </body>
