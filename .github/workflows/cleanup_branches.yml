@@ -1,0 +1,39 @@
+name: Cleanup stale copilot branches
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run only — list branches without deleting (true/false)'
+        required: false
+        default: 'true'
+        type: string
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete stale copilot/ branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+        run: |
+          echo "Fetching all copilot/ branches..."
+          BRANCHES=$(gh api repos/${{ github.repository }}/branches --paginate --jq '.[].name' | grep '^copilot/' || true)
+          COUNT=$(echo "$BRANCHES" | grep -c . || true)
+          echo "Found ${COUNT} copilot/ branches"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN — these branches WOULD be deleted:"
+            echo "$BRANCHES"
+            echo "To actually delete, run this workflow again with dry_run = false"
+          else
+            echo "Deleting branches..."
+            echo "$BRANCHES" | while read branch; do
+              if [ -n "$branch" ]; then
+                gh api -X DELETE repos/${{ github.repository }}/git/refs/heads/${branch} && echo "✅ Deleted: ${branch}" || echo "❌ Failed: ${branch}"
+              fi
+            done
+            echo "Done."
+          fi

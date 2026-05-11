@@ -8,7 +8,8 @@ the end of a run to see the last 20 entries as a neat table.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+import re
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from .fetcher import FetchResult
@@ -17,6 +18,9 @@ from .fetcher import FetchResult
 _LOG_PATH = Path(__file__).resolve().parent.parent / "harvest_log.json"
 _CONSECUTIVE_FAILURES_PATH = (
     Path(__file__).resolve().parent.parent / "parishes" / "consecutive_failures.json"
+)
+_STALE_BULLETINS_PATH = (
+    Path(__file__).resolve().parent.parent / "parishes" / "stale_bulletins.json"
 )
 
 
@@ -171,3 +175,98 @@ def update_consecutive_failures(
 
     path.write_text(json.dumps(counts, indent=2, ensure_ascii=False), encoding="utf-8")
     return counts
+
+
+def _extract_date_from_url(url: str) -> date | None:
+    """Extract a date from *url* using common bulletin filename patterns."""
+    text = url or ""
+    patterns = (
+        (
+            re.compile(
+                r"(?<!\d)(20\d{2})[-_/](0?[1-9]|1[0-2])[-_/](0?[1-9]|[12]\d|3[01])(?!\d)"
+            ),
+            lambda m: datetime(
+                year=int(m.group(1)),
+                month=int(m.group(2)),
+                day=int(m.group(3)),
+            ).date(),
+        ),
+        (
+            re.compile(
+                r"(?<!\d)(0?[1-9]|[12]\d|3[01])[-_/](0?[1-9]|1[0-2])[-_/]((?:19|20)\d{2})(?!\d)"
+            ),
+            lambda m: datetime(
+                year=int(m.group(3)),
+                month=int(m.group(2)),
+                day=int(m.group(1)),
+            ).date(),
+        ),
+        (
+            re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)"),
+            lambda m: datetime.strptime("".join(m.groups()), "%d%m%y").date(),
+        ),
+        (
+            re.compile(r"(?<!\d)(\d{2})(\d{2})((?:19|20)\d{2})(?!\d)"),
+            lambda m: datetime.strptime("".join(m.groups()), "%d%m%Y").date(),
+        ),
+    )
+
+    for pattern, parser in patterns:
+        for match in pattern.finditer(text):
+            try:
+                return parser(match)
+            except ValueError:
+                continue
+    return None
+
+
+def update_stale_bulletins(
+    results: list[FetchResult], bulletins_path: Path | None = None
+) -> dict[str, object]:
+    """Persist stale/unknown bulletin-date checks based on result URLs."""
+    path = bulletins_path or _STALE_BULLETINS_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    today = date.today()
+    stale: list[dict[str, object]] = []
+    unknown_date: list[dict[str, object]] = []
+
+    for result in results:
+        if result.status != "ok" or not result.url:
+            continue
+        key = (result.key or "").strip()
+        if not key:
+            continue
+        display_name = (result.display_name or key).strip() or key
+        extracted = _extract_date_from_url(result.url)
+        if extracted is None:
+            unknown_date.append(
+                {
+                    "key": key,
+                    "display_name": display_name,
+                    "url": result.url,
+                    "reason": "no_date_in_url",
+                }
+            )
+            continue
+
+        days_old = (today - extracted).days
+        if days_old > 8:
+            stale.append(
+                {
+                    "key": key,
+                    "display_name": display_name,
+                    "url": result.url,
+                    "extracted_date": extracted.isoformat(),
+                    "days_old": days_old,
+                    "reason": "date_in_url",
+                }
+            )
+
+    payload: dict[str, object] = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "stale": stale,
+        "unknown_date": unknown_date,
+    }
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return payload

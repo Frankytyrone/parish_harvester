@@ -191,6 +191,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f Bulletins/ || true
           git add -f parishes/consecutive_failures.json || true
+          git add -f parishes/stale_bulletins.json || true
           git diff --cached --quiet || git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
           git push || true
 
@@ -218,6 +219,35 @@ jobs:
           name: Mega-Bulletin-PDF
           path: Bulletins/mega_bulletin.pdf
           retention-days: 30
+
+      - name: Upload Mega PDF to Google Drive
+        if: always() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
+        env:
+          GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: |
+          if [ -z "${GDRIVE_SERVICE_ACCOUNT}" ] || [ -z "${GDRIVE_FOLDER_ID}" ]; then
+            echo "⏭️  Google Drive upload skipped — GDRIVE_SERVICE_ACCOUNT or GDRIVE_FOLDER_ID secret not set."
+            exit 0
+          fi
+          pip install rclone-python 2>/dev/null || true
+          curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip 2>/dev/null
+          unzip -q rclone-current-linux-amd64.zip
+          RCLONE_BIN=$(find . -name 'rclone' -type f | head -1)
+          chmod +x "$RCLONE_BIN"
+          mkdir -p ~/.config/rclone
+          echo "${GDRIVE_SERVICE_ACCOUNT}" > /tmp/gdrive_sa.json
+          cat > ~/.config/rclone/rclone.conf << EOF
+          [gdrive]
+          type = drive
+          scope = drive
+          service_account_file = /tmp/gdrive_sa.json
+          root_folder_id = ${GDRIVE_FOLDER_ID}
+          EOF
+          TARGET_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))" 2>/dev/null || echo "unknown")
+          "$RCLONE_BIN" copy Bulletins/mega_bulletin.pdf gdrive: --drive-upload-cutoff 1000G --verbose 2>&1 | tail -5
+          "$RCLONE_BIN" copyto Bulletins/mega_bulletin.pdf "gdrive:parish_bulletin_${TARGET_DATE}.pdf" --verbose 2>&1 | tail -5
+          echo "✅ Mega PDF uploaded to Google Drive folder ${GDRIVE_FOLDER_ID}"
 
       - name: Upload Bulletins artifact
         if: always()

@@ -148,6 +148,7 @@ const PD_EVIDENCE_FILES = {
 const MEGA_EXCLUDES_PATH = "parishes/mega_excludes.json";
 const MANUAL_OVERRIDES_PATH = "parishes/manual_overrides.json";
 const CONSECUTIVE_FAILURES_PATH = "parishes/consecutive_failures.json";
+const STALE_BULLETINS_PATH = "parishes/stale_bulletins.json";
 
 // Replicate Python's _url_to_key logic
 function _pdUrlToKey(url, headerName = "") {
@@ -342,6 +343,18 @@ async function _pdLoadConsecutiveFailures() {
   }
 }
 
+async function _pdLoadStaleBulletins() {
+  try {
+    const { content } = await _pdGhFetch(STALE_BULLETINS_PATH);
+    const parsed = JSON.parse(content);
+    const stale = Array.isArray(parsed?.stale) ? parsed.stale : [];
+    const unknown_date = Array.isArray(parsed?.unknown_date) ? parsed.unknown_date : [];
+    return { stale, unknown_date };
+  } catch (_e) {
+    return { stale: [], unknown_date: [] };
+  }
+}
+
 // ── Recipe status cache ────────────────────────────────────────────────────
 const _pdRecipeCache = {}; // key → "ok" | "dead" | "none"
 
@@ -424,6 +437,75 @@ function _pdUpdateBrokenInboxUi() {
     _pdShowBrokenOnly = false;
     toggleBtn.textContent = "Show Broken Only";
   }
+}
+
+function _pdUpdateStaleBannerUi(staleBulletins) {
+  const banner = document.getElementById("stale-banner");
+  const text = document.getElementById("stale-banner-text");
+  const list = document.getElementById("stale-list");
+  const toggleBtn = document.getElementById("stale-banner-toggle");
+  if (!banner || !text || !list || !toggleBtn) return;
+
+  const stale = Array.isArray(staleBulletins?.stale) ? staleBulletins.stale : [];
+  const unknown = Array.isArray(staleBulletins?.unknown_date) ? staleBulletins.unknown_date : [];
+  list.style.display = "none";
+  toggleBtn.textContent = "Show";
+
+  if (stale.length > 0) {
+    banner.style.display = "block";
+    banner.style.background = "#450a0a";
+    banner.style.borderColor = "#7f1d1d";
+    banner.style.color = "#fecaca";
+    text.textContent = `⚠️ ${stale.length} bulletin(s) are stale — click Show to review`;
+    toggleBtn.style.background = "#991b1b";
+
+    list.innerHTML = "";
+    for (const item of stale) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(127,29,29,0.5);";
+
+      const label = document.createElement("div");
+      const daysOld = Number(item?.days_old);
+      label.textContent = `${item?.display_name || item?.key || "Unknown"}${Number.isFinite(daysOld) ? ` — ${daysOld} day(s)` : ""}`;
+      label.style.cssText = "font-size:10px;line-height:1.3;flex:1;";
+      row.appendChild(label);
+
+      const fixBtn = document.createElement("button");
+      fixBtn.type = "button";
+      fixBtn.className = "pd-btn";
+      fixBtn.textContent = "Fix";
+      fixBtn.style.background = "#991b1b";
+      fixBtn.style.color = "#fee2e2";
+      fixBtn.addEventListener("click", () => {
+        if (item?.url) chrome.tabs.create({ url: item.url });
+      });
+      row.appendChild(fixBtn);
+      list.appendChild(row);
+    }
+    return;
+  }
+
+  if (unknown.length > 0) {
+    banner.style.display = "block";
+    banner.style.background = "#0f172a";
+    banner.style.borderColor = "#334155";
+    banner.style.color = "#bfdbfe";
+    text.textContent = `ℹ️ ${unknown.length} bulletins have unknown dates`;
+    toggleBtn.style.background = "#1d4ed8";
+    list.innerHTML = "";
+    for (const item of unknown) {
+      const row = document.createElement("div");
+      row.style.cssText = "padding:3px 0;font-size:10px;line-height:1.3;border-bottom:1px solid rgba(51,65,85,0.7);";
+      row.textContent = item?.display_name || item?.key || "Unknown";
+      list.appendChild(row);
+    }
+    return;
+  }
+
+  banner.style.display = "none";
+  list.innerHTML = "";
+  list.style.display = "none";
+  toggleBtn.textContent = "Show";
 }
 
 function _pdBuildRow(parish, excludes) {
@@ -713,12 +795,14 @@ async function loadParishDirectory() {
   _pdConsecutiveFailures = {};
   _pdShowBrokenOnly = false;
   _pdUpdateBrokenInboxUi();
+  _pdUpdateStaleBannerUi({ stale: [], unknown_date: [] });
 
   try {
-    const [excludes, _overrides, consecutiveFailures, ...evidenceResults] = await Promise.all([
+    const [excludes, _overrides, consecutiveFailures, staleBulletins, ...evidenceResults] = await Promise.all([
       _pdLoadExcludes(),
       _pdLoadOverrides(),
       _pdLoadConsecutiveFailures(),
+      _pdLoadStaleBulletins(),
       ...Object.entries(PD_EVIDENCE_FILES).map(([diocese, path]) =>
         _pdGhFetch(path)
           .then(({ content }) => ({ diocese, path, content }))
@@ -741,6 +825,7 @@ async function loadParishDirectory() {
 
     loadingEl.style.display = "none";
     _pdUpdateBrokenInboxUi();
+    _pdUpdateStaleBannerUi(staleBulletins);
     _pdRenderAll("", excludes);
 
     // Asynchronously load recipe status and refresh dots
@@ -784,6 +869,13 @@ document.getElementById("pd-broken-toggle").addEventListener("click", function (
   _pdShowBrokenOnly = !_pdShowBrokenOnly;
   _pdUpdateBrokenInboxUi();
   _pdRenderAll(document.getElementById("pd-search").value || "", _pdExcludes || []);
+});
+document.getElementById("stale-banner-toggle").addEventListener("click", function () {
+  const list = document.getElementById("stale-list");
+  if (!list) return;
+  const isOpen = list.style.display !== "none";
+  list.style.display = isOpen ? "none" : "block";
+  this.textContent = isOpen ? "Show" : "Hide";
 });
 
 // ── Crop done notification ─────────────────────────────────────────────────
