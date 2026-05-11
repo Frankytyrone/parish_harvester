@@ -291,7 +291,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return;
       }
 
-      const key = (message.parish_key || "").trim();
+      const key = (message.parish_key || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
       if (!key) {
         sendResponse({ ok: false, error: "No parish_key provided." });
         return;
@@ -342,13 +345,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
       // Set recorded_date to today.
       recipe.recorded_date = new Date().toISOString().slice(0, 10);
+      recipe.parish_key = key;
+      const recipeDiocese = (recipe.diocese || "").trim();
 
       const recipeJson = JSON.stringify(recipe, null, 2);
       const encoded    = btoa(unescape(encodeURIComponent(recipeJson)));
 
-      const verb = existingSha ? "update" : "add";
       const body = {
-        message: `recipe: ${verb} ${key} [from extension]`,
+        message: `chore: update recipe for ${key} [${recipeDiocese || "unknown diocese"}]`,
         content: encoded,
         ...(existingSha ? { sha: existingSha } : {}),
       };

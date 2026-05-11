@@ -118,12 +118,16 @@
     if (!hostname || !key) return;
     if (typeof chrome === "undefined" || !chrome.storage) return;
     try {
-      chrome.storage.local.get(["ph_parish_by_domain"], (r) => {
+      chrome.storage.local.get(["ph_parish_by_domain", "ph_hostname_map"], (r) => {
         if (chrome.runtime?.lastError) return;
         const cache = (r.ph_parish_by_domain && typeof r.ph_parish_by_domain === "object")
           ? r.ph_parish_by_domain : {};
-        cache[hostname] = { key, name: name || key, diocese: diocese || "", ts: Date.now() };
-        try { chrome.storage.local.set({ ph_parish_by_domain: cache }); } catch (_e) {}
+        const hostnameMap = (r.ph_hostname_map && typeof r.ph_hostname_map === "object")
+          ? r.ph_hostname_map : {};
+        const context = { key, parish_key: key, name: name || key, display_name: name || key, diocese: diocese || "", ts: Date.now() };
+        cache[hostname] = context;
+        hostnameMap[hostname] = context;
+        try { chrome.storage.local.set({ ph_parish_by_domain: cache, ph_hostname_map: hostnameMap }); } catch (_e) {}
       });
     } catch (_e) {}
   };
@@ -2931,14 +2935,17 @@
         if (ctx.diocese && !dioceseInput.value) dioceseInput.value = ctx.diocese;
       };
 
-      // Pre-populate fields: ph_training_parish → per-domain cache → last diocese.
+      // Pre-populate fields: ph_training_parish → ph_hostname_map[hostname]
+      // → per-domain cache → last diocese.
       if (typeof chrome !== "undefined" && chrome.storage) {
         try {
           const hostname = (() => { try { return new URL(window.location.href).hostname; } catch (_e) { return ""; } })();
-          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese", "ph_parish_by_domain"], (r) => {
+          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese", "ph_hostname_map", "ph_parish_by_domain"], (r) => {
             if (chrome.runtime?.lastError) return;
             if (r.ph_training_parish) {
               _applyParishContext(r.ph_training_parish);
+            } else if (hostname && r.ph_hostname_map?.[hostname]) {
+              _applyParishContext(r.ph_hostname_map[hostname]);
             } else if (hostname && r.ph_parish_by_domain?.[hostname]) {
               _applyParishContext(r.ph_parish_by_domain[hostname]);
             } else if (r.ph_last_diocese && !dioceseInput.value) {
@@ -2983,11 +2990,38 @@
         "width:100%",
         "margin-bottom:4px",
       ].join(";");
-      pushBtn.addEventListener("click", () => {
-        // Resolve key and name — prefer typed values, fall back to URL inference.
-        let key = keyInput.value.trim().toLowerCase().replace(/\s+/g, "");
-        let name = nameInput.value.trim();
-        const diocese = dioceseInput.value.trim();
+      pushBtn.addEventListener("click", async () => {
+        const hostname = (() => { try { return window.location.hostname || ""; } catch (_e) { return ""; } })();
+        const normalizeContext = (ctx) => {
+          if (!ctx || typeof ctx !== "object") return { key: "", name: "", diocese: "" };
+          const rawKey = String(ctx.parish_key || ctx.key || "").trim().toLowerCase().replace(/\s+/g, "_");
+          const rawName = String(ctx.display_name || ctx.name || "").trim();
+          const rawDiocese = String(ctx.diocese || "").trim();
+          return { key: rawKey, name: rawName, diocese: rawDiocese };
+        };
+
+        let storedContext = { key: "", name: "", diocese: "" };
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          try {
+            const storageData = await new Promise((resolve) => {
+              chrome.storage.local.get(["ph_training_parish", "ph_hostname_map"], (r) => {
+                if (chrome.runtime?.lastError) resolve({});
+                else resolve(r || {});
+              });
+            });
+            const trainingCtx = normalizeContext(storageData.ph_training_parish);
+            const hostnameCtx = normalizeContext(
+              hostname ? storageData.ph_hostname_map?.[hostname] : null
+            );
+            storedContext = trainingCtx.key ? trainingCtx : hostnameCtx;
+          } catch (_storageErr) {
+            storedContext = { key: "", name: "", diocese: "" };
+          }
+        }
+
+        let key = storedContext.key || keyInput.value.trim().toLowerCase().replace(/\s+/g, "_");
+        let name = storedContext.name || nameInput.value.trim();
+        const diocese = storedContext.diocese || dioceseInput.value.trim();
 
         if (!key) {
           key = _inferParishKeyFromUrl(standaloneStartUrl || window.location.href);
@@ -3002,12 +3036,17 @@
           if (name) nameInput.value = name;
         }
 
+        if (diocese && !dioceseInput.value.trim()) {
+          dioceseInput.value = diocese;
+        }
+
         if (!key) {
           showStatus("❌ Could not infer parish key. Please enter it above.", "error");
           return;
         }
         if (standaloneSteps.length === 0) { showStatus("⚠️ No steps recorded yet.", "warn"); return; }
 
+        console.log(`Parish Trainer: pushing recipe for key=${key}, diocese=${diocese}`);
         const recipe = buildStandaloneRecipe(key, name || key, diocese);
         pushBtn.disabled = true;
         pushBtn.textContent = "⏳ Pushing…";

@@ -191,6 +191,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f Bulletins/ || true
           git add -f parishes/consecutive_failures.json || true
+          git add -f parishes/stale_bulletins.json || true
           git diff --cached --quiet || git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
           git push || true
 
@@ -218,6 +219,40 @@ jobs:
           name: Mega-Bulletin-PDF
           path: Bulletins/mega_bulletin.pdf
           retention-days: 30
+
+      - name: Upload Mega PDF to Google Drive
+        if: always() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
+        env:
+          GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: |
+          if [ -z "${GDRIVE_SERVICE_ACCOUNT}" ] || [ -z "${GDRIVE_FOLDER_ID}" ]; then
+            echo "⏭️  Google Drive upload skipped — GDRIVE_SERVICE_ACCOUNT or GDRIVE_FOLDER_ID secret not set."
+            exit 0
+          fi
+          if ! command -v rclone >/dev/null 2>&1; then
+            sudo apt-get update -y >/dev/null
+            sudo apt-get install -y rclone >/dev/null
+          fi
+          RCLONE_BIN=$(command -v rclone)
+          mkdir -p ~/.config/rclone
+          SA_FILE=$(mktemp)
+          trap 'rm -f "${SA_FILE}"' EXIT
+          umask 077
+          echo "${GDRIVE_SERVICE_ACCOUNT}" > "${SA_FILE}"
+          cat > ~/.config/rclone/rclone.conf << EOF
+          [gdrive]
+          type = drive
+          scope = drive
+          service_account_file = ${SA_FILE}
+          root_folder_id = ${GDRIVE_FOLDER_ID}
+          EOF
+          TARGET_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))" 2>/dev/null || echo "unknown")
+          # Keep one canonical "latest" file in Drive (very high cutoff avoids chunking for this file size).
+          "$RCLONE_BIN" copy Bulletins/mega_bulletin.pdf gdrive: --drive-upload-cutoff 1000G --verbose 2>&1 | tail -5
+          # Also keep a dated immutable archive copy.
+          "$RCLONE_BIN" copyto Bulletins/mega_bulletin.pdf "gdrive:parish_bulletin_${TARGET_DATE}.pdf" --verbose 2>&1 | tail -5
+          echo "✅ Mega PDF uploaded to Google Drive folder ${GDRIVE_FOLDER_ID}"
 
       - name: Upload Bulletins artifact
         if: always()
