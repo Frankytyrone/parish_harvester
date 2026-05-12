@@ -307,11 +307,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          mkdir -p Bulletins/current Bulletins/raw
+          mkdir -p Bulletins/current
           find Bulletins/current -maxdepth 1 -type f -name '*.pdf' -delete || true
-          find Bulletins/raw -maxdepth 1 -type f -name '*.pdf' -delete || true
           find Bulletins -maxdepth 1 -type f -name 'all_bulletins_*.pdf' -delete || true
-          touch Bulletins/current/.gitkeep Bulletins/raw/.gitkeep
-          git add -A Bulletins/current Bulletins/raw Bulletins/all_bulletins_*.pdf || true
+          touch Bulletins/current/.gitkeep
+          git add -A Bulletins/current Bulletins/all_bulletins_*.pdf || true
           git diff --cached --quiet || git commit -m "chore: clean transient bulletin PDFs [skip ci]"
           git push origin HEAD:main || true
