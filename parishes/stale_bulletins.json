@@ -1,12 +1,14 @@
 {
-  "generated_at": "2026-05-12T14:26:10",
-  "stale": [],
-  "unknown_date": [
+  "generated_at": "2026-05-12T15:22:36",
+  "stale": [
     {
-      "key": "aghagallonandballinderryparish",
-      "display_name": "Aghagallon and Ballinderry",
-      "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-10th-May-2026.pdf",
-      "reason": "no_date_in_url"
+      "key": "carndonaghparish",
+      "display_name": "Carndonagh",
+      "url": "http://www.carndonaghparish.com/pdf/030526.pdf",
+      "extracted_date": "2026-05-03",
+      "days_old": 9,
+      "reason": "date_in_url"
     }
-  ]
+  ],
+  "unknown_date": []
 }
