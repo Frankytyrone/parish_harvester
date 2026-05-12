@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "buncranaparish",
+  "display_name": "Buncranaparish",
+  "diocese": "",
+  "start_url": "https://www.buncranaparish.com/parishnews.htm",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.buncranaparish.com/parishnews.htm"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"CLICK HERE to load Current Newsletter\")",
+      "href": "pdf/100526.pdf",
+      "text": "CLICK HERE to load Current Newsletter"
+    }
+  ],
+  "recorded_date": "2026-05-12"
+}
