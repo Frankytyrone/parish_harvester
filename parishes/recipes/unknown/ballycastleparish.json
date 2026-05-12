@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "ballycastleparish",
+  "display_name": "Ballycastleparish",
+  "diocese": "",
+  "start_url": "https://www.ballycastleparish.com/bulletins",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.ballycastleparish.com/bulletins"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"10th May 2026\")",
+      "href": "/s/10th-May-2026-01.pdf",
+      "text": "10th May 2026"
+    }
+  ],
+  "recorded_date": "2026-05-12"
+}
