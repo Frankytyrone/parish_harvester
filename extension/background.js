@@ -332,7 +332,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return;
       }
 
-      const filePath = `parishes/recipes/${key}.json`;
+      // Determine diocese subfolder from the recipe being pushed.
+      // Falls back to "unknown" if diocese is empty or not provided.
+      const recipeDioceseRaw = ((message.recipe || {}).diocese || "").trim().toLowerCase().replace(/\s+/g, "_");
+      const dioceseSubfolder = recipeDioceseRaw || "unknown";
+      const filePath = `parishes/recipes/${dioceseSubfolder}/${key}.json`;
       const apiBase  = `https://api.github.com/repos/${gh_repo}/contents/${filePath}`;
       const headers  = {
         Authorization: `token ${gh_pat}`,

@@ -1,0 +1,18 @@
+{
+  "parish_key": "nativityparish",
+  "display_name": "Nativity",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.nativityparish.com/news",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.nativityparish.com/news"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "no_bulletin"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

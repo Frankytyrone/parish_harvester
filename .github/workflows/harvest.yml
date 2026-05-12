@@ -220,6 +220,34 @@ jobs:
           path: Bulletins/mega_bulletin.pdf
           retention-days: 30
 
+      - name: Upload per-diocese Mega PDF artifacts
+        if: always()
+        run: |
+          # Upload one artifact per diocese mega PDF found in mega_pdf/
+          shopt -s nullglob
+          for pdf in mega_pdf/*_mega_bulletin.pdf; do
+            diocese=$(basename "${pdf}" _mega_bulletin.pdf)
+            echo "Uploading ${pdf} as ${diocese}-mega-bulletin-pdf"
+          done
+          # List found files for the log
+          ls -lh mega_pdf/ 2>/dev/null || echo "No mega_pdf/ directory yet."
+
+      - name: Upload derry mega bulletin PDF
+        if: always() && hashFiles('mega_pdf/derry_mega_bulletin.pdf') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: derry-mega-bulletin-pdf
+          path: mega_pdf/derry_mega_bulletin.pdf
+          retention-days: 30
+
+      - name: Upload down_and_connor mega bulletin PDF
+        if: always() && hashFiles('mega_pdf/down_and_connor_mega_bulletin.pdf') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: down_and_connor-mega-bulletin-pdf
+          path: mega_pdf/down_and_connor_mega_bulletin.pdf
+          retention-days: 30
+
       - name: Upload Mega PDF to Google Drive
         if: always() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
         env:

@@ -1,0 +1,35 @@
+{
+  "parish_key": "glenavyandkilleadparish",
+  "display_name": "Glenavy and Killead",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.glenavyandkilleadparish.com/bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.glenavyandkilleadparish.com/bulletins/"
+    },
+    {
+      "action": "click",
+      "selector": "div#cmplz-cookiebanner-container > div > div:nth-of-type(1) > div:nth-of-type(3) > svg",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']"
+      ]
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Fourth')",
+      "fallback_selectors": [
+        "a[href*='fourth'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "section > section:nth-of-type(2) > section > div:nth-of-type(1) > h5 > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "parish_key": "cappaghparish",
+  "display_name": "Cappaghparish",
+  "diocese": "derry",
+  "start_url": "https://www.cappaghparish.com/index.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.cappaghparish.com/index.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Parish News - Sunday, 10th May 2026\")",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "div#banner > div > section > a:nth-of-type(3)"
+      ]
+    }
+  ],
+  "recorded_date": "2026-05-10"
+}

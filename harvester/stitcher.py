@@ -107,6 +107,7 @@ def stitch_mega_pdf(
     target: date,
     contacts_path: Path | None = None,
     mega_excludes_path: Path | None = None,
+    output_path: Path | None = None,
 ) -> None:
     """
     Merge all downloaded PDFs (A-Z by display name) into one mega PDF, then
@@ -117,6 +118,9 @@ def stitch_mega_pdf(
     skip in the mega PDF (e.g. when a parish posted a stale bulletin).  The
     file is typically ``parishes/mega_excludes.json`` and can be edited from
     the browser extension without rerunning the recipe.
+
+    *output_path* overrides the default ``bulletins_dir/all_bulletins_{target}.pdf``
+    output location (used for per-diocese mega PDFs).
     """
     try:
         import PyPDF2
@@ -182,7 +186,7 @@ def stitch_mega_pdf(
         key=lambda item: item[1][2].lower() if item[1][2] else item[0].lower()
     )
 
-    output_path = bulletins_dir / f"all_bulletins_{target}.pdf"
+    output_path = output_path or (bulletins_dir / f"all_bulletins_{target}.pdf")
     merger = PyPDF2.PdfWriter()
     real_count = 0
     styles = getSampleStyleSheet()

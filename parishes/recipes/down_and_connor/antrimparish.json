@@ -1,0 +1,22 @@
+{
+  "parish_key": "antrimparish",
+  "display_name": "Antrimparish",
+  "recorded_date": "2026-05-10",
+  "start_url": "https://www.antrimparish.com/bulletinpage/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.antrimparish.com/bulletinpage/"
+    },
+    {
+      "action": "click",
+      "selector": "div#content"
+    },
+    {
+      "action": "download",
+      "url": "https://www-static.antrimparish.com/wp-content/uploads/2026/05/10th-May-2026.pdf"
+    }
+  ],
+  "version": 1,
+  "diocese": "down_and_connor"
+}
