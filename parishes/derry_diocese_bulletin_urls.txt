@@ -35,7 +35,7 @@
 http://www.ardmoreparish.com/news.html
 
 # --- Ballinascreen (& Desertmartin amalgamated) ---
-# page: https://www.parishofballinascreen.com/bulletins-2025
+# page: https://www.parishofballinascreen.com/copy-of-bulletins-2021
 # Pattern D: slug date DD_Month_YYYY (Wix site — HTML page, not PDF)
 # html_link: displayed as clickable link in mega PDF
 https://www.parishofballinascreen.com
