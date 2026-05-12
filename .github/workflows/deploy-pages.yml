@@ -29,6 +29,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Download mega PDF artifacts from harvest run
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: "*-mega-bulletin-pdf"
+          path: mega_pdf
+          merge-multiple: true
+
+      - name: Verify mega PDFs for Pages deploy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p mega_pdf
+          shopt -s nullglob
+          pdfs=(mega_pdf/*_mega_bulletin.pdf)
+          if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then
+            echo "Error: no mega PDF artifacts were downloaded from workflow run ${GITHUB_EVENT_WORKFLOW_RUN_ID:-unknown}."
+            exit 1
+          fi
+          for pdf in "${pdfs[@]}"; do
+            if [ ! -s "${pdf}" ]; then
+              echo "Error: mega PDF is missing or empty: ${pdf}"
+              exit 1
+            fi
+            ls -lh "${pdf}"
+          done
+
       - name: Build Pages site (mega PDFs + extension updates)
         env:
           CHROME_EXTENSION_APP_ID: ${{ vars.CHROME_EXTENSION_APP_ID }}
