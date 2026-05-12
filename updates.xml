@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <!-- Template only. deploy-pages.yml injects the real appid from CHROME_EXTENSION_APP_ID. -->
+  <app appid="REPLACE_WITH_EXTENSION_ID">
+    <updatecheck
+      codebase="https://frankytyrone.github.io/parish_harvester/extension/parish_trainer.zip"
+      version="1.30.0" />
+  </app>
+</gupdate>

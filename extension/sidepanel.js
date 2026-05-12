@@ -149,6 +149,8 @@ const MEGA_EXCLUDES_PATH = "parishes/mega_excludes.json";
 const MANUAL_OVERRIDES_PATH = "parishes/manual_overrides.json";
 const CONSECUTIVE_FAILURES_PATH = "parishes/consecutive_failures.json";
 const STALE_BULLETINS_PATH = "parishes/stale_bulletins.json";
+const CURRENT_BULLETINS_PATH_PREFIX = "Bulletins/current";
+const _pdParishDetailsCache = {}; // key -> details payload
 
 // Replicate Python's _url_to_key logic
 function _pdUrlToKey(url, headerName = "") {
@@ -314,6 +316,175 @@ function _pdGetOverride(parishKey) {
   return raw;
 }
 
+function _pdDioceseSlug(dioceseName) {
+  const info = _pdDioceseTexts[dioceseName];
+  if (!info?.path) return "";
+  const m = info.path.match(/^parishes\/(.+)_bulletin_urls\.txt$/);
+  return m ? m[1] : "";
+}
+
+async function _pdGetGithubConfig() {
+  try {
+    const cfg = await chrome.storage.local.get(["gh_pat", "gh_repo"]);
+    const ghPat = String(cfg?.gh_pat || "").trim();
+    const ghRepo = String(cfg?.gh_repo || "").trim();
+    if (!ghPat || !ghRepo) return null;
+    return { ghPat, ghRepo };
+  } catch (_e) {
+    return null;
+  }
+}
+
+function _pdFormatTime(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString();
+}
+
+async function _pdFetchLatestCommitTime(path) {
+  const cfg = await _pdGetGithubConfig();
+  if (!cfg) return "";
+  const endpoint = `https://api.github.com/repos/${cfg.ghRepo}/commits?path=${encodeURIComponent(path)}&per_page=1`;
+  try {
+    const resp = await fetch(endpoint, {
+      headers: {
+        Authorization: `token ${cfg.ghPat}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+    if (!resp.ok) return "";
+    const data = await resp.json();
+    const first = Array.isArray(data) ? data[0] : null;
+    return first?.commit?.committer?.date || first?.commit?.author?.date || "";
+  } catch (_e) {
+    return "";
+  }
+}
+
+async function _pdLoadRecipeForParish(parish) {
+  const key = parish.key;
+  if (!key) return { recipe: null, path: "" };
+  const slug = _pdDioceseSlug(parish.diocese);
+  const candidates = [
+    slug ? `parishes/recipes/${slug}/${key}.json` : "",
+    `parishes/recipes/${key}.json`,
+    `parishes/recipes/unknown/${key}.json`,
+  ].filter(Boolean);
+  for (const path of candidates) {
+    try {
+      const { content } = await _pdGhFetch(path);
+      return { recipe: JSON.parse(content), path };
+    } catch (_e) {
+      // try next
+    }
+  }
+  return { recipe: null, path: "" };
+}
+
+function _pdRecipeTerminalUrl(recipe) {
+  const steps = Array.isArray(recipe?.steps) ? recipe.steps : [];
+  for (let i = steps.length - 1; i >= 0; i -= 1) {
+    const step = steps[i] || {};
+    const action = String(step.action || "");
+    if (!["download", "image", "html"].includes(action)) continue;
+    const url = String(step.captured_url || step.url || "").trim();
+    if (/^https?:\/\//i.test(url)) return { url, action };
+  }
+  return { url: "", action: "" };
+}
+
+function _pdConfirmedChangesList(parish, override, recipe, recipePath) {
+  const updates = [];
+  if (override?.updated_at) {
+    updates.push(`Manual override updated ${_pdFormatTime(override.updated_at)}`);
+  } else if (override?.url) {
+    updates.push("Manual override URL saved");
+  }
+  if (recipe?.recorded_date) {
+    updates.push(`Recipe updated ${recipe.recorded_date}`);
+  }
+  if (recipePath) {
+    updates.push(`Recipe file: ${recipePath}`);
+  }
+  return updates;
+}
+
+async function _pdBuildParishDetails(parish) {
+  const cached = _pdParishDetailsCache[parish.key];
+  if (cached) return cached;
+  const override = _pdGetOverride(parish.key);
+  const { recipe, path: recipePath } = await _pdLoadRecipeForParish(parish);
+  const terminal = _pdRecipeTerminalUrl(recipe);
+  const currentUrl = (override?.url || terminal.url || parish.bulletinUrls[0] || parish.pageUrl || "").trim();
+  const changes = _pdConfirmedChangesList(parish, override, recipe, recipePath);
+  const lastUpdatedRepoIso = await _pdFetchLatestCommitTime(recipePath || _pdDioceseTexts[parish.diocese]?.path || "");
+  const lastIncludedIso = await _pdFetchLatestCommitTime(`${CURRENT_BULLETINS_PATH_PREFIX}/${parish.key}.pdf`);
+  const details = {
+    currentUrl,
+    terminalAction: terminal.action,
+    changes,
+    lastUpdatedRepoIso,
+    lastIncludedIso,
+  };
+  _pdParishDetailsCache[parish.key] = details;
+  return details;
+}
+
+function _pdRenderSubfolder(container, details) {
+  container.innerHTML = "";
+
+  const rowUrl = document.createElement("div");
+  rowUrl.className = "pd-subfolder-row";
+  rowUrl.innerHTML = `<span class="pd-subfolder-label">Current bulletin URL:</span> `;
+  if (details.currentUrl) {
+    const link = document.createElement("a");
+    link.className = "pd-subfolder-url";
+    link.href = details.currentUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = details.currentUrl;
+    rowUrl.appendChild(link);
+  } else {
+    const none = document.createElement("span");
+    none.className = "pd-subfolder-empty";
+    none.textContent = "Not available";
+    rowUrl.appendChild(none);
+  }
+  container.appendChild(rowUrl);
+
+  const rowChanges = document.createElement("div");
+  rowChanges.className = "pd-subfolder-row";
+  rowChanges.innerHTML = `<span class="pd-subfolder-label">Confirmed changes:</span> `;
+  if (details.changes.length > 0) {
+    const list = document.createElement("ul");
+    list.className = "pd-subfolder-list";
+    details.changes.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    });
+    rowChanges.appendChild(list);
+  } else {
+    const none = document.createElement("span");
+    none.className = "pd-subfolder-empty";
+    none.textContent = "No user-confirmed changes recorded";
+    rowChanges.appendChild(none);
+  }
+  container.appendChild(rowChanges);
+
+  const rowRepo = document.createElement("div");
+  rowRepo.className = "pd-subfolder-row";
+  rowRepo.innerHTML = `<span class="pd-subfolder-label">Last updated in harvester repo:</span> <span class="pd-subfolder-time">${_pdFormatTime(details.lastUpdatedRepoIso)}</span>`;
+  container.appendChild(rowRepo);
+
+  const rowMega = document.createElement("div");
+  rowMega.className = "pd-subfolder-row";
+  rowMega.innerHTML = `<span class="pd-subfolder-label">Last included in mega bulletin:</span> <span class="pd-subfolder-time">${_pdFormatTime(details.lastIncludedIso)}</span>`;
+  container.appendChild(rowMega);
+}
+
 // ── Consecutive failures ────────────────────────────────────────────────────
 
 let _pdConsecutiveFailures = {}; // key -> number
@@ -403,11 +574,17 @@ function _pdRenderAll(searchTerm, excludes) {
   for (const [diocese, parishes] of Object.entries(byDiocese)) {
     const dioceseEl = document.createElement("div");
     dioceseEl.className = "pd-diocese";
-    const title = document.createElement("div");
+    const accordion = document.createElement("details");
+    accordion.className = "pd-diocese-accordion";
+    const title = document.createElement("summary");
     title.className = "pd-diocese-title";
     title.textContent = `${diocese} (${parishes.length})`;
-    dioceseEl.appendChild(title);
-    for (const parish of parishes) dioceseEl.appendChild(_pdBuildRow(parish, excludes));
+    accordion.appendChild(title);
+    const content = document.createElement("div");
+    content.className = "pd-diocese-content";
+    for (const parish of parishes) content.appendChild(_pdBuildRow(parish, excludes));
+    accordion.appendChild(content);
+    dioceseEl.appendChild(accordion);
     container.appendChild(dioceseEl);
   }
 
@@ -563,6 +740,12 @@ function _pdBuildRow(parish, excludes) {
   clearOverrideBtn.addEventListener("click", () => _pdClearOverride(parish, dot, clearOverrideBtn));
   row.appendChild(clearOverrideBtn);
 
+  const detailsBtn = document.createElement("button");
+  detailsBtn.className = "pd-btn pd-subfolder-toggle";
+  detailsBtn.textContent = "📁";
+  detailsBtn.title = "Show parish details";
+  row.appendChild(detailsBtn);
+
   if (!parish.disabled) {
     const deadBtn = document.createElement("button");
     deadBtn.className = "pd-btn red";
@@ -601,6 +784,27 @@ function _pdBuildRow(parish, excludes) {
   row.appendChild(exclLabel);
 
   wrap.appendChild(row);
+  const detailsWrap = document.createElement("div");
+  detailsWrap.className = "pd-subfolder";
+  detailsWrap.style.display = "none";
+  wrap.appendChild(detailsWrap);
+  detailsBtn.addEventListener("click", async () => {
+    const opening = detailsWrap.style.display === "none";
+    if (!opening) {
+      detailsWrap.style.display = "none";
+      detailsBtn.title = "Show parish details";
+      return;
+    }
+    detailsWrap.style.display = "block";
+    detailsBtn.title = "Hide parish details";
+    detailsWrap.innerHTML = `<div class="pd-subfolder-loading">⏳ Loading parish details…</div>`;
+    try {
+      const details = await _pdBuildParishDetails(parish);
+      _pdRenderSubfolder(detailsWrap, details);
+    } catch (_e) {
+      detailsWrap.innerHTML = `<div class="pd-subfolder-error">Could not load parish details.</div>`;
+    }
+  });
   return wrap;
 }
 
@@ -696,6 +900,7 @@ async function _pdSetOverrideFromActiveTab(parish, dotEl, clearBtn) {
   dotEl.title = _PD_DOT_TITLES["📌"];
   clearBtn.disabled = false;
   clearBtn.style.opacity = "1";
+  delete _pdParishDetailsCache[parish.key];
   setStatus(`✅ Saved manual override for ${parish.name}.`, "ok");
 }
 
@@ -715,6 +920,7 @@ async function _pdClearOverride(parish, dotEl, clearBtn) {
   dotEl.title = _PD_DOT_TITLES[dotEl.textContent] || "";
   clearBtn.disabled = true;
   clearBtn.style.opacity = "0.4";
+  delete _pdParishDetailsCache[parish.key];
   setStatus(`✅ Cleared override for ${parish.name}.`, "ok");
 }
 
@@ -793,6 +999,7 @@ async function loadParishDirectory() {
   errorEl.style.display   = "none";
   container.innerHTML     = "";
   _pdAllParishes = []; _pdDioceseTexts = {}; _pdExcludes = null; _pdOverrides = null;
+  Object.keys(_pdParishDetailsCache).forEach((k) => delete _pdParishDetailsCache[k]);
   _pdConsecutiveFailures = {};
   _pdShowBrokenOnly = false;
   _pdUpdateBrokenInboxUi();

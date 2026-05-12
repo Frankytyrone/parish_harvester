@@ -71,6 +71,21 @@ You can load the extension privately and use it without running `train.py`.
 
 The extension now opens a popup by default, and you can launch the full operator console from there.
 
+### Optional: self-hosted auto-update channel (no reinstall)
+
+The repo now publishes:
+- `https://frankytyrone.github.io/parish_harvester/extension/parish_trainer.zip`
+- `https://frankytyrone.github.io/parish_harvester/updates.xml`
+
+and `extension/manifest.json` includes:
+
+```json
+"update_url": "https://frankytyrone.github.io/parish_harvester/updates.xml"
+```
+
+`deploy-pages.yml` rebuilds and republishes these on every `main` push that changes `extension/**`.
+Set repository variable `CHROME_EXTENSION_APP_ID` to your extension ID so `updates.xml` targets the correct app.
+
 ### Popup vs Toolbar vs Operator Console
 
 - **Popup**: quick launcher for page-level actions (show toolbar, mark current page/file/html).

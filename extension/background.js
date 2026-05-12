@@ -312,6 +312,24 @@ const _githubApiError = async (resp) => {
   }
 };
 
+function _normalizeRecipeTerminalSteps(recipe) {
+  if (!recipe || !Array.isArray(recipe.steps)) return recipe;
+  const terminalActions = new Set(["download", "image", "html"]);
+  let lastTerminalIdx = -1;
+  for (let i = 0; i < recipe.steps.length; i += 1) {
+    const action = String(recipe.steps[i]?.action || "");
+    if (terminalActions.has(action)) lastTerminalIdx = i;
+  }
+  if (lastTerminalIdx < 0) return recipe;
+
+  const normalizedSteps = recipe.steps.filter((step, idx) => {
+    const action = String(step?.action || "");
+    if (!terminalActions.has(action)) return true;
+    return idx === lastTerminalIdx;
+  });
+  return { ...recipe, steps: normalizedSteps };
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "push_recipe") return false;
 
@@ -378,13 +396,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         display_name: (incoming.display_name && incoming.display_name.trim()) ? incoming.display_name.trim() : existingRecipe.display_name,
         diocese:      (incoming.diocese      && incoming.diocese.trim())      ? incoming.diocese.trim()      : existingRecipe.diocese,
       } : incoming;
+      const normalizedRecipe = _normalizeRecipeTerminalSteps(recipe);
 
       // Set recorded_date to today.
-      recipe.recorded_date = new Date().toISOString().slice(0, 10);
-      recipe.parish_key = key;
-      const recipeDiocese = (recipe.diocese || "").trim();
+      normalizedRecipe.recorded_date = new Date().toISOString().slice(0, 10);
+      normalizedRecipe.parish_key = key;
+      const recipeDiocese = (normalizedRecipe.diocese || "").trim();
 
-      const recipeJson = JSON.stringify(recipe, null, 2);
+      const recipeJson = JSON.stringify(normalizedRecipe, null, 2);
       const encoded    = btoa(unescape(encodeURIComponent(recipeJson)));
 
       const body = {

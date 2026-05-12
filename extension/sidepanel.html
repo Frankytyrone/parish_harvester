@@ -31,6 +31,7 @@
         background: #1e293b; border: 1px solid #374151; border-radius: 6px;
         padding: 7px 8px; margin-bottom: 7px;
       }
+      .operator-hidden { display: none !important; }
       .section-title {
         font-size: 10px; font-weight: 600; color: #93c5fd; margin-bottom: 5px;
       }
@@ -51,9 +52,49 @@
       /* ── Parish Directory ── */
       #parish-dir-content { max-height: 420px; overflow-y: auto; }
       .pd-diocese { margin-bottom: 6px; }
+      .pd-diocese-accordion {
+        margin-bottom: 6px;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        background: #0f172a;
+        overflow: hidden;
+      }
       .pd-diocese-title {
         font-size: 10px; font-weight: 700; color: #fbbf24;
-        padding: 3px 0; border-bottom: 1px solid #374151; margin-bottom: 3px;
+        padding: 6px 8px; border-bottom: 1px solid #374151; margin-bottom: 0; cursor: pointer;
+        list-style: none;
+      }
+      .pd-diocese-title::-webkit-details-marker { display: none; }
+      .pd-diocese-title::before { content: "▸ "; color: #93c5fd; }
+      .pd-diocese-accordion[open] .pd-diocese-title::before { content: "▾ "; }
+      .pd-diocese-content { padding: 4px; }
+      .pd-subfolder {
+        margin: 2px 0 6px;
+        padding: 6px;
+        border: 1px dashed #334155;
+        border-radius: 4px;
+        background: #111827;
+        font-size: 9px;
+        line-height: 1.45;
+        color: #d1d5db;
+      }
+      .pd-subfolder-row { margin-bottom: 4px; word-break: break-word; }
+      .pd-subfolder-row:last-child { margin-bottom: 0; }
+      .pd-subfolder-label { color: #93c5fd; font-weight: 600; }
+      .pd-subfolder a { color: #93c5fd; text-decoration: underline; }
+      .pd-subfolder-toggle { width: auto; font-size: 9px; padding: 2px 5px; background: #1d4ed8; }
+      .pd-subfolder-loading { color: #93c5fd; }
+      .pd-subfolder-muted { color: #9ca3af; }
+      .pd-subfolder-list { margin: 0; padding-left: 14px; }
+      .pd-subfolder-list li { margin: 1px 0; }
+      .pd-subfolder-time { color: #fbbf24; }
+      .pd-subfolder-error { color: #fca5a5; }
+      .pd-subfolder-ok { color: #86efac; }
+      .pd-subfolder-empty { color: #6b7280; font-style: italic; }
+      .pd-subfolder-url {
+        display: inline-block;
+        max-width: 100%;
+        overflow-wrap: anywhere;
       }
       .pd-row {
         display: flex; align-items: center; gap: 4px;
@@ -121,7 +162,7 @@
       <p id="status">Ready.</p>
 
       <!-- Guided mode wizard — 3 simple choices -->
-      <div class="section">
+      <div class="section operator-hidden" aria-hidden="true">
         <div class="section-title">What do you see on screen?</div>
         <div class="btn-col">
           <button id="wizard-pdf" class="green">📄 Get a PDF (recommended)</button>
@@ -132,7 +173,7 @@
       </div>
 
       <!-- Advanced / More options -->
-      <details>
+      <details class="operator-hidden" aria-hidden="true">
         <summary>⚙️ Advanced / More options</summary>
         <div class="inner section">
           <div class="btn-col">
@@ -183,7 +224,7 @@
           <div id="parish-dir-loading" style="font-size:10px;color:#6b7280;display:none;">⏳ Loading…</div>
           <div id="parish-dir-error"  style="font-size:10px;color:#fca5a5;display:none;"></div>
           <div id="parish-dir-content"></div>
-          <p class="note" style="margin-top:4px;">📌 saves a parish bulletin override from the active tab URL. ☑ skips a parish in this week's mega PDF. All changes push to GitHub immediately.</p>
+          <p class="note" style="margin-top:4px;">📌 saves a parish bulletin override from the active tab URL. ☑ skips a parish in this week's mega PDF. 📁 opens parish details (URL, recipe changes, repo/mega timestamps).</p>
         </div>
       </details>
     </div>
