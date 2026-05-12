@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-05-12T12:49:38",
+  "generated_at": "2026-05-12T13:09:33",
   "stale": [],
   "unknown_date": [
     {
-      "key": "ardmoreparish",
-      "display_name": "Ardmore",
-      "url": "http://www.ardmoreparish.com/news.html",
+      "key": "ballycastleparish",
+      "display_name": "Ballycastle",
+      "url": "https://www.ballycastleparish.com/bulletins",
       "reason": "no_date_in_url"
     }
   ]
