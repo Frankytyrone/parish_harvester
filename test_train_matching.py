@@ -170,12 +170,14 @@ https://www.antrimparish.com
         popup_js = (repo_root / "extension" / "popup.js").read_text(encoding="utf-8")
         manifest = json.loads((repo_root / "extension" / "manifest.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["version"], "1.28.0")
+        self.assertEqual(manifest["version"], "1.29.0")
         self.assertIn('id="ext-version"', popup_html)
+        self.assertIn('id="mistral-api-key"', popup_html)
         self.assertIn('id="diag-section"', popup_html)
         self.assertIn('id="run-diag"', popup_html)
         self.assertIn('id="diag-results"', popup_html)
         self.assertIn("chrome.runtime.getManifest()", popup_js)
+        self.assertIn("mistral_api_key", popup_js)
         self.assertIn('dispatchToActiveTab({ type: "ping" })', popup_js)
         self.assertIn('dispatchToActiveTab({ type: "ph_ping" })', popup_js)
 

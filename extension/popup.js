@@ -80,25 +80,28 @@ document.getElementById("open-operator").addEventListener("click", () => {
 
 // ── GitHub Settings ────────────────────────────────────────────────────────
 
-chrome.storage.local.get(["gh_pat", "gh_repo"], (r) => {
+chrome.storage.local.get(["gh_pat", "gh_repo", "mistral_api_key"], (r) => {
   const patInput  = document.getElementById("gh-pat");
   const repoInput = document.getElementById("gh-repo");
+  const mistralInput = document.getElementById("mistral-api-key");
   if (patInput  && r.gh_pat)  patInput.value  = r.gh_pat;
   if (repoInput && r.gh_repo) repoInput.value = r.gh_repo;
+  if (mistralInput && r.mistral_api_key) mistralInput.value = r.mistral_api_key;
 });
 
 document.getElementById("gh-save").addEventListener("click", () => {
   const pat  = (document.getElementById("gh-pat").value  || "").trim();
   const repo = (document.getElementById("gh-repo").value || "").trim();
+  const mistralApiKey = (document.getElementById("mistral-api-key").value || "").trim();
   const ghStatusEl = document.getElementById("gh-save-status");
-  if (!pat || !repo) {
-    ghStatusEl.textContent = "❌ Both PAT and repository are required.";
-    ghStatusEl.style.color = "#fca5a5";
-    return;
-  }
-  chrome.storage.local.set({ gh_pat: pat, gh_repo: repo }, () => {
-    ghStatusEl.textContent = "✅ Settings saved.";
-    ghStatusEl.style.color = "#86efac";
+  chrome.storage.local.set({ gh_pat: pat, gh_repo: repo, mistral_api_key: mistralApiKey }, () => {
+    if (!pat || !repo) {
+      ghStatusEl.textContent = "⚠️ Saved. Add GitHub PAT + repo to enable recipe push.";
+      ghStatusEl.style.color = "#fde68a";
+    } else {
+      ghStatusEl.textContent = "✅ Settings saved.";
+      ghStatusEl.style.color = "#86efac";
+    }
     setTimeout(() => { ghStatusEl.textContent = ""; }, 3000);
   });
 });
