@@ -260,6 +260,12 @@ https://www.antrimparish.com
         self.assertIn("CURRENT_DIR / result.file_path.name", source)
         self.assertIn("RAW_DIR / result.file_path.name", source)
 
+    def test_harvest_workflow_runs_pytest_before_harvester(self) -> None:
+        workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "harvest.yml").read_text(encoding="utf-8")
+        self.assertIn("- name: Run tests", workflow)
+        self.assertIn("pytest -v --tb=short", workflow)
+        self.assertLess(workflow.index("- name: Run tests"), workflow.index("- name: Run Bulletin Harvester"))
+
     def test_deploy_pages_builds_extension_update_assets(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "deploy-pages.yml").read_text(encoding="utf-8")
         self.assertIn("push:", workflow)
@@ -270,6 +276,10 @@ https://www.antrimparish.com
 
     def test_bulletin_page_limit_constant(self) -> None:
         self.assertEqual(_MAX_BULLETIN_PAGES, 4)
+
+    def test_parish_header_links_open_in_new_browser_window(self) -> None:
+        stitcher_source = (Path(__file__).resolve().parent / "harvester" / "stitcher.py").read_text(encoding="utf-8")
+        self.assertIn("newWindow=True", stitcher_source)
 
     def test_stitch_mega_pdf_skips_oversized_bulletins(self) -> None:
         """PDFs with more than _MAX_BULLETIN_PAGES pages must be excluded from the mega PDF."""
