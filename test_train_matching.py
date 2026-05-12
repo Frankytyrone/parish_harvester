@@ -285,6 +285,7 @@ https://www.antrimparish.com
         self.assertIn("github.actor != 'github-actions[bot]'", workflow)
         self.assertIn("!contains(github.event.head_commit.message, '[skip ci]')", workflow)
         self.assertIn('manifest_path = Path("extension/manifest.json")', workflow)
+        self.assertIn("version must be major.minor.patch", workflow)
         self.assertIn('git commit -m "chore: bump extension version [skip ci]"', workflow)
 
     def test_bulletin_page_limit_constant(self) -> None:

@@ -26,7 +26,10 @@ jobs:
           manifest_path = Path("extension/manifest.json")
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-          major, minor, patch = map(int, manifest["version"].split("."))
+          try:
+            major, minor, patch = map(int, str(manifest["version"]).split("."))
+          except Exception as exc:
+            raise SystemExit("extension/manifest.json version must be major.minor.patch") from exc
           manifest["version"] = f"{major}.{minor}.{patch + 1}"
           manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
           PY
