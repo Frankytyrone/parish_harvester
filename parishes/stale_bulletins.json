@@ -1,14 +1,12 @@
 {
-  "generated_at": "2026-05-12T15:22:36",
-  "stale": [
+  "generated_at": "2026-05-12T15:25:07",
+  "stale": [],
+  "unknown_date": [
     {
-      "key": "carndonaghparish",
-      "display_name": "Carndonagh",
-      "url": "http://www.carndonaghparish.com/pdf/030526.pdf",
-      "extracted_date": "2026-05-03",
-      "days_old": 9,
-      "reason": "date_in_url"
+      "key": "castledergparish",
+      "display_name": "Castlederg",
+      "url": "https://www.castledergparish.com/parishnews.html",
+      "reason": "no_date_in_url"
     }
-  ],
-  "unknown_date": []
+  ]
 }
