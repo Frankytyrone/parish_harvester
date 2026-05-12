@@ -1,0 +1,38 @@
+name: Bump extension version
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Bump extension manifest patch version
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest_path = Path("extension/manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+          major, minor, patch = map(int, manifest["version"].split("."))
+          manifest["version"] = f"{major}.{minor}.{patch + 1}"
+          manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Commit and push updated manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add extension/manifest.json
+          git diff --cached --quiet || git commit -m "chore: bump extension version [skip ci]"
+          git push
