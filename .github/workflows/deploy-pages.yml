@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           mkdir -p mega_pdf
           # Remove any stale PDFs before copying this run's verified artifacts.
-          find mega_pdf -maxdepth 1 -type f -name '*.pdf' -delete
+          find mega_pdf -maxdepth 1 -type f -name '*_mega_bulletin.pdf' -delete
           if [ -d _harvest_artifacts ]; then
             find _harvest_artifacts -type f -name '*_mega_bulletin.pdf' -exec cp {} mega_pdf/ \;
           fi
