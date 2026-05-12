@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-05-12T13:09:33",
+  "generated_at": "2026-05-12T14:26:10",
   "stale": [],
   "unknown_date": [
     {
-      "key": "ballycastleparish",
-      "display_name": "Ballycastle",
-      "url": "https://www.ballycastleparish.com/bulletins",
+      "key": "aghagallonandballinderryparish",
+      "display_name": "Aghagallon and Ballinderry",
+      "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-10th-May-2026.pdf",
       "reason": "no_date_in_url"
     }
   ]
