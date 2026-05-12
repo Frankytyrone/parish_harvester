@@ -7,7 +7,17 @@
   "steps": [
     {
       "action": "goto",
-      "url": "https://clonleighparish.com/2026/05/08/strabane-pastoral-area-newsletter-for-sunday-10th-may-2026/"
+      "url": "https://clonleighparish.com/category/newsletter/"
+    },
+    {
+      "action": "click",
+      "selector": "article h1.entry-title a, article h2.entry-title a, .entry-title a",
+      "fallback_selectors": [
+        "h2.entry-title a",
+        "h1.entry-title a",
+        ".post-title a",
+        "article a[rel='bookmark']"
+      ]
     },
     {
       "action": "print_to_pdf"
