@@ -11,9 +11,9 @@
     },
     {
       "action": "click",
-      "selector": "div:has-text(\"Sunday, 10th May 2026 - Sixth Sunday of Easter\")",
-      "href": "",
-      "text": "Sunday, 10th May 2026 - Sixth Sunday of Easter"
+      "selector": "a:has-text(\"CLICK HERE to load Current Newsletter\")",
+      "href": "pdf/100526.pdf",
+      "text": "CLICK HERE to load Current Newsletter"
     }
   ],
   "recorded_date": "2026-05-12"
