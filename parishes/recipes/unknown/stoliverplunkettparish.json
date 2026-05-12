@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "parish_key": "stoliverplunkettparish",
+  "display_name": "Stoliverplunkettparish",
+  "diocese": "",
+  "start_url": "https://stoliverplunkettparish.ie/bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stoliverplunkettparish.ie/bulletins/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"10th May 2026\")",
+      "href": "https://stoliverplunkettparish.ie/wp-content/uploads/2026/05/Sun-10th-May-26.pdf",
+      "text": "10th May 2026"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Accept Required Only\")",
+      "fallback_selectors": [
+        "html > body > div:nth-of-type(5) > div > a:nth-of-type(2)"
+      ]
+    }
+  ],
+  "recorded_date": "2026-05-12"
+}
