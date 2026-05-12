@@ -170,7 +170,11 @@ https://www.antrimparish.com
         popup_js = (repo_root / "extension" / "popup.js").read_text(encoding="utf-8")
         manifest = json.loads((repo_root / "extension" / "manifest.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["version"], "1.29.0")
+        self.assertEqual(manifest["version"], "1.30.0")
+        self.assertEqual(
+            manifest.get("update_url"),
+            "https://frankytyrone.github.io/parish_harvester/updates.xml",
+        )
         self.assertIn('id="ext-version"', popup_html)
         self.assertIn('id="mistral-api-key"', popup_html)
         self.assertIn('id="diag-section"', popup_html)
@@ -180,6 +184,16 @@ https://www.antrimparish.com
         self.assertIn("mistral_api_key", popup_js)
         self.assertIn('dispatchToActiveTab({ type: "ping" })', popup_js)
         self.assertIn('dispatchToActiveTab({ type: "ph_ping" })', popup_js)
+
+    def test_operator_console_hides_wizard_and_uses_directory_details(self) -> None:
+        repo_root = Path(__file__).resolve().parent
+        sidepanel_html = (repo_root / "extension" / "sidepanel.html").read_text(encoding="utf-8")
+        sidepanel_js = (repo_root / "extension" / "sidepanel.js").read_text(encoding="utf-8")
+        self.assertIn('class="section operator-hidden"', sidepanel_html)
+        self.assertIn('class="operator-hidden"', sidepanel_html)
+        self.assertIn("pd-diocese-accordion", sidepanel_html)
+        self.assertIn("_pdBuildParishDetails", sidepanel_js)
+        self.assertIn("pd-subfolder", sidepanel_js)
 
     def test_training_uses_persistent_context_with_extension_args(self) -> None:
         train_source = (Path(__file__).resolve().parent / "train.py").read_text(encoding="utf-8")
@@ -231,6 +245,28 @@ https://www.antrimparish.com
         # The toolbar can still be shown manually via the popup "Show Toolbar"
         # button or by clicking the extension icon (toggle_toolbar).
         self.assertIn("toggle_toolbar", background_js)
+
+    def test_background_normalizes_recipe_to_single_terminal_url(self) -> None:
+        repo_root = Path(__file__).resolve().parent
+        background_js = (repo_root / "extension" / "background.js").read_text(encoding="utf-8")
+        self.assertIn("function _normalizeRecipeTerminalSteps", background_js)
+        self.assertIn('new Set(["download", "image", "html"])', background_js)
+        self.assertIn("idx === lastTerminalIdx", background_js)
+
+    def test_main_deletes_single_pdfs_after_diocese_mega(self) -> None:
+        source = (Path(__file__).resolve().parent / "main.py").read_text(encoding="utf-8")
+        self.assertIn("Deleted", source)
+        self.assertIn("single PDF file(s)", source)
+        self.assertIn("CURRENT_DIR / result.file_path.name", source)
+        self.assertIn("RAW_DIR / result.file_path.name", source)
+
+    def test_deploy_pages_builds_extension_update_assets(self) -> None:
+        workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "deploy-pages.yml").read_text(encoding="utf-8")
+        self.assertIn("push:", workflow)
+        self.assertIn("extension/**", workflow)
+        self.assertIn("Build Pages site (mega PDFs + extension updates)", workflow)
+        self.assertIn("parish_trainer.zip", workflow)
+        self.assertIn("_site/updates.xml", workflow)
 
     def test_bulletin_page_limit_constant(self) -> None:
         self.assertEqual(_MAX_BULLETIN_PAGES, 4)

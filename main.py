@@ -334,6 +334,24 @@ def main() -> int:
                     output_path=diocese_pdf,
                 )
                 print(f"  📖 {short} mega PDF : {diocese_pdf}")
+                # Mega PDF exists for this diocese — remove per-parish single PDFs
+                # for this diocese so only the mega output remains in the repo.
+                deleted = 0
+                for result in d_results:
+                    if result.status != "ok" or not result.file_path:
+                        continue
+                    for candidate in (
+                        CURRENT_DIR / result.file_path.name,
+                        RAW_DIR / result.file_path.name,
+                    ):
+                        try:
+                            if candidate.exists():
+                                candidate.unlink()
+                                deleted += 1
+                        except OSError:
+                            pass
+                if deleted:
+                    print(f"  🗑️  Deleted {deleted} single PDF file(s) for {short}")
             except Exception as exc:
                 print(f"  ⚠️  {short} mega PDF failed (non-fatal): {exc}")
 

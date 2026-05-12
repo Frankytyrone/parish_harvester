@@ -47,6 +47,28 @@
         margin: 10px 0 0;
         line-height: 1.35;
       }
+      .help {
+        margin-top: 10px;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+      .help h3 {
+        margin: 8px 0 4px;
+        color: #93c5fd;
+        font-size: 11px;
+      }
+      .help ul,
+      .help ol {
+        margin: 4px 0 8px 16px;
+        padding: 0;
+      }
+      .help li { margin: 3px 0; }
+      .help code {
+        background: #0f172a;
+        border: 1px solid #374151;
+        border-radius: 4px;
+        padding: 1px 4px;
+      }
       .section {
         background: #1e293b;
         border: 1px solid #374151;
@@ -131,8 +153,58 @@
         </div>
       </details>
 
-      <p class="note">Page actions (PDF, image, crop, links) are on the floating toolbar.</p>
-      <p class="note">Tip: Open Operator Console to browse parishes, update links, and manage the mega PDF.</p>
+      <details class="section help" id="toolbar-help">
+        <summary class="section-title">📘 Toolbar Help Guide</summary>
+        <div class="section-content">
+          <h3>What this does</h3>
+          <ul>
+            <li><strong>Floating toolbar (front-end):</strong> use while viewing parish sites to capture bulletin actions.</li>
+            <li><strong>Operator Console (backend):</strong> use for parish directory updates, URL overrides, and mega PDF control.</li>
+          </ul>
+
+          <h3>Train a new parish (step-by-step)</h3>
+          <ol>
+            <li>Open the parish bulletin website.</li>
+            <li>Use the floating toolbar to record click steps and the final bulletin URL.</li>
+            <li>Push the recipe to GitHub from the toolbar.</li>
+            <li>Open Operator Console → Parish Directory to verify status and run an instant rebuild.</li>
+          </ol>
+
+          <h3>Update a changed parish URL</h3>
+          <ol>
+            <li>Open the new bulletin page/PDF in the active tab.</li>
+            <li>Operator Console → Parish Directory → click <strong>📌</strong> for that parish.</li>
+            <li>This overwrites the parish override URL (latest URL only).</li>
+            <li>Use <strong>🧹</strong> later to clear the override.</li>
+          </ol>
+
+          <h3>Stale bulletin warning</h3>
+          <ul>
+            <li>If stale warning appears, click <strong>Fix</strong> to open the parish page, then re-save the correct URL/recipe.</li>
+            <li>After the next harvest run, the warning clears when fresh data is found.</li>
+          </ul>
+
+          <h3>Parish Directory</h3>
+          <ul>
+            <li>Browse by diocese accordion and search parish names.</li>
+            <li>Use parish <strong>📁</strong> details to see current URL, recipe changes, and last update/mega timestamps.</li>
+          </ul>
+
+          <h3>Mega PDF</h3>
+          <ul>
+            <li>The mega PDF is the merged weekly diocesan bulletin pack.</li>
+            <li>It updates after successful harvest workflow runs and is published to GitHub Pages.</li>
+          </ul>
+
+          <h3>Change Mistral API key when it expires</h3>
+          <ol>
+            <li>Generate a new key in <code>console.mistral.ai</code>.</li>
+            <li>Open this popup → <strong>GitHub Settings</strong> → <strong>Mistral API Key</strong>.</li>
+            <li>Paste the new key and click <strong>💾 Save settings</strong>.</li>
+            <li>Also update GitHub secret <code>MISTRAL_API_KEY</code> in repository Actions secrets.</li>
+          </ol>
+        </div>
+      </details>
 
       <details class="section" id="diag-section">
         <summary class="section-title">🔍 Diagnostics</summary>

@@ -5,6 +5,12 @@ on:
     workflows: ["Harvest Parish Bulletins"]
     types:
       - completed
+  push:
+    branches: [main]
+    paths:
+      - extension/**
+      - updates.xml
+      - .github/workflows/deploy-pages.yml
   workflow_dispatch:
 
 permissions:
@@ -14,7 +20,7 @@ permissions:
 
 jobs:
   deploy:
-    if: (github.event_name == 'workflow_dispatch') || (github.event.workflow_run.conclusion == 'success')
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -23,10 +29,42 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Build Pages site (mega PDFs + extension updates)
+        env:
+          CHROME_EXTENSION_APP_ID: ${{ vars.CHROME_EXTENSION_APP_ID }}
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          if [ -d mega_pdf ]; then
+            cp -a mega_pdf/. _site/
+          fi
+
+          mkdir -p _site/extension
+          zip -qr _site/extension/parish_trainer.zip extension
+
+          VERSION=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path("extension/manifest.json").read_text(encoding="utf-8"))
+          print(manifest.get("version", "0.0.0"))
+          PY
+          )
+          APP_ID="${CHROME_EXTENSION_APP_ID:-REPLACE_WITH_EXTENSION_ID}"
+          PAGES_BASE="https://frankytyrone.github.io/parish_harvester"
+          cat > _site/updates.xml <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+            <app appid="${APP_ID}">
+              <updatecheck codebase="${PAGES_BASE}/extension/parish_trainer.zip" version="${VERSION}" />
+            </app>
+          </gupdate>
+          XML
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: mega_pdf/
+          path: _site/
 
       - name: Deploy to GitHub Pages
         id: deployment
