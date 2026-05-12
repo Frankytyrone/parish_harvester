@@ -3348,9 +3348,26 @@
         const headers = {};
         const pat = String(settings.gh_pat || "").trim();
         if (pat) headers.Authorization = `token ${pat}`;
+        // Keep this normalization aligned with background.js::_canonicalDioceseSlug.
+        const canonicalDioceseSlug = (value) => {
+          const raw = String(value || "").trim().toLowerCase();
+          if (!raw) return "";
+          if (raw === "derry" || raw === "derry_diocese" || raw === "derry diocese") return "derry";
+          if (
+            raw === "down_and_connor" ||
+            raw === "down & connor" ||
+            raw === "down and connor" ||
+            raw === "down_and_connor_diocese" ||
+            raw === "down and connor diocese" ||
+            raw === "down & connor diocese"
+          ) {
+            return "down_and_connor";
+          }
+          return raw.replace(/&/g, "and").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+        };
 
         // Try diocese subfolder path first, then fall back to legacy flat path.
-        const dioceseSubfolder = (String(diocese || "").trim().toLowerCase().replace(/\s+/g, "_")) || "unknown";
+        const dioceseSubfolder = canonicalDioceseSlug(diocese) || "unknown";
         const pathsToTry = [
           `parishes/recipes/${dioceseSubfolder}/${key}.json`,
           `parishes/recipes/${key}.json`,

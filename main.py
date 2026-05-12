@@ -185,6 +185,7 @@ def main() -> int:
 
         ok_count = sum(1 for r in results if r.status == "ok")
         html_count = sum(1 for r in results if r.status == "html_link")
+        skipped_count = sum(1 for r in results if r.status == "skipped")
         err_count = sum(1 for r in results if r.status == "error")
 
         # Log every result to harvest_log.json
@@ -193,6 +194,7 @@ def main() -> int:
 
         print(f"  ✅ Downloaded  : {ok_count}")
         print(f"  🔗 HTML links  : {html_count}")
+        print(f"  ⏭️  Skipped     : {skipped_count}")
         print(f"  💥 Failed      : {err_count}")
 
         if err_count:

@@ -23,6 +23,7 @@ class ConsecutiveFailuresTests(unittest.TestCase):
                 FetchResult(key="keep_failing", display_name="A", status="error"),
                 FetchResult(key="will_reset", display_name="B", status="ok"),
                 FetchResult(key="new_html_success", display_name="C", status="html_link"),
+                FetchResult(key="new_skipped_success", display_name="E", status="skipped"),
                 FetchResult(key="new_failure", display_name="D", status="error"),
             ]
 
@@ -31,6 +32,7 @@ class ConsecutiveFailuresTests(unittest.TestCase):
             self.assertEqual(counts["keep_failing"], 2)
             self.assertEqual(counts["will_reset"], 0)
             self.assertEqual(counts["new_html_success"], 0)
+            self.assertEqual(counts["new_skipped_success"], 0)
             self.assertEqual(counts["new_failure"], 1)
             self.assertEqual(counts["untouched"], 5)
 

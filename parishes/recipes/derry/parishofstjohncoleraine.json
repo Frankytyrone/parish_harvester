@@ -1,0 +1,9 @@
+{
+  "parish_key": "parishofstjohncoleraine",
+  "display_name": "Coleraine (St John)",
+  "diocese": "derry",
+  "status": "inactive",
+  "skip": true,
+  "reason": "Website DNS no longer resolves (parishofstjohncoleraine.com).",
+  "recorded_date": "2026-05-12"
+}

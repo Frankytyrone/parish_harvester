@@ -1,0 +1,9 @@
+{
+  "parish_key": "stlukesparishbelfast",
+  "display_name": "St Luke's Belfast",
+  "diocese": "down_and_connor",
+  "status": "inactive",
+  "skip": true,
+  "reason": "Website DNS no longer resolves (stlukesparishbelfast.com).",
+  "recorded_date": "2026-05-12"
+}

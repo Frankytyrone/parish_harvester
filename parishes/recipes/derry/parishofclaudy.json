@@ -1,0 +1,18 @@
+{
+  "parish_key": "parishofclaudy",
+  "display_name": "Claudy",
+  "recorded_date": "2026-05-12",
+  "start_url": "https://www.parishofclaudy.com/welcome/weekly-bulletin.html",
+  "diocese": "derry",
+  "timeout": 30000,
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.parishofclaudy.com/welcome/weekly-bulletin.html"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.docx"
+    }
+  ]
+}

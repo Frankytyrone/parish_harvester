@@ -23,5 +23,6 @@
       "url_pattern": "*.pdf"
     }
   ],
-  "diocese": "down_and_connor"
+  "diocese": "down_and_connor",
+  "timeout": 30000
 }

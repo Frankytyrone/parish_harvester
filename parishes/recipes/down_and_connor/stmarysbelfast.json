@@ -32,5 +32,8 @@
       "url_pattern": "*.pdf"
     }
   ],
-  "diocese": "down_and_connor"
+  "diocese": "down_and_connor",
+  "status": "inactive",
+  "skip": true,
+  "reason": "SSL certificate invalid (ERR_CERT_COMMON_NAME_INVALID)."
 }

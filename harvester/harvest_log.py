@@ -46,7 +46,7 @@ def log_result(
         ``result.status == "error"``.
     """
     if result is not None:
-        status = result.status if result.status in ("ok", "html_link") else "failed"
+        status = result.status if result.status in ("ok", "html_link", "skipped") else "failed"
         url = result.url
         file_type = result.file_type
         err_msg = result.error if status == "failed" else ""
@@ -59,7 +59,7 @@ def log_result(
     entry = {
         "parish_key": key,
         "display_name": display_name,
-        "status": "ok" if status in ("ok", "html_link") else "failed",
+        "status": status if status in ("ok", "html_link", "skipped") else "failed",
         "url": url,
         "file_type": file_type,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -124,7 +124,12 @@ def print_summary(n: int = 20) -> None:
     for e in recent:
         name = (e.get("display_name") or "")[:col_name]
         status = e.get("status", "")
-        status_icon = "✅ ok  " if status == "ok" else "💥 fail"
+        if status == "ok":
+            status_icon = "✅ ok  "
+        elif status == "skipped":
+            status_icon = "⏭️ skip"
+        else:
+            status_icon = "💥 fail"
         ftype = (e.get("file_type") or "")[:col_type]
         ts_raw = e.get("timestamp", "")
         ts = ts_raw[:col_ts] if ts_raw else ""
@@ -138,9 +143,13 @@ def print_summary(n: int = 20) -> None:
             f"│ {detail}"
         )
 
-    ok_count = sum(1 for e in recent if e.get("status") == "ok")
+    ok_count = sum(1 for e in recent if e.get("status") in ("ok", "html_link"))
+    skipped_count = sum(1 for e in recent if e.get("status") == "skipped")
     fail_count = sum(1 for e in recent if e.get("status") == "failed")
-    print(f"\n  ✅ {ok_count} ok   💥 {fail_count} failed   (of last {len(recent)})\n")
+    print(
+        f"\n  ✅ {ok_count} ok   ⏭️ {skipped_count} skipped   "
+        f"💥 {fail_count} failed   (of last {len(recent)})\n"
+    )
 
 
 def update_consecutive_failures(
@@ -168,7 +177,7 @@ def update_consecutive_failures(
         key = (result.key or "").strip()
         if not key:
             continue
-        if result.status in ("ok", "html_link"):
+        if result.status in ("ok", "html_link", "skipped"):
             counts[key] = 0
         else:
             counts[key] = counts.get(key, 0) + 1

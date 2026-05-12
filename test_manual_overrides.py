@@ -256,6 +256,41 @@ class ManualOverrideTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.is_fallback)
         fallback.assert_awaited_once()
 
+    async def test_fetch_entry_skips_inactive_recipe(self) -> None:
+        entry = ParishEntry(
+            key="inactiveparish",
+            display_name="Inactive Parish",
+            pattern="A",
+            content_type="pdf",
+            example_url="https://example.org/current.pdf",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp)
+            recipe_path = out_dir / "recipes" / "inactiveparish.json"
+            recipe_path.parent.mkdir(parents=True, exist_ok=True)
+            recipe_path.write_text(
+                json.dumps(
+                    {
+                        "parish_key": "inactiveparish",
+                        "status": "inactive",
+                        "reason": "Dead website",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch("harvester.fetcher.recipe_path_for", return_value=recipe_path):
+                result = await _fetch_entry(
+                    entry,
+                    out_dir,
+                    date(2026, 5, 10),
+                    browser=object(),
+                    manual_overrides={},
+                )
+
+        self.assertEqual(result.status, "skipped")
+        self.assertEqual(result.error, "Dead website")
+
 
 if __name__ == "__main__":
     unittest.main()

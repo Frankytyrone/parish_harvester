@@ -28,5 +28,6 @@
       "element_selector": ""
     }
   ],
-  "diocese": "down_and_connor"
+  "diocese": "down_and_connor",
+  "timeout": 30000
 }

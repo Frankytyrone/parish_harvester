@@ -27,7 +27,7 @@ def generate_report(
     """
     Move downloaded PDFs from raw_dir to current_dir, write report files.
 
-    Returns a summary dict with keys: downloaded, html_links, failed.
+    Returns a summary dict with keys: downloaded, html_links, skipped, failed.
     """
     current_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,6 +41,7 @@ def generate_report(
 
     downloaded: list[dict] = []
     html_links: list[dict] = []
+    skipped: list[dict] = []
     failed: list[dict] = []
 
     for r in results:
@@ -61,6 +62,13 @@ def generate_report(
                 "display_name": r.display_name,
                 "url": r.url,
             })
+        elif r.status == "skipped":
+            skipped.append({
+                "parish": r.key,
+                "display_name": r.display_name,
+                "url": r.url,
+                "reason": r.error,
+            })
         else:
             failed.append({
                 "parish": r.key,
@@ -74,10 +82,12 @@ def generate_report(
         "summary": {
             "downloaded": len(downloaded),
             "html_links": len(html_links),
+            "skipped": len(skipped),
             "failed": len(failed),
         },
         "downloaded": downloaded,
         "html_links": html_links,
+        "skipped": skipped,
         "failed": failed,
     }
 
@@ -89,6 +99,7 @@ def generate_report(
         "=" * 50,
         f"Downloaded : {len(downloaded)}",
         f"HTML links : {len(html_links)}",
+        f"Skipped    : {len(skipped)}",
         f"Failed     : {len(failed)}",
         "",
     ]
@@ -101,6 +112,11 @@ def generate_report(
         lines += ["HTML-only parishes (clickable links in mega PDF):", ""]
         for h in html_links:
             lines.append(f"  🔗 {h['display_name']} — {h['url']}")
+        lines.append("")
+    if skipped:
+        lines += ["Skipped parishes:", ""]
+        for s in skipped:
+            lines.append(f"  ⏭️  {s['display_name']} — {s['reason']}")
         lines.append("")
     if failed:
         lines += ["Failed parishes:", ""]
