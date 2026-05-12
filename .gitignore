@@ -1,7 +1,3 @@
-Bulletins/
-!Bulletins/
-!Bulletins/current/
-!Bulletins/raw/
 .env
 __pycache__/
 *.pyc

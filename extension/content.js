@@ -3348,6 +3348,7 @@
         const headers = {};
         const pat = String(settings.gh_pat || "").trim();
         if (pat) headers.Authorization = `token ${pat}`;
+        // Keep this normalization aligned with background.js::_canonicalDioceseSlug.
         const canonicalDioceseSlug = (value) => {
           const raw = String(value || "").trim().toLowerCase();
           if (!raw) return "";

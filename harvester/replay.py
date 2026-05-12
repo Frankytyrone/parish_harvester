@@ -27,6 +27,12 @@ PDFEMB_HREF_EXTRACT_JS = "(els) => els.map(el => el.getAttribute('href')).filter
 
 
 def _recipe_step_timeout_ms(recipe: dict) -> int:
+    """Return recipe-specific step timeout in milliseconds.
+
+    Uses ``timeout_ms`` first, then ``timeout`` for backward compatibility.
+    Values are clamped to [1_000, 120_000] ms to avoid unusably low timeouts
+    and excessively long waits from malformed recipe data.
+    """
     raw = recipe.get("timeout_ms", recipe.get("timeout"))
     try:
         if raw is None:
