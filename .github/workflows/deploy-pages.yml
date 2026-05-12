@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           mkdir -p mega_pdf
           # Remove any stale PDFs before copying this run's verified artifacts.
-          find mega_pdf -maxdepth 1 -type f -name '*.pdf' -delete || true
+          find mega_pdf -maxdepth 1 -type f -name '*.pdf' -delete
           if [ -d _harvest_artifacts ]; then
             find _harvest_artifacts -type f -name '*_mega_bulletin.pdf' -exec cp {} mega_pdf/ \;
           fi
@@ -55,6 +55,7 @@ jobs:
           pdfs=(mega_pdf/*_mega_bulletin.pdf)
           if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then
             echo "Error: no mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
+            echo "Check that the upstream Harvest Parish Bulletins run succeeded, uploaded the diocesan *-mega-bulletin-pdf artifacts, and that those artifacts have not expired."
             exit 1
           fi
           for pdf in "${pdfs[@]}"; do
