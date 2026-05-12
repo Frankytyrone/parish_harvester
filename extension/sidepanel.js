@@ -147,6 +147,7 @@ const PD_EVIDENCE_FILES = {
 };
 const MEGA_EXCLUDES_PATH = "parishes/mega_excludes.json";
 const MANUAL_OVERRIDES_PATH = "parishes/manual_overrides.json";
+const LAST_INCLUDED_PATH = "parishes/last_included.json";
 const CONSECUTIVE_FAILURES_PATH = "parishes/consecutive_failures.json";
 const STALE_BULLETINS_PATH = "parishes/stale_bulletins.json";
 const CURRENT_BULLETINS_PATH_PREFIX = "Bulletins/current";
@@ -220,7 +221,7 @@ function _pdUpdatePageUrl(fileText, parishName, newUrl) {
     }
     if (inSection) {
       if (/^#\s*---/.test(lines[i].trim())) {
-        if (!replaced && headerIdx >= 0) lines.splice(headerIdx + 1, 0, `# page: ${newUrl}`);
+        if (!replaced && headerIdx >= 0) { lines.splice(headerIdx + 1, 0, `# page: ${newUrl}`); replaced = true; }
         break;
       }
       if (/^#\s*page:/i.test(lines[i].trim())) {
@@ -251,6 +252,33 @@ function _pdGhPush(path, content, commitMsg) {
       resolve(res);
     });
   });
+}
+
+// ── Harvest workflow dispatch ──────────────────────────────────────────────
+
+async function _pdDispatchHarvest(parishKey) {
+  const cfg = await _pdGetGithubConfig();
+  if (!cfg) return { ok: false, error: "GitHub not configured." };
+  try {
+    const resp = await fetch(
+      `https://api.github.com/repos/${cfg.ghRepo}/actions/workflows/harvest.yml/dispatches`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `token ${cfg.ghPat}`,
+          Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({ ref: "main", inputs: { diocese: "all", target_parish: parishKey } }),
+      }
+    );
+    if (resp.status === 204) return { ok: true };
+    if (resp.status === 403) return { ok: false, error: "PAT missing 'workflow' scope." };
+    return { ok: false, error: `Dispatch failed (${resp.status}).` };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
 }
 
 // ── Mega-excludes helpers ─────────────────────────────────────────────────
@@ -314,6 +342,22 @@ function _pdGetOverride(parishKey) {
   if (!raw || typeof raw !== "object") return null;
   if (typeof raw.url !== "string" || !/^https?:\/\//i.test(raw.url)) return null;
   return raw;
+}
+
+// ── Last-included timestamps ───────────────────────────────────────────────
+
+let _pdLastIncluded = null; // key -> ISO string
+
+async function _pdLoadLastIncluded() {
+  if (_pdLastIncluded !== null) return _pdLastIncluded;
+  try {
+    const { content } = await _pdGhFetch(LAST_INCLUDED_PATH);
+    const parsed = JSON.parse(content);
+    _pdLastIncluded = (parsed && typeof parsed === "object") ? parsed : {};
+  } catch (_e) {
+    _pdLastIncluded = {};
+  }
+  return _pdLastIncluded;
 }
 
 function _pdDioceseSlug(dioceseName) {
@@ -424,7 +468,7 @@ async function _pdBuildParishDetails(parish) {
   const currentUrl = (override?.url || terminal.url || parish.bulletinUrls[0] || parish.pageUrl || "").trim();
   const changes = _pdConfirmedChangesList(parish, override, recipe, recipePath);
   const lastUpdatedRepoIso = await _pdFetchLatestCommitTime(recipePath || _pdDioceseTexts[parish.diocese]?.path || "");
-  const lastIncludedIso = await _pdFetchLatestCommitTime(`${CURRENT_BULLETINS_PATH_PREFIX}/${parish.key}.pdf`);
+  const lastIncludedIso = (_pdLastIncluded && _pdLastIncluded[parish.key]) || "";
   const details = {
     currentUrl,
     terminalAction: terminal.action,
@@ -844,27 +888,47 @@ function _pdShowEditRow(wrap, parish) {
   const btnRow = document.createElement("div");
   btnRow.className = "pd-edit-btns";
 
+  const inlineStatus = document.createElement("div");
+  inlineStatus.style.cssText = "font-size:9px;margin-top:3px;min-height:12px;";
+  const setInlineStatus = (msg, type) => {
+    inlineStatus.textContent = msg;
+    inlineStatus.style.color = type === "err" ? "#fca5a5" : "#86efac";
+  };
+
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.className = "green";
   saveBtn.textContent = "💾 Save";
   saveBtn.addEventListener("click", async () => {
     const newUrl = inp.value.trim();
-    if (!newUrl) { setStatus("❌ URL is required.", "err"); return; }
-    if (!info)   { setStatus("❌ Evidence file not loaded.", "err"); return; }
-    saveBtn.disabled = true; saveBtn.textContent = "⏳";
+    if (!newUrl) { setInlineStatus("❌ URL is required.", "err"); setStatus("❌ URL is required.", "err"); return; }
+    if (!info)   { setInlineStatus("❌ Evidence file not loaded.", "err"); setStatus("❌ Evidence file not loaded.", "err"); return; }
+    saveBtn.disabled = true; saveBtn.textContent = "⏳ Saving…";
+    setInlineStatus("Saving…", "ok");
     try {
       const updated = _pdUpdatePageUrl(info.text, parish.name, newUrl);
       const res = await _pdGhPush(info.path, updated, `evidence: update page URL for ${parish.name} [from extension]`);
       if (res?.ok) {
         info.text = updated;
         parish.pageUrl = newUrl;
-        setStatus(`✅ Saved page URL for ${parish.name}.`, "ok");
+        delete _pdParishDetailsCache[parish.key];
+        setInlineStatus("✅ Saved. Triggering harvest rebuild…", "ok");
+        setStatus(`✅ Saved page URL for ${parish.name}. Triggering harvest…`, "ok");
         editRow.remove();
+        _pdDispatchHarvest(parish.key).then((d) => {
+          if (d?.ok) {
+            setStatus(`✅ Saved page URL for ${parish.name} and triggered harvest rebuild.`, "ok");
+          } else {
+            setStatus(`✅ Saved. ⚠️ Harvest dispatch failed: ${d?.error || "unknown"}`, "err");
+          }
+        });
       } else {
-        setStatus(`❌ ${res?.error || "Save failed."}`, "err");
+        const errMsg = res?.error || "Save failed.";
+        setInlineStatus(`❌ ${errMsg}`, "err");
+        setStatus(`❌ ${errMsg}`, "err");
       }
     } catch (err) {
+      setInlineStatus(`❌ ${err.message}`, "err");
       setStatus(`❌ ${err.message}`, "err");
     } finally {
       saveBtn.disabled = false; saveBtn.textContent = "💾 Save";
@@ -880,6 +944,7 @@ function _pdShowEditRow(wrap, parish) {
   btnRow.appendChild(cancelBtn);
 
   editRow.appendChild(btnRow);
+  editRow.appendChild(inlineStatus);
   wrap.appendChild(editRow);
   inp.focus();
 }
@@ -1012,7 +1077,7 @@ async function loadParishDirectory() {
   loadingEl.style.display = "block";
   errorEl.style.display   = "none";
   container.innerHTML     = "";
-  _pdAllParishes = []; _pdDioceseTexts = {}; _pdExcludes = null; _pdOverrides = null;
+  _pdAllParishes = []; _pdDioceseTexts = {}; _pdExcludes = null; _pdOverrides = null; _pdLastIncluded = null;
   Object.keys(_pdParishDetailsCache).forEach((k) => delete _pdParishDetailsCache[k]);
   _pdConsecutiveFailures = {};
   _pdShowBrokenOnly = false;
@@ -1020,11 +1085,12 @@ async function loadParishDirectory() {
   _pdUpdateStaleBannerUi({ stale: [], unknown_date: [] });
 
   try {
-    const [excludes, _overrides, consecutiveFailures, staleBulletins, ...evidenceResults] = await Promise.all([
+    const [excludes, _overrides, consecutiveFailures, staleBulletins, _lastIncluded, ...evidenceResults] = await Promise.all([
       _pdLoadExcludes(),
       _pdLoadOverrides(),
       _pdLoadConsecutiveFailures(),
       _pdLoadStaleBulletins(),
+      _pdLoadLastIncluded(),
       ...Object.entries(PD_EVIDENCE_FILES).map(([diocese, path]) =>
         _pdGhFetch(path)
           .then(({ content }) => ({ diocese, path, content }))
