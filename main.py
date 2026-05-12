@@ -313,7 +313,7 @@ def main() -> int:
         print(f"  ⚠️  Mega PDF generation failed (non-fatal): {exc}")
 
     # Stitch per-diocese mega PDFs (skip when running a single-parish rebuild)
-    if not target_parish_key and len(diocese_results) > 1:
+    if not target_parish_key and diocese_results:
         print("\n── Per-Diocese Mega PDFs ───────────────────────────────────")
         mega_pdf_dir = Path("mega_pdf")
         mega_pdf_dir.mkdir(exist_ok=True)
