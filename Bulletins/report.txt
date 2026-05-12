@@ -1,14 +1,13 @@
 Parish Bulletin Harvest Report — 2026-05-10
 ==================================================
 Downloaded : 59
-HTML links : 7
-Failed     : 30
+HTML links : 6
+Failed     : 31
 
 Downloaded bulletins:
 
   ✅ Ardmore — ardmoreparish.pdf
   ✅ Banagher — banagherparish.pdf
-  ✅ Buncrana — buncranaparish.pdf
   ✅ Carndonagh — carndonaghparish.pdf
   ✅ Castlederg — castledergparish.pdf
   ✅ Clonmany — clonmanyparish.pdf
@@ -23,14 +22,15 @@ Downloaded bulletins:
   ✅ Kilrea — parishofkilrea.pdf
   ✅ Lavey — laveyparish.pdf
   ✅ Leckpatrick — leckpatrickparish.pdf
-  ✅ Limavady — limavadyparish.pdf
   ✅ Maghera (Derry) — magheraparishderry.pdf
+  ✅ Malin — malinparish.pdf
   ✅ Melmount (& Camus) — melmountparish.pdf
   ✅ Moville — movilleparish.pdf
   ✅ Sion Mills — parishofsionmills.pdf
   ✅ Star of the Sea (Magilligan) — staroftheseacatholic.pdf
   ✅ St Eugene's Cathedral (Templemore) — steugenescathedral.pdf
   ✅ St Mary's Parish Creggan — stmarysparishcreggan.pdf
+  ✅ Waterside (& Strathfoyle amalgamated) — watersideparish.pdf
   ✅ Aghyaran — parishofaghyaran.pdf
   ✅ Ardstraw East — parishofardstraweast.pdf
   ✅ Drumragh — drumraghparish.pdf
@@ -68,7 +68,6 @@ Downloaded bulletins:
 
 HTML-only parishes (clickable links in mega PDF):
 
-  🔗 Ballinascreen (& Desertmartin amalgamated) — https://www.parishofballinascreen.com
   🔗 Clonleigh (Strabane Pastoral Area) — https://clonleighparish.com/2026/04/11/strabane-pastoral-area-newsletter-for-sunday-12th-april-2026/
   🔗 Camus — https://camusparish.com/
   🔗 Desertmartin — https://www.desertmartinparish.com/?page_id=6
@@ -78,27 +77,19 @@ HTML-only parishes (clickable links in mega PDF):
 
 Failed parishes:
 
-  ❌ Bellaghy — Page.goto: net::ERR_ABORTED at https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf
+  ❌ Ballinascreen (& Desertmartin amalgamated) — Recipe replay failed: Recipe download step did not find a matching document URL
+  ❌ Bellaghy — Recipe replay failed: Page.goto: net::ERR_ABORTED at https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf
 Call log:
-  - navigating to "https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf", waiting until "domcontentloaded"
+  - navigating to "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf", waiting until "domcontentloaded"
 
-  ❌ Claudy — Page.goto: net::ERR_ABORTED at http://parishofclaudy.com/onewebmedia/NEWSLETTER%2010-5-26.docx
-Call log:
-  - navigating to "http://parishofclaudy.com/onewebmedia/NEWSLETTER%2010-5-26.docx", waiting until "domcontentloaded"
-
+  ❌ Buncrana — Recipe replay failed: Recipe finished without downloading a document
+  ❌ Claudy — Total timeout exceeded
   ❌ Greenlough — Page.goto: net::ERR_ABORTED at http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf
 Call log:
   - navigating to "http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf", waiting until "domcontentloaded"
 
-  ❌ Malin — Page.goto: net::ERR_ABORTED at https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf
-Call log:
-  - navigating to "https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf", waiting until "domcontentloaded"
-
+  ❌ Limavady — Total timeout exceeded
   ❌ Three Patrons — No downloadable bulletin links found
-  ❌ Waterside (& Strathfoyle amalgamated) — Page.goto: net::ERR_ABORTED at https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf
-Call log:
-  - navigating to "https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf", waiting until "domcontentloaded"
-
   ❌ Coleraine (St John) — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.parishofstjohncoleraine.com/
 Call log:
   - navigating to "https://www.parishofstjohncoleraine.com/", waiting until "domcontentloaded"
@@ -107,12 +98,12 @@ Call log:
 Call log:
   - navigating to "http://urneyandcastlefinparish.com/?page_id=1227", waiting until "domcontentloaded"
 
-  ❌ Antrim — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Ballyclare and Ballygowan — Total timeout exceeded
-  ❌ Derriaghy — Recipe replay failed: Page.goto: Timeout 15000ms exceeded.
+  ❌ Antrim — Recipe replay failed: Page.goto: Timeout 15000ms exceeded.
 Call log:
-  - navigating to "https://derriaghycatholicparish.com/?page_id=262", waiting until "domcontentloaded"
+  - navigating to "https://www.antrimparish.com/bulletinpage/", waiting until "domcontentloaded"
 
+  ❌ Ballyclare and Ballygowan — Total timeout exceeded
+  ❌ Derriaghy — Total timeout exceeded
   ❌ Hannahstown — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Holy Rosary Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Kilmore and Killyleagh — Total timeout exceeded
