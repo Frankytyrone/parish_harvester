@@ -1,0 +1,17 @@
+{
+  "parish_key": "stbernadettesparish",
+  "display_name": "St Bernadettes",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.stbernadettesparish.org/?page_id=672",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.stbernadettesparish.org/?page_id=672"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

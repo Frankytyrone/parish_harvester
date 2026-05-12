@@ -1,0 +1,37 @@
+{
+  "parish_key": "stoliverplunkettparish",
+  "display_name": "St Oliver Plunkett",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://stoliverplunkettparish.ie/bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stoliverplunkettparish.ie/bulletins/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href*='bulletins'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div > div:nth-of-type(2) > div > ul > li:nth-of-type(4) > a"
+      ]
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Accept')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "html > body > div:nth-of-type(5) > div > a:nth-of-type(2)"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "no_bulletin"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

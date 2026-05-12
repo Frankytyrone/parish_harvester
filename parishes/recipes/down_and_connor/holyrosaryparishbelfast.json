@@ -1,0 +1,18 @@
+{
+  "parish_key": "holyrosaryparishbelfast",
+  "display_name": "Holy Rosary Belfast",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.holyrosaryparishbelfast.net/weekly-bulletin",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.holyrosaryparishbelfast.net/weekly-bulletin"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "https://www.holyrosaryparishbelfast.net/weekly-bulletin"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

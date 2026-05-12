@@ -3340,24 +3340,33 @@
         "margin-bottom:4px",
       ].join(";");
 
-      const loadRecipeFromRawGithub = async (key) => {
+      const loadRecipeFromRawGithub = async (key, diocese) => {
         if (!key) return null;
         const settings = await _storageGet(["gh_repo", "gh_pat"]);
         const ghRepo = String(settings.gh_repo || "").trim();
         if (!ghRepo) return null;
-        const filePath = `parishes/recipes/${key}.json`;
-        const rawUrl = `https://raw.githubusercontent.com/${ghRepo}/main/${filePath}`;
         const headers = {};
         const pat = String(settings.gh_pat || "").trim();
         if (pat) headers.Authorization = `token ${pat}`;
-        try {
-          const resp = await fetch(rawUrl, { headers });
-          if (!resp.ok) return null;
-          const text = await resp.text();
-          return { recipe: JSON.parse(text), filePath };
-        } catch (_e) {
-          return null;
+
+        // Try diocese subfolder path first, then fall back to legacy flat path.
+        const dioceseSubfolder = (String(diocese || "").trim().toLowerCase().replace(/\s+/g, "_")) || "unknown";
+        const pathsToTry = [
+          `parishes/recipes/${dioceseSubfolder}/${key}.json`,
+          `parishes/recipes/${key}.json`,
+        ];
+        for (const filePath of pathsToTry) {
+          const rawUrl = `https://raw.githubusercontent.com/${ghRepo}/main/${filePath}`;
+          try {
+            const resp = await fetch(rawUrl, { headers });
+            if (!resp.ok) continue;
+            const text = await resp.text();
+            return { recipe: JSON.parse(text), filePath };
+          } catch (_e) {
+            continue;
+          }
         }
+        return null;
       };
 
       const checkStartUrlDrift = async () => {
@@ -3369,7 +3378,8 @@
         const ctx = fromTraining || fromHostnameMap;
         const key = String(ctx?.parish_key || ctx?.key || "").trim().toLowerCase().replace(/\s+/g, "_");
         if (!key) return;
-        const loaded = await loadRecipeFromRawGithub(key);
+        const diocese = String(ctx?.diocese || "").trim();
+        const loaded = await loadRecipeFromRawGithub(key, diocese);
         if (!loaded || !loaded.recipe) return;
         const startUrl = String(loaded.recipe.start_url || "").trim();
         if (!startUrl) return;

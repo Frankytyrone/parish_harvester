@@ -1,0 +1,27 @@
+{
+  "parish_key": "saintmalachysparish",
+  "display_name": "Saint Malachy's",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.saintmalachysparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.saintmalachysparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href*='bulletin'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "html > body > div:nth-of-type(2) > div > a:nth-of-type(3)"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

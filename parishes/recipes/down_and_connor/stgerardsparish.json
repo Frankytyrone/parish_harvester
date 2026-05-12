@@ -1,0 +1,18 @@
+{
+  "parish_key": "stgerardsparish",
+  "display_name": "St Gerards",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://stgerardsparish.org/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stgerardsparish.org/"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "no_bulletin"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

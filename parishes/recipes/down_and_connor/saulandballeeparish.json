@@ -1,0 +1,37 @@
+{
+  "parish_key": "saulandballeeparish",
+  "display_name": "Saul and Ballee",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.saulandballeeparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.saulandballeeparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Accept')",
+      "fallback_selectors": [
+        "role=button[name=\"Accept\"]",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "a#wt-cli-accept-all-btn"
+      ]
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href*='bulletin'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "body > header > div:nth-of-type(2) > div > div > a:nth-of-type(4)"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

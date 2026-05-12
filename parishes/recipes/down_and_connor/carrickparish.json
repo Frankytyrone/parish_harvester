@@ -1,0 +1,17 @@
+{
+  "parish_key": "carrickparish",
+  "display_name": "Carrickfergus",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.carrickparish.org/info",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.carrickparish.org/info"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

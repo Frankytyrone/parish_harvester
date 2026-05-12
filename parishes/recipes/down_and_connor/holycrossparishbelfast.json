@@ -1,0 +1,26 @@
+{
+  "parish_key": "holycrossparishbelfast",
+  "display_name": "Holy Cross Belfast",
+  "recorded_date": "2026-04-30",
+  "start_url": "http://www.holycrossparishbelfast.com/parishnews.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://www.holycrossparishbelfast.com/parishnews.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Newsletter')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div#newsContainer > div:nth-of-type(1) > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

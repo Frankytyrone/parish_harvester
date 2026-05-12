@@ -348,10 +348,20 @@ def _match_parish(parish_query: str, diocese: str | None, parishes_dir: Path) ->
     )
 
 
+def _diocese_subfolder(diocese_name: str) -> str:
+    """Map a full diocese name (e.g. 'derry_diocese') to its recipe subfolder name."""
+    # Normalise: strip trailing '_diocese' suffix so 'derry_diocese' → 'derry'
+    name = (diocese_name or "").strip().lower()
+    if name.endswith("_diocese"):
+        name = name[: -len("_diocese")]
+    return name or "unknown"
+
+
 async def run_training(parish_query: str, diocese: str | None, parishes_dir: Path = PARISHES_DIR) -> Path:
     target = _match_parish(parish_query, diocese, parishes_dir)
     entry = target.entry
-    recipes_dir = parishes_dir / "recipes"
+    subfolder = _diocese_subfolder(target.diocese)
+    recipes_dir = parishes_dir / "recipes" / subfolder
     recipes_dir.mkdir(parents=True, exist_ok=True)
     recipe_path = recipes_dir / f"{entry.key}.json"
 
@@ -733,6 +743,7 @@ async def run_training(parish_query: str, diocese: str | None, parishes_dir: Pat
     recipe = {
         "parish_key": entry.key,
         "display_name": entry.display_name,
+        "diocese": subfolder if subfolder != "unknown" else "",
         "recorded_date": date.today().isoformat(),
         "start_url": start_url,
         "steps": steps,

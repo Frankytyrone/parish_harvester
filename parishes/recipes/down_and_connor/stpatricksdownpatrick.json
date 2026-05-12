@@ -1,0 +1,26 @@
+{
+  "parish_key": "stpatricksdownpatrick",
+  "display_name": "St Patrick's Downpatrick",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://stpatricksdownpatrick.com/parish-bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stpatricksdownpatrick.com/parish-bulletins/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('April')",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "main#genesis-content > article > div > p:nth-of-type(2) > a:nth-of-type(1)"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

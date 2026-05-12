@@ -1,0 +1,17 @@
+{
+  "parish_key": "portaferryparish",
+  "display_name": "Portaferry",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://portaferryparish.com/bulletin",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://portaferryparish.com/bulletin"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

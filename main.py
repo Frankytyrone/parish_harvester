@@ -146,6 +146,8 @@ def main() -> int:
 
     # Fetch bulletins for all requested dioceses
     all_results = []
+    # Track results per diocese for per-diocese mega PDFs
+    diocese_results: dict[str, list] = {}
     for diocese in dioceses:
         if len(dioceses) > 1:
             print(f"\n{'═' * 58}")
@@ -203,6 +205,7 @@ def main() -> int:
                 print(f"       Reason : {r.error}")
 
         all_results.extend(results)
+        diocese_results[diocese] = results
 
     if args.dry_run:
         print("\n⚠️  --dry-run: stopping after fetch.")
@@ -308,6 +311,31 @@ def main() -> int:
         )
     except Exception as exc:
         print(f"  ⚠️  Mega PDF generation failed (non-fatal): {exc}")
+
+    # Stitch per-diocese mega PDFs (skip when running a single-parish rebuild)
+    if not target_parish_key and len(diocese_results) > 1:
+        print("\n── Per-Diocese Mega PDFs ───────────────────────────────────")
+        mega_pdf_dir = Path("mega_pdf")
+        mega_pdf_dir.mkdir(exist_ok=True)
+        for d_name, d_results in sorted(diocese_results.items()):
+            # Normalise diocese name for the output filename
+            # (e.g. 'derry_diocese' → 'derry', 'down_and_connor' unchanged)
+            short = d_name.removesuffix("_diocese")
+            diocese_pdf = mega_pdf_dir / f"{short}_mega_bulletin.pdf"
+            d_contacts = PARISHES_DIR / f"{d_name}_contacts.json"
+            try:
+                stitch_mega_pdf(
+                    d_results,
+                    current_dir=CURRENT_DIR,
+                    bulletins_dir=BULLETINS_DIR,
+                    target=target,
+                    contacts_path=d_contacts if d_contacts.exists() else None,
+                    mega_excludes_path=PARISHES_DIR / "mega_excludes.json",
+                    output_path=diocese_pdf,
+                )
+                print(f"  📖 {short} mega PDF : {diocese_pdf}")
+            except Exception as exc:
+                print(f"  ⚠️  {short} mega PDF failed (non-fatal): {exc}")
 
     # Print harvest log summary
     print_summary()

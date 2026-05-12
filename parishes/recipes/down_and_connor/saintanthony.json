@@ -1,0 +1,27 @@
+{
+  "parish_key": "saintanthony",
+  "display_name": "Saint Anthony",
+  "recorded_date": "2026-04-30",
+  "start_url": "http://www.saintanthony.co.uk/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://www.saintanthony.co.uk/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href*='bulletin'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "table:nth-of-type(1) > tbody > tr:nth-of-type(1) > td:nth-of-type(1) > div > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

@@ -1,0 +1,25 @@
+{
+  "parish_key": "stmarysonthehill",
+  "display_name": "St Mary's on the Hill",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.stmarysonthehill.online/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.stmarysonthehill.online/"
+    },
+    {
+      "action": "click",
+      "selector": "a[href$='.pdf']",
+      "fallback_selectors": [
+        "a[href*='.pdf']",
+        "div#comp-lli29y7h > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

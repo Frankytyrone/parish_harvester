@@ -1,0 +1,27 @@
+{
+  "parish_key": "holy-familyparish",
+  "display_name": "Holy Family",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.holy-familyparish.com/bulletin/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.holy-familyparish.com/bulletin/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text('Bulletin')",
+      "fallback_selectors": [
+        "a[href*='fourth'][href$='.pdf']",
+        "a[href$='.pdf']",
+        "a[href*='.pdf']",
+        "div > div > div > ul > li:nth-of-type(1) > a"
+      ]
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf"
+    }
+  ],
+  "diocese": "down_and_connor"
+}

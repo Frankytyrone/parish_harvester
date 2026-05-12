@@ -27,7 +27,21 @@ PDFEMB_HREF_EXTRACT_JS = "(els) => els.map(el => el.getAttribute('href')).filter
 
 
 def recipe_path_for(parish_key: str, parishes_dir: Path = PARISHES_DIR) -> Path:
-    return parishes_dir / "recipes" / f"{parish_key}.json"
+    """Return the path to the recipe JSON for *parish_key*.
+
+    Searches diocese subfolders (derry/, down_and_connor/, unknown/, and any
+    other subdirectory) before falling back to the legacy flat path so that
+    both old flat layouts and the new subfolder layout work transparently.
+    """
+    recipes_dir = parishes_dir / "recipes"
+    # Search existing subdirectories first (new layout)
+    for sub in sorted(recipes_dir.iterdir()) if recipes_dir.exists() else []:
+        if sub.is_dir():
+            candidate = sub / f"{parish_key}.json"
+            if candidate.exists():
+                return candidate
+    # Fall back to flat path (legacy layout or file not yet moved)
+    return recipes_dir / f"{parish_key}.json"
 
 
 def load_recipe(path: Path) -> dict:

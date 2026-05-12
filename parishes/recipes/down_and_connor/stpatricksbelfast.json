@@ -1,0 +1,18 @@
+{
+  "parish_key": "stpatricksbelfast",
+  "display_name": "St Patricks Belfast",
+  "recorded_date": "2026-04-30",
+  "start_url": "https://www.stpatricksbelfast.org/category/weekly-bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.stpatricksbelfast.org/category/weekly-bulletins/"
+    },
+    {
+      "action": "download",
+      "url_pattern": "*.pdf",
+      "captured_url": "no_bulletin"
+    }
+  ],
+  "diocese": "down_and_connor"
+}
