@@ -91,6 +91,7 @@ def _build_parish_header_pdf(
             relative=0,
             thickness=0,
             color=colors_module.blue,
+            newWindow=True,
         )
 
     c.setStrokeColor(colors_module.Color(0.85, 0.85, 0.85))

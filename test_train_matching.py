@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import io
 import json
 import tempfile
@@ -260,6 +261,13 @@ https://www.antrimparish.com
         self.assertIn("CURRENT_DIR / result.file_path.name", source)
         self.assertIn("RAW_DIR / result.file_path.name", source)
 
+    def test_harvest_workflow_runs_tests_before_harvester(self) -> None:
+        repo_root = Path(__file__).resolve().parent
+        workflow = (repo_root / ".github" / "workflows" / "harvest.yml").read_text(encoding="utf-8")
+        self.assertIn("- name: Run tests", workflow)
+        self.assertIn("pytest -v --tb=short", workflow)
+        self.assertLess(workflow.index("- name: Run tests"), workflow.index("- name: Run Bulletin Harvester"))
+
     def test_deploy_pages_builds_extension_update_assets(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "deploy-pages.yml").read_text(encoding="utf-8")
         self.assertIn("push:", workflow)
@@ -270,6 +278,36 @@ https://www.antrimparish.com
 
     def test_bulletin_page_limit_constant(self) -> None:
         self.assertEqual(_MAX_BULLETIN_PAGES, 4)
+
+    def test_parish_header_has_new_window_link(self) -> None:
+        repo_root = Path(__file__).resolve().parent
+        stitcher_source = (repo_root / "harvester" / "stitcher.py").read_text(encoding="utf-8")
+        tree = ast.parse(stitcher_source)
+        header_fn = next(
+            (
+                node for node in tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == "_build_parish_header_pdf"
+            ),
+            None,
+        )
+        self.assertIsNotNone(header_fn, "Could not find _build_parish_header_pdf function in stitcher.py")
+        link_calls = [
+            node for node in ast.walk(header_fn)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "linkURL"
+        ]
+        self.assertTrue(link_calls)
+        has_new_window = any(
+            any(
+                kw.arg == "newWindow"
+                and isinstance(kw.value, ast.Constant)
+                and kw.value.value is True
+                for kw in call.keywords
+            )
+            for call in link_calls
+        )
+        self.assertTrue(has_new_window)
 
     def test_stitch_mega_pdf_skips_oversized_bulletins(self) -> None:
         """PDFs with more than _MAX_BULLETIN_PAGES pages must be excluded from the mega PDF."""
