@@ -31,8 +31,8 @@ def _recipe_step_timeout_ms(recipe: dict) -> int:
 
     Uses ``timeout_ms`` first, then ``timeout`` for backward compatibility.
     Values are clamped to [1_000, 120_000] ms:
-    - 1,000 ms minimum avoids accidental 0/negative values that make steps fail
-      instantly (Playwright treats 0 as "no timeout", which we do not want here).
+    - 1,000 ms minimum avoids accidental 0/negative values that disable timeouts
+      entirely (Playwright treats 0 as "wait indefinitely"), which can stall runs.
     - 120,000 ms maximum prevents malformed recipe values from stalling runs.
     """
     raw = recipe.get("timeout_ms", recipe.get("timeout"))

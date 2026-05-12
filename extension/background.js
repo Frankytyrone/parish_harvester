@@ -345,8 +345,6 @@ function _canonicalDioceseSlug(value) {
     return "down_and_connor";
   }
   const normalized = raw.replace(/&/g, "and").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  if (normalized === "derry_diocese") return "derry";
-  if (normalized === "down_and_connor_diocese") return "down_and_connor";
   return normalized;
 }
 
