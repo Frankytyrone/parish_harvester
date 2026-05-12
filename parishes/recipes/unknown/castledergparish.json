@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "castledergparish",
+  "display_name": "Castledergparish",
+  "diocese": "",
+  "start_url": "https://www.castledergparish.com/parishnews.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.castledergparish.com/parishnews.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"CLICK HERE to load Current Newsletter\")",
+      "href": "pdf/100526.pdf",
+      "text": "CLICK HERE to load Current Newsletter"
+    }
+  ],
+  "recorded_date": "2026-05-12"
+}
