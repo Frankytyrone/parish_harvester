@@ -283,7 +283,7 @@ https://www.antrimparish.com
         self.assertIn("push:", workflow)
         self.assertIn("branches: [main]", workflow)
         self.assertIn("github.actor != 'github-actions[bot]'", workflow)
-        self.assertIn("contains(github.event.head_commit.message, '[skip ci]')", workflow)
+        self.assertIn("!contains(github.event.head_commit.message, '[skip ci]')", workflow)
         self.assertIn('manifest_path = Path("extension/manifest.json")', workflow)
         self.assertIn('git commit -m "chore: bump extension version [skip ci]"', workflow)
 
