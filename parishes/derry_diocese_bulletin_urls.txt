@@ -55,7 +55,7 @@ https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1
 https://bellaghyparish.com/wp-content/uploads/2026/04/29-March-2026.pdf
 
 # --- Buncrana ---
-# page: https://www.buncranaparish.com/pastnews.htm
+# page: https://www.buncranaparish.com/parishnews.htm
 # Pattern A: DDMMYY
 https://www.buncranaparish.com/pdf/050426.pdf
 https://www.buncranaparish.com/pdf/220326.pdf
