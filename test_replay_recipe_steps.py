@@ -16,6 +16,7 @@ class _FakePage:
     def __init__(self) -> None:
         self.url = "https://example.org/start"
         self._screenshot = None
+        self._pdf = b"%PDF-1.4\n%fake\n"
         self.last_goto_timeout = None
 
     def on(self, _event: str, _callback) -> None:
@@ -46,6 +47,9 @@ class _FakePage:
             img.save(buf, format="PNG")
             self._screenshot = buf.getvalue()
         return self._screenshot
+
+    async def pdf(self, **_kwargs) -> bytes:
+        return self._pdf
 
 
 class _FakeContext:
@@ -148,6 +152,34 @@ class ReplayRecipeStepTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(source_url, "https://example.org/bulletin.jpg")
             self.assertTrue(context.accept_downloads)
             fake_download.assert_awaited_once()
+            self.assertTrue(context.closed)
+
+    async def test_replay_recipe_supports_print_to_pdf_step(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recipe_path = root / "recipe.json"
+            recipe_path.write_text(
+                json.dumps(
+                    {
+                        "steps": [
+                            {"action": "goto", "url": "https://example.org/news"},
+                            {"action": "print_to_pdf"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            dest = root / "bulletin.pdf"
+            context = _FakeContext()
+            browser = _FakeBrowser(context)
+
+            out_path, file_type, source_url = await replay_recipe(recipe_path, dest, browser)
+
+            self.assertEqual(out_path, dest)
+            self.assertEqual(file_type, "print_to_pdf")
+            self.assertEqual(source_url, "https://example.org/news")
+            self.assertTrue(dest.exists())
+            self.assertEqual(dest.read_bytes(), context.page._pdf)
             self.assertTrue(context.closed)
 
     async def test_replay_recipe_supports_crop_screenshot_step(self) -> None:
