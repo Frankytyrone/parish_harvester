@@ -195,6 +195,19 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
           git push || true
 
+      - name: Commit mega PDFs for GitHub Pages
+        if: always() && (hashFiles('mega_pdf/derry_mega_bulletin.pdf') != '' || hashFiles('mega_pdf/down_and_connor_mega_bulletin.pdf') != '')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add mega_pdf/derry_mega_bulletin.pdf mega_pdf/down_and_connor_mega_bulletin.pdf mega_pdf/index.html
+          if git diff --cached --quiet; then
+            echo "No mega PDF changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: update mega PDFs [skip ci]"
+          git push origin HEAD:main
+
       - name: Prepare standalone Mega PDF artifact
         id: prepare_mega_pdf
         if: always()

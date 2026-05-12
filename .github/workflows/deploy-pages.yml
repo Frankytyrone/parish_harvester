@@ -1,0 +1,33 @@
+name: Deploy mega PDFs to GitHub Pages
+
+on:
+  workflow_run:
+    workflows: ["Harvest Parish Bulletins"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: mega_pdf/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
