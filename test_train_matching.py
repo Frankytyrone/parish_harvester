@@ -278,7 +278,7 @@ https://www.antrimparish.com
         self.assertIn("parish_trainer.zip", workflow)
         self.assertIn("_site/updates.xml", workflow)
 
-    def test_extension_version_bump_workflow_exists(self) -> None:
+    def test_extension_version_bump_workflow_configuration(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "bump-extension-version.yml").read_text(encoding="utf-8")
         self.assertIn("push:", workflow)
         self.assertIn("branches: [main]", workflow)
