@@ -149,7 +149,7 @@ const MEGA_EXCLUDES_PATH = "parishes/mega_excludes.json";
 const MANUAL_OVERRIDES_PATH = "parishes/manual_overrides.json";
 const CONSECUTIVE_FAILURES_PATH = "parishes/consecutive_failures.json";
 const STALE_BULLETINS_PATH = "parishes/stale_bulletins.json";
-const CURRENT_BULLETINS_DIR = "Bulletins/current";
+const CURRENT_BULLETINS_PATH_PREFIX = "Bulletins/current";
 const _pdParishDetailsCache = {}; // key -> details payload
 
 // Replicate Python's _url_to_key logic
@@ -420,7 +420,7 @@ async function _pdBuildParishDetails(parish) {
   const currentUrl = (override?.url || terminal.url || parish.bulletinUrls[0] || parish.pageUrl || "").trim();
   const changes = _pdConfirmedChangesList(parish, override, recipe, recipePath);
   const lastUpdatedRepoIso = await _pdFetchLatestCommitTime(recipePath || _pdDioceseTexts[parish.diocese]?.path || "");
-  const lastIncludedIso = await _pdFetchLatestCommitTime(`${CURRENT_BULLETINS_DIR}/${parish.key}.pdf`);
+  const lastIncludedIso = await _pdFetchLatestCommitTime(`${CURRENT_BULLETINS_PATH_PREFIX}/${parish.key}.pdf`);
   const details = {
     currentUrl,
     terminalAction: terminal.action,

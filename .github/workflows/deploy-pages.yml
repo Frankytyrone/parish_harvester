@@ -32,6 +32,7 @@ jobs:
       - name: Build Pages site (mega PDFs + extension updates)
         env:
           CHROME_EXTENSION_APP_ID: ${{ vars.CHROME_EXTENSION_APP_ID }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           rm -rf _site
@@ -50,8 +51,17 @@ jobs:
           print(manifest.get("version", "0.0.0"))
           PY
           )
-          APP_ID="${CHROME_EXTENSION_APP_ID:-REPLACE_WITH_EXTENSION_ID}"
-          PAGES_BASE="https://frankytyrone.github.io/parish_harvester"
+          if [ -z "${CHROME_EXTENSION_APP_ID:-}" ]; then
+            if [ "${EVENT_NAME}" = "push" ]; then
+              echo "Error: CHROME_EXTENSION_APP_ID repository variable must be set for extension update publishing."
+              echo "Set it in Settings > Secrets and variables > Actions > Variables."
+              exit 1
+            fi
+            APP_ID="REPLACE_WITH_EXTENSION_ID"
+          else
+            APP_ID="${CHROME_EXTENSION_APP_ID}"
+          fi
+          PAGES_BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
           cat > _site/updates.xml <<XML
           <?xml version="1.0" encoding="UTF-8"?>
           <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
