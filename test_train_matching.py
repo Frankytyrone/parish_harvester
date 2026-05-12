@@ -5,9 +5,11 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 from harvester.fetcher import parse_evidence_file
-from harvester.stitcher import _MAX_BULLETIN_PAGES, stitch_mega_pdf
+from harvester.stitcher import _MAX_BULLETIN_PAGES, _build_parish_header_pdf, stitch_mega_pdf
 from train import _CLICK_TRACKER_JS, _build_mark_step, _match_parish
 
 
@@ -349,6 +351,27 @@ https://www.antrimparish.com
             # plus possibly a summary page for big_parish which was excluded
             ok_page_count = 2  # both pages have real text
             self.assertLessEqual(len(reader.pages), ok_page_count + 2)
+
+    def test_build_parish_header_pdf_sets_new_window_for_website_link(self) -> None:
+        mock_canvas = MagicMock()
+        mock_canvas.stringWidth.return_value = 100.0
+        canvas_module = SimpleNamespace(Canvas=MagicMock(return_value=mock_canvas))
+        colors_module = SimpleNamespace(
+            Color=MagicMock(return_value=object()),
+            black=object(),
+            blue=object(),
+        )
+
+        _build_parish_header_pdf(
+            "Example Parish",
+            "https://example.org/",
+            (595.0, 842.0),
+            colors_module,
+            canvas_module,
+        )
+
+        self.assertTrue(mock_canvas.linkURL.called)
+        self.assertTrue(mock_canvas.linkURL.call_args.kwargs.get("newWindow"))
 
 
 class UrlDateParsingAndScoringTests(unittest.TestCase):
