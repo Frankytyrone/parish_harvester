@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "cappaghparish",
+  "display_name": "Cappaghparish",
+  "diocese": "",
+  "start_url": "https://www.cappaghparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.cappaghparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Parish News - Sunday, 10th May 2026\")",
+      "href": "pdf/100526.pdf",
+      "text": "Parish News - Sunday, 10th May 2026"
+    }
+  ],
+  "recorded_date": "2026-05-12"
+}
