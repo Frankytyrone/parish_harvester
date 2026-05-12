@@ -398,6 +398,21 @@ async def replay_recipe(
                     raise RecipeReplayError("Recipe html step missing URL")
                 return dest, "html_link", html_url
 
+            if action == "print_to_pdf":
+                raw_pdf_url = (step.get("url") or "").strip()
+                pdf_url = raw_pdf_url or page.url
+                if not pdf_url:
+                    raise RecipeReplayError("Recipe print_to_pdf step missing URL")
+                if raw_pdf_url:
+                    await page.goto(pdf_url, timeout=step_timeout_ms, wait_until="networkidle")
+                pdf_bytes = await page.pdf(
+                    format="A4",
+                    print_background=True,
+                    margin={"top": "10mm", "bottom": "10mm", "left": "10mm", "right": "10mm"},
+                )
+                dest.write_bytes(pdf_bytes)
+                return dest, "print_to_pdf", pdf_url
+
             if action == "crop_screenshot":
                 sections = step.get("sections")
                 if isinstance(sections, list) and sections:

@@ -1,0 +1,16 @@
+{
+  "parish_key": "clonleighparish",
+  "display_name": "Clonleigh (Strabane Pastoral Area)",
+  "diocese": "derry",
+  "url": "https://clonleighparish.com/category/newsletter/",
+  "recorded_date": "2026-05-12",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://clonleighparish.com/2026/05/08/strabane-pastoral-area-newsletter-for-sunday-10th-may-2026/"
+    },
+    {
+      "action": "print_to_pdf"
+    }
+  ]
+}
