@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "carndonaghparish",
+  "display_name": "Carndonaghparish",
+  "diocese": "",
+  "start_url": "http://www.carndonaghparish.com/parishnews.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://www.carndonaghparish.com/parishnews.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"CLICK HERE to load Current Newsletter\")",
+      "href": "pdf/100526.pdf",
+      "text": "CLICK HERE to load Current Newsletter"
+    }
+  ],
+  "recorded_date": "2026-05-12"
+}
