@@ -330,6 +330,26 @@ function _normalizeRecipeTerminalSteps(recipe) {
   return { ...recipe, steps: normalizedSteps };
 }
 
+function _canonicalDioceseSlug(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (raw === "derry" || raw === "derry_diocese" || raw === "derry diocese") return "derry";
+  if (
+    raw === "down_and_connor" ||
+    raw === "down & connor" ||
+    raw === "down and connor" ||
+    raw === "down_and_connor_diocese" ||
+    raw === "down and connor diocese" ||
+    raw === "down & connor diocese"
+  ) {
+    return "down_and_connor";
+  }
+  const normalized = raw.replace(/&/g, "and").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (normalized === "derry_diocese") return "derry";
+  if (normalized === "down_and_connor_diocese") return "down_and_connor";
+  return normalized;
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "push_recipe") return false;
 
@@ -352,8 +372,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
       // Determine diocese subfolder from the recipe being pushed.
       // Falls back to "unknown" if diocese is empty or not provided.
-      const recipeDioceseRaw = ((message.recipe || {}).diocese || "").trim().toLowerCase().replace(/\s+/g, "_");
-      const dioceseSubfolder = recipeDioceseRaw || "unknown";
+      const recipeDioceseRaw = ((message.recipe || {}).diocese || "").trim();
+      const dioceseSubfolder = _canonicalDioceseSlug(recipeDioceseRaw) || "unknown";
       const filePath = `parishes/recipes/${dioceseSubfolder}/${key}.json`;
       const apiBase  = `https://api.github.com/repos/${gh_repo}/contents/${filePath}`;
       const headers  = {

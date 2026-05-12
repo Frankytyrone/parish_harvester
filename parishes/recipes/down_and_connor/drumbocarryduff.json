@@ -13,5 +13,8 @@
       "url_pattern": "*.pdf"
     }
   ],
-  "diocese": "down_and_connor"
+  "diocese": "down_and_connor",
+  "status": "inactive",
+  "skip": true,
+  "reason": "Website DNS no longer resolves (drumbocarryduff.ie)."
 }

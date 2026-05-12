@@ -23,5 +23,10 @@
       "captured_url": "https://www.parishofaghyaran.com/pdf/190426.pdf"
     }
   ],
-  "diocese": "derry"
+  "diocese": "derry",
+  "status": "needs_retraining",
+  "needs_retraining": true,
+  "skip": true,
+  "reason": "Recipe returning wrong bulletin PDF (Aghyaran matched Moville); manual retraining required via toolbar.",
+  "retraining_reason": "Current source URL is not a valid weekly bulletin; parish must be retrained manually."
 }

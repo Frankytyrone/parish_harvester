@@ -1,0 +1,12 @@
+{
+  "parish_key": "parishofardstraweast",
+  "display_name": "Ardstraw East",
+  "diocese": "derry",
+  "status": "needs_retraining",
+  "needs_retraining": true,
+  "skip": true,
+  "reason": "Recipe returning wrong PDF - needs manual retraining via toolbar",
+  "retraining_reason": "Recipe returning wrong PDF - needs manual retraining via toolbar",
+  "start_url": "http://parishofardstraweast.com/parishnews.html",
+  "recorded_date": "2026-05-12"
+}

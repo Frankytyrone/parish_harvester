@@ -90,7 +90,7 @@ class FetchResult:
     """Result of fetching one parish bulletin."""
     key: str
     display_name: str
-    status: str             # "ok" | "error" | "html_link"
+    status: str             # "ok" | "error" | "html_link" | "skipped"
     url: str = ""           # URL fetched (or html link URL)
     file_path: Optional[Path] = None
     file_type: str = ""     # "pdf" | "docx_to_pdf" | "image_to_pdf" | "html_link"
@@ -970,6 +970,14 @@ def _mistral_is_enabled() -> bool:
     return bool(os.getenv("MISTRAL_API_KEY", "").strip())
 
 
+def _load_recipe_metadata(recipe_path: Path) -> dict:
+    try:
+        data = json.loads(recipe_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def _normalize_mistral_url(raw: str) -> str:
     text = (raw or "").strip()
     if not text:
@@ -1253,6 +1261,32 @@ async def _fetch_entry(
 
     recipe_path = recipe_path_for(key, PARISHES_DIR)
     if recipe_path.exists():
+        recipe_meta = _load_recipe_metadata(recipe_path)
+        recipe_status = str(recipe_meta.get("status", "")).strip().lower()
+        should_skip = bool(recipe_meta.get("skip")) or recipe_status in {"dead_url", "inactive"}
+        needs_retraining = bool(recipe_meta.get("needs_retraining")) or recipe_status == "needs_retraining"
+        if should_skip or needs_retraining:
+            reason = (
+                str(
+                    recipe_meta.get("reason")
+                    or recipe_meta.get("dead_reason")
+                    or recipe_meta.get("retraining_reason")
+                    or (
+                        "Recipe marked inactive"
+                        if should_skip
+                        else "Recipe marked for manual retraining"
+                    )
+                ).strip()
+            )
+            print(f"  ⏭️  {key}: skipping — {reason}")
+            return FetchResult(
+                key=key,
+                display_name=entry.display_name,
+                status="skipped",
+                url=str(recipe_meta.get("url") or target_url),
+                file_type="skipped",
+                error=reason,
+            )
         try:
             replayed_path, replay_file_type, replay_url = await replay_recipe(
                 recipe_path=recipe_path,

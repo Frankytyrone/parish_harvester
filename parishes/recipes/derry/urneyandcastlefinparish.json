@@ -1,0 +1,9 @@
+{
+  "parish_key": "urneyandcastlefinparish",
+  "display_name": "Urney and Castlefin",
+  "diocese": "derry",
+  "status": "inactive",
+  "skip": true,
+  "reason": "Website DNS no longer resolves (urneyandcastlefinparish.com).",
+  "recorded_date": "2026-05-12"
+}

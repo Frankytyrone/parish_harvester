@@ -1,0 +1,10 @@
+{
+  "parish_key": "stmatthewsparish",
+  "display_name": "St Matthew's",
+  "diocese": "down_and_connor",
+  "status": "inactive",
+  "skip": true,
+  "reason": "SSL certificate invalid (ERR_CERT_DATE_INVALID).",
+  "start_url": "https://www.stmatthewsparish.com/news",
+  "recorded_date": "2026-05-12"
+}

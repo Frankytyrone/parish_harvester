@@ -16,6 +16,7 @@ class _FakePage:
     def __init__(self) -> None:
         self.url = "https://example.org/start"
         self._screenshot = None
+        self.last_goto_timeout = None
 
     def on(self, _event: str, _callback) -> None:
         return None
@@ -30,6 +31,13 @@ class _FakePage:
                 return None
 
         return _FakeLocator()
+
+    async def goto(self, url: str, timeout: int = 0, wait_until: str = "domcontentloaded") -> None:
+        self.url = url
+        self.last_goto_timeout = timeout
+
+    async def wait_for_load_state(self, _state: str, timeout: int = 0) -> None:
+        return None
 
     async def screenshot(self, full_page: bool = False) -> bytes:
         if self._screenshot is None:
@@ -94,6 +102,30 @@ class ReplayRecipeStepTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(source_url, "https://example.org/bulletin")
             self.assertTrue(context.accept_downloads)
             self.assertTrue(context.closed)
+
+    async def test_replay_recipe_uses_recipe_timeout_field(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recipe_path = root / "recipe.json"
+            recipe_path.write_text(
+                json.dumps(
+                    {
+                        "timeout": 30000,
+                        "steps": [
+                            {"action": "goto", "url": "https://example.org/news"},
+                            {"action": "html", "url": "https://example.org/news"},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            dest = root / "bulletin.pdf"
+            context = _FakeContext()
+            browser = _FakeBrowser(context)
+
+            _out_path, _file_type, _source_url = await replay_recipe(recipe_path, dest, browser)
+
+            self.assertEqual(context.page.last_goto_timeout, 30000)
 
     async def test_replay_recipe_supports_image_step(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

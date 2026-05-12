@@ -189,7 +189,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f Bulletins/ || true
+          git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html || true
           git add -f parishes/consecutive_failures.json || true
           git add -f parishes/stale_bulletins.json || true
           git diff --cached --quiet || git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
@@ -310,3 +310,17 @@ jobs:
           name: harvest-dashboard-${{ github.run_id }}
           path: Bulletins/dashboard.html
           retention-days: 30
+
+      - name: Clean transient bulletin PDFs from repository
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p Bulletins/current Bulletins/raw
+          find Bulletins/current -maxdepth 1 -type f -name '*.pdf' -delete || true
+          find Bulletins/raw -maxdepth 1 -type f -name '*.pdf' -delete || true
+          find Bulletins -maxdepth 1 -type f -name 'all_bulletins_*.pdf' -delete || true
+          touch Bulletins/current/.gitkeep Bulletins/raw/.gitkeep
+          git add -A Bulletins/current Bulletins/raw Bulletins/all_bulletins_*.pdf || true
+          git diff --cached --quiet || git commit -m "chore: clean transient bulletin PDFs [skip ci]"
+          git push origin HEAD:main || true

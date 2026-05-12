@@ -1,4 +1,7 @@
 Bulletins/
+!Bulletins/
+!Bulletins/current/
+!Bulletins/raw/
 .env
 __pycache__/
 *.pyc
@@ -11,3 +14,9 @@ build/
 .pytest_cache/
 .venv/
 venv/
+Bulletins/current/*.pdf
+Bulletins/raw/*.pdf
+Bulletins/all_bulletins_*.pdf
+mega_pdf/*.pdf
+!Bulletins/current/.gitkeep
+!Bulletins/raw/.gitkeep

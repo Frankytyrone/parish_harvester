@@ -320,7 +320,11 @@ function _pdDioceseSlug(dioceseName) {
   const info = _pdDioceseTexts[dioceseName];
   if (!info?.path) return "";
   const m = info.path.match(/^parishes\/(.+)_bulletin_urls\.txt$/);
-  return m ? m[1] : "";
+  if (!m) return "";
+  const slug = m[1];
+  if (slug === "derry_diocese") return "derry";
+  if (slug === "down_and_connor_diocese") return "down_and_connor";
+  return slug;
 }
 
 async function _pdGetGithubConfig() {
@@ -531,14 +535,24 @@ const _pdRecipeCache = {}; // key → "ok" | "dead" | "none"
 
 async function _pdCheckRecipe(key) {
   if (_pdRecipeCache[key]) return _pdRecipeCache[key];
-  try {
-    const { content } = await _pdGhFetch(`parishes/recipes/${key}.json`);
-    const data = JSON.parse(content);
-    _pdRecipeCache[key] = data.status === "dead_url" ? "dead" : "ok";
-  } catch (_e) {
-    _pdRecipeCache[key] = "none";
+  const candidates = [
+    `parishes/recipes/derry/${key}.json`,
+    `parishes/recipes/down_and_connor/${key}.json`,
+    `parishes/recipes/${key}.json`,
+    `parishes/recipes/unknown/${key}.json`,
+  ];
+  for (const path of candidates) {
+    try {
+      const { content } = await _pdGhFetch(path);
+      const data = JSON.parse(content);
+      _pdRecipeCache[key] = (data.status === "dead_url" || data.status === "inactive") ? "dead" : "ok";
+      return _pdRecipeCache[key];
+    } catch (_e) {
+      // try next path
+    }
   }
-  return _pdRecipeCache[key];
+  _pdRecipeCache[key] = "none";
+  return "none";
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────

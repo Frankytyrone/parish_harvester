@@ -13,5 +13,6 @@
       "url": "https://derriaghycatholicparish.com/wp-content/uploads/2026/04/fourth-Sunday-of-Easter-1-724x1024.png"
     }
   ],
-  "diocese": "down_and_connor"
+  "diocese": "down_and_connor",
+  "timeout": 30000
 }

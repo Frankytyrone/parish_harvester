@@ -26,6 +26,17 @@ PDFEMB_SELECTOR = "a.pdfemb-viewer[href]"
 PDFEMB_HREF_EXTRACT_JS = "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)"
 
 
+def _recipe_step_timeout_ms(recipe: dict) -> int:
+    raw = recipe.get("timeout_ms", recipe.get("timeout"))
+    try:
+        if raw is None:
+            return RECIPE_STEP_TIMEOUT_MS
+        value = int(raw)
+    except (TypeError, ValueError):
+        return RECIPE_STEP_TIMEOUT_MS
+    return min(max(value, 1_000), 120_000)
+
+
 def recipe_path_for(parish_key: str, parishes_dir: Path = PARISHES_DIR) -> Path:
     """Return the path to the recipe JSON for *parish_key*.
 
@@ -250,7 +261,7 @@ async def _find_iframe_pdf_url(page: Page) -> str | None:
     return None
 
 
-async def _replay_click(page: Page, step: dict) -> None:
+async def _replay_click(page: Page, step: dict, step_timeout_ms: int) -> None:
     selectors: list[str] = []
     selector = (step.get("selector") or "").strip()
     if selector:
@@ -266,8 +277,8 @@ async def _replay_click(page: Page, step: dict) -> None:
     for sel in selectors:
         try:
             locator = page.locator(sel).first
-            await locator.wait_for(state="visible", timeout=RECIPE_STEP_TIMEOUT_MS)
-            await locator.click(timeout=RECIPE_STEP_TIMEOUT_MS)
+            await locator.wait_for(state="visible", timeout=step_timeout_ms)
+            await locator.click(timeout=step_timeout_ms)
             try:
                 await page.wait_for_load_state("domcontentloaded", timeout=POST_CLICK_WAIT_TIMEOUT_MS)
             except PlaywrightTimeoutError:
@@ -288,6 +299,7 @@ async def replay_recipe(
     browser: Browser,
 ) -> tuple[Path, str, str]:
     recipe = load_recipe(recipe_path)
+    step_timeout_ms = _recipe_step_timeout_ms(recipe)
     steps = recipe["steps"]
 
     context = await browser.new_context(accept_downloads=True)
@@ -302,11 +314,11 @@ async def replay_recipe(
                 url = (step.get("url") or "").strip()
                 if not url:
                     raise RecipeReplayError("Recipe goto step missing URL")
-                await page.goto(url, timeout=RECIPE_STEP_TIMEOUT_MS, wait_until="domcontentloaded")
+                await page.goto(url, timeout=step_timeout_ms, wait_until="domcontentloaded")
                 continue
 
             if action == "click":
-                await _replay_click(page, step)
+                await _replay_click(page, step, step_timeout_ms)
                 if downloads:
                     file_type = await _save_download_to_pdf(downloads.pop(0), dest)
                     source_url = page.url
