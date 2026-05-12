@@ -1,8 +1,9 @@
 Parish Bulletin Harvest Report — 2026-05-10
 ==================================================
-Downloaded : 59
-HTML links : 6
-Failed     : 31
+Downloaded : 58
+HTML links : 5
+Skipped    : 0
+Failed     : 33
 
 Downloaded bulletins:
 
@@ -10,6 +11,7 @@ Downloaded bulletins:
   ✅ Banagher — banagherparish.pdf
   ✅ Carndonagh — carndonaghparish.pdf
   ✅ Castlederg — castledergparish.pdf
+  ✅ Claudy — parishofclaudy.pdf
   ✅ Clonmany — clonmanyparish.pdf
   ✅ Culdaff — culdaffparish.pdf
   ✅ Culmoe — culmoreparish.pdf
@@ -22,6 +24,7 @@ Downloaded bulletins:
   ✅ Kilrea — parishofkilrea.pdf
   ✅ Lavey — laveyparish.pdf
   ✅ Leckpatrick — leckpatrickparish.pdf
+  ✅ Limavady — limavadyparish.pdf
   ✅ Maghera (Derry) — magheraparishderry.pdf
   ✅ Malin — malinparish.pdf
   ✅ Melmount (& Camus) — melmountparish.pdf
@@ -31,8 +34,6 @@ Downloaded bulletins:
   ✅ St Eugene's Cathedral (Templemore) — steugenescathedral.pdf
   ✅ St Mary's Parish Creggan — stmarysparishcreggan.pdf
   ✅ Waterside (& Strathfoyle amalgamated) — watersideparish.pdf
-  ✅ Aghyaran — parishofaghyaran.pdf
-  ✅ Ardstraw East — parishofardstraweast.pdf
   ✅ Drumragh — drumraghparish.pdf
   ✅ Granaghan — granaghanparish.pdf
   ✅ Holy Family — holyfamily-parish.pdf
@@ -54,7 +55,6 @@ Downloaded bulletins:
   ✅ St MacNissi Randalstown — stmacnissirandalstown.pdf
   ✅ Sacred Heart Belfast — sacredheartparishbelfast.pdf
   ✅ Saul and Ballee — saulandballeeparish.pdf
-  ✅ Saint Annes — saintannesparish.pdf
   ✅ St Bernadettes — stbernadettesparish.pdf
   ✅ St Brigids Belfast — stbrigidsparishbelfast.pdf
   ✅ St Colmcilles — st-colmcilles.pdf
@@ -73,7 +73,6 @@ HTML-only parishes (clickable links in mega PDF):
   🔗 Desertmartin — https://www.desertmartinparish.com/?page_id=6
   🔗 Greencastle — https://greencastleparish.com/
   🔗 Long Tower — https://longtowerchurch.org/
-  🔗 St Matthew's — https://www.stmatthewsparish.com/news
 
 Failed parishes:
 
@@ -83,58 +82,36 @@ Call log:
   - navigating to "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf", waiting until "domcontentloaded"
 
   ❌ Buncrana — Recipe replay failed: Recipe finished without downloading a document
-  ❌ Claudy — Total timeout exceeded
   ❌ Greenlough — Page.goto: net::ERR_ABORTED at http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf
 Call log:
   - navigating to "http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf", waiting until "domcontentloaded"
 
-  ❌ Limavady — Total timeout exceeded
   ❌ Three Patrons — No downloadable bulletin links found
-  ❌ Coleraine (St John) — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.parishofstjohncoleraine.com/
-Call log:
-  - navigating to "https://www.parishofstjohncoleraine.com/", waiting until "domcontentloaded"
-
-  ❌ Urney and Castlefin — Page.goto: net::ERR_NAME_NOT_RESOLVED at http://urneyandcastlefinparish.com/?page_id=1227
-Call log:
-  - navigating to "http://urneyandcastlefinparish.com/?page_id=1227", waiting until "domcontentloaded"
-
-  ❌ Antrim — Recipe replay failed: Page.goto: Timeout 15000ms exceeded.
-Call log:
-  - navigating to "https://www.antrimparish.com/bulletinpage/", waiting until "domcontentloaded"
-
+  ❌ Aghyaran — Recipe returning wrong bulletin PDF (Aghyaran matched Moville); manual retraining required via toolbar.
+  ❌ Ardstraw East — Recipe returning wrong PDF - needs manual retraining via toolbar
+  ❌ Coleraine (St John) — Website DNS no longer resolves (parishofstjohncoleraine.com).
+  ❌ Urney and Castlefin — Website DNS no longer resolves (urneyandcastlefinparish.com).
+  ❌ Antrim — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Ballyclare and Ballygowan — Total timeout exceeded
   ❌ Derriaghy — Total timeout exceeded
-  ❌ Hannahstown — Recipe replay failed: Recipe download step did not find a matching document URL
+  ❌ Hannahstown — Recipe replay produced no valid PDF
   ❌ Holy Rosary Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Kilmore and Killyleagh — Total timeout exceeded
   ❌ Maghera — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Portaferry — Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf
+  ❌ Portaferry — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Portstewart — Total timeout exceeded
   ❌ St Agnes Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Saint Anthony — Recipe replay failed: Page.goto: Timeout 15000ms exceeded.
-Call log:
-  - navigating to "http://www.saintanthony.co.uk/", waiting until "domcontentloaded"
-
+  ❌ Saint Annes — Total timeout exceeded
+  ❌ Saint Anthony — Total timeout exceeded
   ❌ St Gerards — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
   ❌ St Patricks Belfast — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
   ❌ St Teresas — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ St Mary's Belfast — Recipe replay failed: Page.goto: net::ERR_CERT_COMMON_NAME_INVALID at https://www.stmarysbelfast.org/news
-Call log:
-  - navigating to "https://www.stmarysbelfast.org/news", waiting until "domcontentloaded"
-
+  ❌ St Mary's Belfast — SSL certificate invalid (ERR_CERT_COMMON_NAME_INVALID).
   ❌ Christ the Redeemer — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Corpus Christi Belfast — Recipe replay failed: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.corpuschristiparishbelfast.com/news
-Call log:
-  - navigating to "https://www.corpuschristiparishbelfast.com/news", waiting until "domcontentloaded"
-
-  ❌ Drumbo and Carryduff — Recipe replay failed: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.drumbocarryduff.ie/#sbp-bulletin
-Call log:
-  - navigating to "https://www.drumbocarryduff.ie/#sbp-bulletin", waiting until "domcontentloaded"
-
-  ❌ Holy Trinity Belfast — Recipe replay failed: Recipe has no steps
+  ❌ Corpus Christi Belfast — Website DNS no longer resolves (corpuschristiparishbelfast.com).
+  ❌ Drumbo and Carryduff — Website DNS no longer resolves (drumbocarryduff.ie).
+  ❌ Holy Trinity Belfast — Website DNS no longer resolves (holytrinityparishbelfast.com).
   ❌ Nativity — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
-  ❌ St Luke's Belfast — Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.stlukesparishbelfast.com/news
-Call log:
-  - navigating to "https://www.stlukesparishbelfast.com/news", waiting until "domcontentloaded"
-
-  ❌ St Vincent de Paul Belfast — Recipe replay failed: Recipe has no steps
+  ❌ St Luke's Belfast — Website DNS no longer resolves (stlukesparishbelfast.com).
+  ❌ St Matthew's — SSL certificate invalid (ERR_CERT_DATE_INVALID).
+  ❌ St Vincent de Paul Belfast — Website DNS no longer resolves (stvincentdepaulparishbelfast.com).

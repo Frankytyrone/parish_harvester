@@ -1,9 +1,10 @@
 {
   "target_date": "2026-05-10",
   "summary": {
-    "downloaded": 59,
-    "html_links": 6,
-    "failed": 31
+    "downloaded": 58,
+    "html_links": 5,
+    "skipped": 0,
+    "failed": 33
   },
   "downloaded": [
     {
@@ -23,15 +24,22 @@
     {
       "parish": "carndonaghparish",
       "display_name": "Carndonagh",
-      "url": "http://www.carndonaghparish.com/pdf/100526.pdf",
+      "url": "http://www.carndonaghparish.com/parishnews.html",
       "file": "carndonaghparish.pdf",
       "file_type": "pdf"
     },
     {
       "parish": "castledergparish",
       "display_name": "Castlederg",
-      "url": "https://www.castledergparish.com/pdf/100526.pdf",
+      "url": "https://www.castledergparish.com/parishnews.html",
       "file": "castledergparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "parishofclaudy",
+      "display_name": "Claudy",
+      "url": "http://parishofclaudy.com/onewebmedia/Diocese of Derry - GDPR Guide for Parishes v1 (Feb2019).pdf",
+      "file": "parishofclaudy.pdf",
       "file_type": "pdf"
     },
     {
@@ -119,6 +127,13 @@
       "file_type": "pdf"
     },
     {
+      "parish": "limavadyparish",
+      "display_name": "Limavady",
+      "url": "https://www.limavadyparish.org/onewebmedia/10-5-26.pdf",
+      "file": "limavadyparish.pdf",
+      "file_type": "pdf"
+    },
+    {
       "parish": "magheraparishderry",
       "display_name": "Maghera (Derry)",
       "url": "http://www.magheraparishderry.com/pdf/100526.pdf",
@@ -142,7 +157,7 @@
     {
       "parish": "movilleparish",
       "display_name": "Moville",
-      "url": "https://www.movilleparish.com/news.html",
+      "url": "https://movilleparish.com/pdf/100526.pdf",
       "file": "movilleparish.pdf",
       "file_type": "pdf"
     },
@@ -179,20 +194,6 @@
       "display_name": "Waterside (& Strathfoyle amalgamated)",
       "url": "https://watersideparish.net/parish-bulletin/",
       "file": "watersideparish.pdf",
-      "file_type": "pdf"
-    },
-    {
-      "parish": "parishofaghyaran",
-      "display_name": "Aghyaran",
-      "url": "http://www.drumraghparish.com/pdf/gdpr2023.pdf",
-      "file": "parishofaghyaran.pdf",
-      "file_type": "pdf"
-    },
-    {
-      "parish": "parishofardstraweast",
-      "display_name": "Ardstraw East",
-      "url": "http://parishofardstraweast.com/pdf/DataEntryFormPdf.pdf",
-      "file": "parishofardstraweast.pdf",
       "file_type": "pdf"
     },
     {
@@ -343,13 +344,6 @@
       "file_type": "pdf"
     },
     {
-      "parish": "saintannesparish",
-      "display_name": "Saint Annes",
-      "url": "https://www.saintannesparish.net/wp-content/uploads/2026/05/100526_Bulletin-6th_Sunday-Easter.pdf",
-      "file": "saintannesparish.pdf",
-      "file_type": "pdf"
-    },
-    {
       "parish": "stbernadettesparish",
       "display_name": "St Bernadettes",
       "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 10th May 2026.pdf",
@@ -445,13 +439,9 @@
       "parish": "longtowerchurch",
       "display_name": "Long Tower",
       "url": "https://longtowerchurch.org/"
-    },
-    {
-      "parish": "stmatthewsparish",
-      "display_name": "St Matthew's",
-      "url": "https://www.stmatthewsparish.com/news"
     }
   ],
+  "skipped": [],
   "failed": [
     {
       "parish": "parishofballinascreen",
@@ -472,22 +462,10 @@
       "error": "Recipe replay failed: Recipe finished without downloading a document"
     },
     {
-      "parish": "parishofclaudy",
-      "display_name": "Claudy",
-      "url": "http://parishofclaudy.com/onewebmedia/NEWSLETTER 10-5-26.docx",
-      "error": "Total timeout exceeded"
-    },
-    {
       "parish": "greenlough",
       "display_name": "Greenlough",
       "url": "http://www.greenlough.com/publications/newsletter/6th_Sunday_of_Easter_[2026-5-10].pdf",
       "error": "Page.goto: net::ERR_ABORTED at http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf\nCall log:\n  - navigating to \"http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf\", waiting until \"domcontentloaded\"\n"
-    },
-    {
-      "parish": "limavadyparish",
-      "display_name": "Limavady",
-      "url": "https://www.limavadyparish.org/onewebmedia/10-5-26.pdf",
-      "error": "Total timeout exceeded"
     },
     {
       "parish": "threepatrons",
@@ -496,22 +474,34 @@
       "error": "No downloadable bulletin links found"
     },
     {
+      "parish": "parishofaghyaran",
+      "display_name": "Aghyaran",
+      "url": "https://www.parishofaghyaran.com/news.html",
+      "error": "Recipe returning wrong bulletin PDF (Aghyaran matched Moville); manual retraining required via toolbar."
+    },
+    {
+      "parish": "parishofardstraweast",
+      "display_name": "Ardstraw East",
+      "url": "http://parishofardstraweast.com/parishnews.html",
+      "error": "Recipe returning wrong PDF - needs manual retraining via toolbar"
+    },
+    {
       "parish": "parishofstjohncoleraine",
       "display_name": "Coleraine (St John)",
       "url": "https://www.parishofstjohncoleraine.com/",
-      "error": "Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.parishofstjohncoleraine.com/\nCall log:\n  - navigating to \"https://www.parishofstjohncoleraine.com/\", waiting until \"domcontentloaded\"\n"
+      "error": "Website DNS no longer resolves (parishofstjohncoleraine.com)."
     },
     {
       "parish": "urneyandcastlefinparish",
       "display_name": "Urney and Castlefin",
       "url": "http://urneyandcastlefinparish.com/?page_id=1227",
-      "error": "Page.goto: net::ERR_NAME_NOT_RESOLVED at http://urneyandcastlefinparish.com/?page_id=1227\nCall log:\n  - navigating to \"http://urneyandcastlefinparish.com/?page_id=1227\", waiting until \"domcontentloaded\"\n"
+      "error": "Website DNS no longer resolves (urneyandcastlefinparish.com)."
     },
     {
       "parish": "antrimparish",
       "display_name": "Antrim",
       "url": "https://www.antrimparish.com/bulletinpage/",
-      "error": "Recipe replay failed: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://www.antrimparish.com/bulletinpage/\", waiting until \"domcontentloaded\"\n"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "ballyclareballygowan",
@@ -529,7 +519,7 @@
       "parish": "parishofhannahstown",
       "display_name": "Hannahstown",
       "url": "https://www.parishofhannahstown.com/weekly-bulletins",
-      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+      "error": "Recipe replay produced no valid PDF"
     },
     {
       "parish": "holyrosaryparishbelfast",
@@ -553,7 +543,7 @@
       "parish": "portaferryparish",
       "display_name": "Portaferry",
       "url": "https://portaferryparish.com/bulletin",
-      "error": "Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "portstewartparish",
@@ -568,10 +558,16 @@
       "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
+      "parish": "saintannesparish",
+      "display_name": "Saint Annes",
+      "url": "https://www.saintannesparish.net",
+      "error": "Total timeout exceeded"
+    },
+    {
       "parish": "saintanthony",
       "display_name": "Saint Anthony",
       "url": "http://www.saintanthony.co.uk",
-      "error": "Recipe replay failed: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"http://www.saintanthony.co.uk/\", waiting until \"domcontentloaded\"\n"
+      "error": "Total timeout exceeded"
     },
     {
       "parish": "stgerardsparish",
@@ -595,7 +591,7 @@
       "parish": "stmarysbelfast",
       "display_name": "St Mary's Belfast",
       "url": "https://www.stmarysbelfast.org/news",
-      "error": "Recipe replay failed: Page.goto: net::ERR_CERT_COMMON_NAME_INVALID at https://www.stmarysbelfast.org/news\nCall log:\n  - navigating to \"https://www.stmarysbelfast.org/news\", waiting until \"domcontentloaded\"\n"
+      "error": "SSL certificate invalid (ERR_CERT_COMMON_NAME_INVALID)."
     },
     {
       "parish": "christtheredeemer",
@@ -607,19 +603,19 @@
       "parish": "corpuschristiparishbelfast",
       "display_name": "Corpus Christi Belfast",
       "url": "https://www.corpuschristiparishbelfast.com/news",
-      "error": "Recipe replay failed: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.corpuschristiparishbelfast.com/news\nCall log:\n  - navigating to \"https://www.corpuschristiparishbelfast.com/news\", waiting until \"domcontentloaded\"\n"
+      "error": "Website DNS no longer resolves (corpuschristiparishbelfast.com)."
     },
     {
       "parish": "drumbocarryduff",
       "display_name": "Drumbo and Carryduff",
       "url": "https://www.drumbocarryduff.ie/#sbp-bulletin",
-      "error": "Recipe replay failed: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.drumbocarryduff.ie/#sbp-bulletin\nCall log:\n  - navigating to \"https://www.drumbocarryduff.ie/#sbp-bulletin\", waiting until \"domcontentloaded\"\n"
+      "error": "Website DNS no longer resolves (drumbocarryduff.ie)."
     },
     {
       "parish": "holytrinityparishbelfast",
       "display_name": "Holy Trinity Belfast",
       "url": "https://holytrinityparishbelfast.com/newsletters/",
-      "error": "Recipe replay failed: Recipe has no steps"
+      "error": "Website DNS no longer resolves (holytrinityparishbelfast.com)."
     },
     {
       "parish": "nativityparish",
@@ -631,13 +627,19 @@
       "parish": "stlukesparishbelfast",
       "display_name": "St Luke's Belfast",
       "url": "https://www.stlukesparishbelfast.com/news",
-      "error": "Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.stlukesparishbelfast.com/news\nCall log:\n  - navigating to \"https://www.stlukesparishbelfast.com/news\", waiting until \"domcontentloaded\"\n"
+      "error": "Website DNS no longer resolves (stlukesparishbelfast.com)."
+    },
+    {
+      "parish": "stmatthewsparish",
+      "display_name": "St Matthew's",
+      "url": "https://www.stmatthewsparish.com/news",
+      "error": "SSL certificate invalid (ERR_CERT_DATE_INVALID)."
     },
     {
       "parish": "stvincentdepaulparishbelfast",
       "display_name": "St Vincent de Paul Belfast",
       "url": "https://www.stvincentdepaulparishbelfast.com/news",
-      "error": "Recipe replay failed: Recipe has no steps"
+      "error": "Website DNS no longer resolves (stvincentdepaulparishbelfast.com)."
     }
   ]
 }
