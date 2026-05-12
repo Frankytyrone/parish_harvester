@@ -399,10 +399,12 @@ async def replay_recipe(
                 return dest, "html_link", html_url
 
             if action == "print_to_pdf":
-                pdf_url = (step.get("url") or "").strip() or page.url
+                raw_pdf_url = (step.get("url") or "").strip()
+                pdf_url = raw_pdf_url or page.url
                 if not pdf_url:
                     raise RecipeReplayError("Recipe print_to_pdf step missing URL")
-                await page.goto(pdf_url, timeout=step_timeout_ms, wait_until="networkidle")
+                if raw_pdf_url:
+                    await page.goto(pdf_url, timeout=step_timeout_ms, wait_until="networkidle")
                 pdf_bytes = await page.pdf(
                     format="A4",
                     print_background=True,
