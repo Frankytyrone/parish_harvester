@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "parishofballinascreen",
+  "display_name": "Parishofballinascreen",
+  "diocese": "",
+  "start_url": "https://www.parishofballinascreen.com/copy-of-bulletins-2021",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.parishofballinascreen.com/copy-of-bulletins-2021"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"10 May 2026\")",
+      "href": "https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-10_may_2026",
+      "text": "10 May 2026"
+    }
+  ],
+  "recorded_date": "2026-05-12"
+}
