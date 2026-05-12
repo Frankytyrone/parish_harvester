@@ -121,7 +121,7 @@ chrome.action.onClicked.addListener((tab) => {
   if (!tab?.id) {
     return;
   }
-  void sendToTab(tab.id, { type: "show_toolbar" });
+  void sendToTab(tab.id, { type: "toggle_toolbar" });
 });
 
 
@@ -140,6 +140,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       error: String(err),
     });
   });
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "lookup_parish_for_url") return false;
+  (async () => {
+    try {
+      const url = String(message.url || "").trim();
+      const hostname = (() => {
+        try {
+          return new URL(url).hostname.toLowerCase();
+        } catch (_e) {
+          return "";
+        }
+      })();
+      if (!hostname) {
+        sendResponse({ ok: false });
+        return;
+      }
+      const { ph_hostname_map } = await chrome.storage.local.get(["ph_hostname_map"]);
+      const parish = ph_hostname_map && typeof ph_hostname_map === "object"
+        ? ph_hostname_map[hostname]
+        : null;
+      if (!parish) {
+        sendResponse({ ok: false });
+        return;
+      }
+      sendResponse({ ok: true, parish });
+    } catch (_e) {
+      sendResponse({ ok: false });
+    }
+  })();
   return true;
 });
 
@@ -397,7 +429,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         );
         dispatchOk = dispatchResp.status === 204;
         if (!dispatchOk) {
-          dispatchError = await _githubApiError(dispatchResp);
+          if (dispatchResp.status === 403) {
+            dispatchError = "Your GitHub PAT is missing the 'workflow' scope. Go to github.com/settings/tokens, click your token, tick the 'workflow' checkbox, then regenerate and save it in the extension settings.";
+          } else {
+            dispatchError = await _githubApiError(dispatchResp);
+          }
         }
       } catch (dispatchErr) {
         dispatchError = String(dispatchErr);

@@ -13,6 +13,11 @@
   let pickImageHighlightEl = null;
   let pickImageCancelListeners = [];
   let pickedImages = []; // accumulates {url, el} when picking multiple
+  let aiTrainingEnabled = false;
+  let aiSamples = [];
+  let aiSampleStorageKey = "";
+  let aiLastAutoSampleUrl = "";
+  let _recordAiSample = null;
   let _stepsListEl = null; // set by createToolbar
   let _refreshRecipeCount = null; // callback set by createToolbar
 
@@ -24,6 +29,41 @@
   let standaloneStartUrl = "";
 
   const _inStandaloneMode = () => typeof window.ph_mark_download_url !== "function";
+  const _currentHostname = () => {
+    try {
+      return (window.location.hostname || "").toLowerCase();
+    } catch (_e) {
+      return "";
+    }
+  };
+  const _storageGet = (keys) =>
+    new Promise((resolve) => {
+      if (typeof chrome === "undefined" || !chrome.storage) {
+        resolve({});
+        return;
+      }
+      try {
+        chrome.storage.local.get(keys, (r) => {
+          if (chrome.runtime?.lastError) resolve({});
+          else resolve(r || {});
+        });
+      } catch (_e) {
+        resolve({});
+      }
+    });
+  const _storageSet = (data) =>
+    new Promise((resolve) => {
+      if (typeof chrome === "undefined" || !chrome.storage) {
+        resolve(false);
+        return;
+      }
+      try {
+        chrome.storage.local.set(data, () => resolve(!chrome.runtime?.lastError));
+      } catch (_e) {
+        resolve(false);
+      }
+    });
+  const _aiStorageKeyForHostname = (hostname) => `ph_ai_samples_${hostname || "unknown"}`;
 
   // ── Safe message bridge ───────────────────────────────────────────────────
   // content.js runs in the MAIN world where chrome.runtime can be undefined
@@ -113,7 +153,7 @@
   };
 
   // Persist per-domain parish context after a successful push.
-  const _cacheParishByDomain = (url, key, name, diocese) => {
+  const _cacheParishByDomain = (url, key, name, diocese, startUrl = "") => {
     const hostname = (() => { try { return new URL(url).hostname; } catch (_e) { return ""; } })();
     if (!hostname || !key) return;
     if (typeof chrome === "undefined" || !chrome.storage) return;
@@ -124,7 +164,16 @@
           ? r.ph_parish_by_domain : {};
         const hostnameMap = (r.ph_hostname_map && typeof r.ph_hostname_map === "object")
           ? r.ph_hostname_map : {};
-        const context = { key, parish_key: key, name: name || key, display_name: name || key, diocese: diocese || "", ts: Date.now() };
+        const context = {
+          hostname,
+          key,
+          parish_key: key,
+          name: name || key,
+          display_name: name || key,
+          diocese: diocese || "",
+          start_url: startUrl || url,
+          ts: Date.now(),
+        };
         cache[hostname] = context;
         hostnameMap[hostname] = context;
         try { chrome.storage.local.set({ ph_parish_by_domain: cache, ph_hostname_map: hostnameMap }); } catch (_e) {}
@@ -847,7 +896,7 @@
     document.documentElement.appendChild(highlight);
     pickLinkHighlightEl = highlight;
 
-    const CANDIDATE_SELECTOR = 'a[href],button,[role="button"],[role="link"]';
+    const CANDIDATE_SELECTOR = 'a,button,[role="button"],[role="link"],input[type="submit"],input[type="button"]';
 
     const onMouseMove = (e) => {
       if (!pickLinkActive) return;
@@ -878,8 +927,10 @@
         e.target.closest("#ph-floating-toolbar")
       )
         return;
-      const el =
-        e.target instanceof Element ? e.target.closest(CANDIDATE_SELECTOR) : null;
+      const el = e.target instanceof Element
+        ? e.target.closest(CANDIDATE_SELECTOR) || e.target
+        : null;
+      if (el && el.closest && el.closest("#ph-floating-toolbar")) return;
       if (!el) return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -894,14 +945,17 @@
       }
     };
 
-    document.addEventListener("mousemove", onMouseMove, true);
-    document.addEventListener("click", onClick, true);
-    document.addEventListener("keydown", onKeyDown, true);
-    pickLinkCancelListeners = [
-      { el: document, type: "mousemove", fn: onMouseMove },
-      { el: document, type: "click", fn: onClick },
-      { el: document, type: "keydown", fn: onKeyDown },
-    ];
+    setTimeout(() => {
+      if (!pickLinkActive) return;
+      document.addEventListener("mousemove", onMouseMove, true);
+      document.addEventListener("click", onClick, true);
+      document.addEventListener("keydown", onKeyDown, true);
+      pickLinkCancelListeners = [
+        { el: document, type: "mousemove", fn: onMouseMove },
+        { el: document, type: "click", fn: onClick },
+        { el: document, type: "keydown", fn: onKeyDown },
+      ];
+    }, 0);
   };
 
   // ── Pick Image Mode ───────────────────────────────────────────────────────
@@ -1917,6 +1971,19 @@
       const text = (selectedEl.innerText || selectedEl.textContent || "")
         .trim()
         .slice(0, 60);
+      const clickLabel = `🔗 Click: "${text || selector}"`;
+      const immediateStandaloneStep = {
+        action: "click",
+        selector,
+        href,
+        text,
+      };
+      let immediateStandaloneSaved = false;
+      if (_inStandaloneMode()) {
+        standaloneAddStep(immediateStandaloneStep);
+        addSessionStep("click", clickLabel);
+        immediateStandaloneSaved = true;
+      }
 
       guidedPanel.innerHTML = "";
 
@@ -1977,20 +2044,12 @@
                 href: selectedEl.getAttribute("href") || "",
                 css_path: cssPath(selectedEl),
               });
-              addSessionStep("click", `🔗 Click: "${text || selector}"`);
+              addSessionStep("click", clickLabel);
               showStatus(`✅ Click step recorded: "${text || selector}"`);
             } catch (_e) {
               showStatus("❌ Could not record click.", "error");
             }
-          } else {
-            // Standalone extension mode — record click into standaloneSteps
-            standaloneAddStep({
-              action: "click",
-              selector: selector,
-              href: selectedEl.getAttribute("href") || "",
-              text: text,
-            });
-            addSessionStep("click", `🔗 Click: "${text || selector}"`);
+          } else if (immediateStandaloneSaved) {
             showStatus(`✅ Click step recorded: "${text || selector}"`);
           }
           resetGuidedPanel();
@@ -2010,6 +2069,29 @@
       pickAgainBtn.style.width = "auto";
 
       btnRow.appendChild(looksRightBtn);
+      if (immediateStandaloneSaved) {
+        const undoBtn = makeSmallBtn(
+          "↩ Undo",
+          "#78350f",
+          () => {
+            const idx = standaloneSteps.lastIndexOf(immediateStandaloneStep);
+            if (idx >= 0) standaloneSteps.splice(idx, 1);
+            for (let i = sessionSteps.length - 1; i >= 0; i--) {
+              if (sessionSteps[i].label === clickLabel) {
+                sessionSteps.splice(i, 1);
+                break;
+              }
+            }
+            if (_stepsListEl) _renderSessionSteps();
+            if (_refreshRecipeCount) _refreshRecipeCount();
+            showStatus("↩ Click step removed. Pick again.", "info");
+            resetGuidedPanel();
+          },
+          "Remove this just-recorded click step"
+        );
+        undoBtn.style.width = "auto";
+        btnRow.appendChild(undoBtn);
+      }
       btnRow.appendChild(pickAgainBtn);
       guidedPanel.appendChild(btnRow);
 
@@ -2846,6 +2928,173 @@
     identifyBtn.style.marginTop = "5px";
     advancedBodyEl.appendChild(identifyBtn);
     advancedBodyEl.appendChild(identifyResult);
+
+    // ── AI Training Mode (Mistral) ────────────────────────────────────────
+    const aiSection = document.createElement("div");
+    aiSection.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid #374151;";
+    const aiToggleBtn = makeBtn("🤖 AI Training Mode: Off", async () => {
+      aiTrainingEnabled = !aiTrainingEnabled;
+      aiToggleBtn.textContent = `🤖 AI Training Mode: ${aiTrainingEnabled ? "On" : "Off"}`;
+      aiToggleBtn.style.background = aiTrainingEnabled ? "#16a34a" : "#2563eb";
+      if (aiTrainingEnabled) {
+        await loadAiSamples();
+        if (/\.pdf(?:$|[?#])/i.test(window.location.href)) {
+          await recordAiSample(window.location.href, document.title || "Current PDF page");
+        }
+        showStatus("🤖 AI Training Mode enabled. Click bulletin links to teach the model.", "info");
+      } else {
+        showStatus("🤖 AI Training Mode disabled.", "info");
+      }
+      refreshAiAskUi();
+    });
+    aiToggleBtn.style.width = "100%";
+    aiToggleBtn.style.marginBottom = "4px";
+
+    const aiAskBtn = makeBtn("🤖 Ask AI", () => {
+      void askAiForPrediction();
+    });
+    aiAskBtn.style.width = "100%";
+    aiAskBtn.style.display = "none";
+    aiAskBtn.style.marginBottom = "4px";
+
+    const aiResultBox = document.createElement("div");
+    aiResultBox.style.cssText = "display:none;background:#0f172a;border:1px solid #374151;border-radius:6px;padding:6px;font-size:10px;line-height:1.4;";
+
+    const refreshAiAskUi = () => {
+      aiAskBtn.style.display = aiSamples.length >= 2 ? "block" : "none";
+    };
+
+    const loadAiSamples = async () => {
+      const hostname = _currentHostname();
+      aiSampleStorageKey = _aiStorageKeyForHostname(hostname);
+      const data = await _storageGet([aiSampleStorageKey]);
+      const arr = Array.isArray(data[aiSampleStorageKey]) ? data[aiSampleStorageKey] : [];
+      aiSamples = arr.filter((s) => s && typeof s.url === "string").slice(-50);
+      refreshAiAskUi();
+    };
+
+    const recordAiSample = async (url, label) => {
+      if (!aiTrainingEnabled) return;
+      if (!/^https?:\/\//i.test(String(url || "").trim())) return;
+      if (!aiSampleStorageKey) {
+        aiSampleStorageKey = _aiStorageKeyForHostname(_currentHostname());
+      }
+      const sample = {
+        url: String(url || "").trim(),
+        label: String(label || "").trim().slice(0, 200),
+        timestamp: Date.now(),
+      };
+      const dupe = aiSamples.find((s) => s.url === sample.url && s.label === sample.label);
+      if (!dupe) {
+        aiSamples.push(sample);
+        aiSamples = aiSamples.slice(-50);
+        await _storageSet({ [aiSampleStorageKey]: aiSamples });
+      }
+      if (isDocumentUrl(sample.url) && aiLastAutoSampleUrl !== sample.url) {
+        aiLastAutoSampleUrl = sample.url;
+      }
+      refreshAiAskUi();
+    };
+    _recordAiSample = recordAiSample;
+
+    const askAiForPrediction = async () => {
+      if (aiSamples.length < 2) {
+        showStatus("ℹ️ Collect at least 2 samples first.", "info");
+        return;
+      }
+      aiAskBtn.disabled = true;
+      aiAskBtn.textContent = "⏳ Asking AI…";
+      aiResultBox.style.display = "none";
+      const settings = await _storageGet(["mistral_api_key"]);
+      const mistralApiKey = String(settings.mistral_api_key || "").trim();
+      if (!mistralApiKey) {
+        aiAskBtn.disabled = false;
+        aiAskBtn.textContent = "🤖 Ask AI";
+        showStatus("❌ Mistral API key missing. Save it in popup → GitHub Settings.", "error");
+        return;
+      }
+      const links = Array.from(document.querySelectorAll("a[href]"))
+        .map((a) => {
+          const href = a.getAttribute("href") || "";
+          const label = (a.innerText || a.textContent || "").trim();
+          try {
+            return { url: new URL(href, window.location.href).href, label };
+          } catch (_e) {
+            return null;
+          }
+        })
+        .filter((x) => x && /^https?:\/\//i.test(x.url));
+      const deduped = [];
+      const seen = new Set();
+      const merged = [...aiSamples.slice(-12), ...links];
+      for (const item of merged) {
+        if (!item || !item.url || seen.has(item.url)) continue;
+        seen.add(item.url);
+        deduped.push(item);
+        if (deduped.length >= 20) break;
+      }
+      const prompt = [
+        "Predict the single most likely current parish bulletin URL.",
+        `Current page: ${window.location.href}`,
+        "Training samples (url | label | timestamp):",
+        ...aiSamples.slice(-12).map((s) => `- ${s.url} | ${s.label || "(no label)"} | ${new Date(s.timestamp || Date.now()).toISOString()}`),
+        "Candidate links on page:",
+        ...deduped.map((c) => `- ${c.url} | ${c.label || "(no label)"}`),
+        "Respond with only one absolute URL.",
+      ].join("\n");
+
+      try {
+        const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${mistralApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "mistral-small-latest",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.2,
+          }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          throw new Error(data?.error?.message || `HTTP ${resp.status}`);
+        }
+        const content = String(data?.choices?.[0]?.message?.content || "").trim();
+        const match = content.match(/https?:\/\/[^\s"'<>]+/i);
+        const predictedUrl = match ? match[0] : "";
+        if (!predictedUrl) throw new Error("No URL returned by AI.");
+        aiResultBox.innerHTML = "";
+        aiResultBox.style.display = "block";
+        const predText = document.createElement("div");
+        predText.style.cssText = "word-break:break-all;margin-bottom:6px;color:#d1d5db;";
+        predText.textContent = `Predicted bulletin URL: ${predictedUrl}`;
+        const okBtn = makeBtn("✅ That's right — use this", () => {
+          markDownloadUrlSafe(predictedUrl, showStatus, isDocumentUrl(predictedUrl));
+        });
+        okBtn.style.width = "100%";
+        okBtn.style.marginBottom = "4px";
+        const retryBtn = makeBtn("❌ Wrong — try again", () => {
+          void askAiForPrediction();
+        });
+        retryBtn.style.width = "100%";
+        aiResultBox.appendChild(predText);
+        aiResultBox.appendChild(okBtn);
+        aiResultBox.appendChild(retryBtn);
+      } catch (err) {
+        showStatus(`❌ AI prediction failed: ${String(err.message || err)}`, "error");
+      } finally {
+        aiAskBtn.disabled = false;
+        aiAskBtn.textContent = "🤖 Ask AI";
+      }
+    };
+
+    aiSection.appendChild(aiToggleBtn);
+    aiSection.appendChild(aiAskBtn);
+    aiSection.appendChild(aiResultBox);
+    advancedBodyEl.appendChild(aiSection);
+    void loadAiSamples();
+
     advancedSection.appendChild(advancedBodyEl);
     body.appendChild(advancedSection);
 
@@ -2914,43 +3163,71 @@
 
       const keyInput = makeInput("Parish key (auto-detected if blank)", "ph-parish-key");
       const nameInput = makeInput("Display name (auto-detected if blank)", "ph-display-name");
-      const dioceseInput = makeInput("Diocese (optional)", "ph-diocese");
       pushSection.appendChild(keyInput);
       pushSection.appendChild(nameInput);
-      pushSection.appendChild(dioceseInput);
+      const dioceseLine = document.createElement("div");
+      dioceseLine.style.cssText = "font-size:10px;color:#d1d5db;margin-bottom:6px;";
+      dioceseLine.textContent = "Diocese: (open this parish from the operator console)";
+      pushSection.appendChild(dioceseLine);
+      let resolvedDiocese = "";
 
       // Auto-detect label — shown when fields were filled automatically.
       const autoDetectNote = document.createElement("div");
       autoDetectNote.style.cssText = "font-size:9px;color:#86efac;margin-bottom:3px;display:none;";
       pushSection.appendChild(autoDetectNote);
 
-      const _applyParishContext = (ctx) => {
-        if (!ctx) return;
-        if (ctx.key && !keyInput.value) {
-          keyInput.value = ctx.key;
-          autoDetectNote.style.display = "block";
-          autoDetectNote.textContent = `✓ Auto-filled: ${ctx.key}`;
-        }
-        if (ctx.name && !nameInput.value) nameInput.value = ctx.name;
-        if (ctx.diocese && !dioceseInput.value) dioceseInput.value = ctx.diocese;
+      const refreshDioceseLine = () => {
+        dioceseLine.textContent = resolvedDiocese
+          ? `Diocese: ${resolvedDiocese}`
+          : "Diocese: (open this parish from the operator console)";
       };
 
-      // Pre-populate fields: ph_training_parish → ph_hostname_map[hostname]
-      // → per-domain cache → last diocese.
+      const _applyParishContext = (ctx) => {
+        if (!ctx) return;
+        const key = String(ctx.parish_key || ctx.key || "").trim().toLowerCase().replace(/\s+/g, "_");
+        const name = String(ctx.display_name || ctx.name || "").trim();
+        const diocese = String(ctx.diocese || "").trim();
+        if (key && !keyInput.value) {
+          keyInput.value = key;
+          autoDetectNote.style.display = "block";
+          autoDetectNote.textContent = `✓ Auto-filled: ${key}`;
+        }
+        if (name && !nameInput.value) nameInput.value = name;
+        if (diocese && !resolvedDiocese) {
+          resolvedDiocese = diocese;
+          refreshDioceseLine();
+        }
+      };
+
+      // Pre-populate fields:
+      // ph_training_parish → background URL lookup → ph_hostname_map[hostname] → ph_last_diocese
       if (typeof chrome !== "undefined" && chrome.storage) {
         try {
-          const hostname = (() => { try { return new URL(window.location.href).hostname; } catch (_e) { return ""; } })();
-          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese", "ph_hostname_map", "ph_parish_by_domain"], (r) => {
+          const hostname = _currentHostname();
+          chrome.storage.local.get(["ph_training_parish", "ph_last_diocese", "ph_hostname_map"], (r) => {
             if (chrome.runtime?.lastError) return;
+            const fallbackToLocal = () => {
+              if (hostname && r.ph_hostname_map?.[hostname]) {
+                _applyParishContext(r.ph_hostname_map[hostname]);
+              } else if (r.ph_last_diocese && !resolvedDiocese) {
+                resolvedDiocese = String(r.ph_last_diocese || "").trim();
+                refreshDioceseLine();
+              }
+            };
             if (r.ph_training_parish) {
               _applyParishContext(r.ph_training_parish);
-            } else if (hostname && r.ph_hostname_map?.[hostname]) {
-              _applyParishContext(r.ph_hostname_map[hostname]);
-            } else if (hostname && r.ph_parish_by_domain?.[hostname]) {
-              _applyParishContext(r.ph_parish_by_domain[hostname]);
-            } else if (r.ph_last_diocese && !dioceseInput.value) {
-              dioceseInput.value = r.ph_last_diocese;
+              return;
             }
+            _safeSendMessage(
+              { type: "lookup_parish_for_url", url: window.location.href },
+              (lookupResponse, _lookupErr) => {
+                if (lookupResponse?.ok && lookupResponse.parish) {
+                  _applyParishContext(lookupResponse.parish);
+                } else {
+                  fallbackToLocal();
+                }
+              }
+            );
           });
         } catch (_storageErr) {
           // Extension context may have been invalidated — silently ignore.
@@ -2972,6 +3249,78 @@
         refreshStepCount();
       };
 
+      const dispatchErrorBanner = document.createElement("div");
+      dispatchErrorBanner.style.cssText = [
+        "display:none",
+        "background:#78350f",
+        "border:1px solid #f59e0b",
+        "color:#fde68a",
+        "font-size:10px",
+        "line-height:1.45",
+        "border-radius:6px",
+        "padding:6px 8px",
+        "margin-bottom:6px",
+      ].join(";");
+      const dispatchErrorText = document.createElement("span");
+      const dispatchErrorDismiss = document.createElement("button");
+      dispatchErrorDismiss.type = "button";
+      dispatchErrorDismiss.textContent = "✕";
+      dispatchErrorDismiss.style.cssText = [
+        "border:none",
+        "background:transparent",
+        "color:#fde68a",
+        "cursor:pointer",
+        "float:right",
+        "font-size:12px",
+        "padding:0 0 0 6px",
+      ].join(";");
+      dispatchErrorDismiss.addEventListener("click", () => {
+        dispatchErrorBanner.style.display = "none";
+      });
+      dispatchErrorBanner.appendChild(dispatchErrorDismiss);
+      dispatchErrorBanner.appendChild(dispatchErrorText);
+      pushSection.appendChild(dispatchErrorBanner);
+
+      const showDispatchErrorBanner = (msg) => {
+        dispatchErrorText.textContent = msg;
+        dispatchErrorBanner.style.display = "block";
+      };
+
+      const driftBanner = document.createElement("div");
+      driftBanner.style.cssText = [
+        "display:none",
+        "background:#78350f",
+        "border:1px solid #f59e0b",
+        "color:#fde68a",
+        "font-size:10px",
+        "line-height:1.45",
+        "border-radius:6px",
+        "padding:6px 8px",
+        "margin-bottom:6px",
+      ].join(";");
+      const driftMsg = document.createElement("div");
+      driftMsg.textContent = "This site may have moved — the saved recipe points to a different address.";
+      const updateStartUrlBtn = document.createElement("button");
+      updateStartUrlBtn.type = "button";
+      updateStartUrlBtn.textContent = "Update start_url";
+      updateStartUrlBtn.style.cssText = [
+        "border:none",
+        "border-radius:4px",
+        "padding:4px 8px",
+        "background:#f59e0b",
+        "color:#111827",
+        "cursor:pointer",
+        "font-size:10px",
+        "margin-top:6px",
+      ].join(";");
+      driftBanner.appendChild(driftMsg);
+      driftBanner.appendChild(updateStartUrlBtn);
+      pushSection.appendChild(driftBanner);
+
+      let driftRecipeKey = "";
+      let driftRecipeObject = null;
+      let driftRecipePath = "";
+
       const pushBtn = document.createElement("button");
       pushBtn.type = "button";
       pushBtn.textContent = "⬆ Push Recipe to GitHub";
@@ -2990,6 +3339,56 @@
         "width:100%",
         "margin-bottom:4px",
       ].join(";");
+
+      const loadRecipeFromRawGithub = async (key) => {
+        if (!key) return null;
+        const settings = await _storageGet(["gh_repo", "gh_pat"]);
+        const ghRepo = String(settings.gh_repo || "").trim();
+        if (!ghRepo) return null;
+        const filePath = `parishes/recipes/${key}.json`;
+        const rawUrl = `https://raw.githubusercontent.com/${ghRepo}/main/${filePath}`;
+        const headers = {};
+        const pat = String(settings.gh_pat || "").trim();
+        if (pat) headers.Authorization = `token ${pat}`;
+        try {
+          const resp = await fetch(rawUrl, { headers });
+          if (!resp.ok) return null;
+          const text = await resp.text();
+          return { recipe: JSON.parse(text), filePath };
+        } catch (_e) {
+          return null;
+        }
+      };
+
+      const checkStartUrlDrift = async () => {
+        const hostname = _currentHostname();
+        if (!hostname) return;
+        const storageData = await _storageGet(["ph_training_parish", "ph_hostname_map"]);
+        const fromTraining = storageData.ph_training_parish || null;
+        const fromHostnameMap = storageData.ph_hostname_map?.[hostname] || null;
+        const ctx = fromTraining || fromHostnameMap;
+        const key = String(ctx?.parish_key || ctx?.key || "").trim().toLowerCase().replace(/\s+/g, "_");
+        if (!key) return;
+        const loaded = await loadRecipeFromRawGithub(key);
+        if (!loaded || !loaded.recipe) return;
+        const startUrl = String(loaded.recipe.start_url || "").trim();
+        if (!startUrl) return;
+        let savedHost = "";
+        try {
+          savedHost = new URL(startUrl).hostname.toLowerCase();
+        } catch (_e) {
+          return;
+        }
+        if (savedHost && savedHost !== hostname) {
+          driftRecipeKey = key;
+          driftRecipeObject = loaded.recipe;
+          driftRecipePath = loaded.filePath;
+          driftBanner.style.display = "block";
+        } else {
+          driftBanner.style.display = "none";
+        }
+      };
+
       pushBtn.addEventListener("click", async () => {
         const hostname = (() => { try { return window.location.hostname || ""; } catch (_e) { return ""; } })();
         const normalizeContext = (ctx) => {
@@ -3021,7 +3420,7 @@
 
         let key = storedContext.key || keyInput.value.trim().toLowerCase().replace(/\s+/g, "_");
         let name = storedContext.name || nameInput.value.trim();
-        const diocese = storedContext.diocese || dioceseInput.value.trim();
+        const diocese = storedContext.diocese || resolvedDiocese;
 
         if (!key) {
           key = _inferParishKeyFromUrl(standaloneStartUrl || window.location.href);
@@ -3036,8 +3435,9 @@
           if (name) nameInput.value = name;
         }
 
-        if (diocese && !dioceseInput.value.trim()) {
-          dioceseInput.value = diocese;
+        if (diocese && !resolvedDiocese) {
+          resolvedDiocese = diocese;
+          refreshDioceseLine();
         }
 
         if (!key) {
@@ -3065,8 +3465,10 @@
             const linkUrl = response.url || "";
             const linkPart = linkUrl ? ` → ${linkUrl}` : ` → ${path}`;
             if (response.dispatchOk) {
+              dispatchErrorBanner.style.display = "none";
               showStatus(`✅ Recipe ${verb}! Triggering instant Mega PDF rebuild… ${linkPart}`, "ok");
             } else if (response.dispatchError) {
+              showDispatchErrorBanner(response.dispatchError);
               showStatus(
                 `✅ Recipe ${verb}!${linkPart} ⚠️ Rebuild trigger failed: ${response.dispatchError}`,
                 "ok",
@@ -3080,9 +3482,16 @@
                 if (diocese) chrome.storage.local.set({ ph_last_diocese: diocese });
               } catch (_e) {}
             }
-            _cacheParishByDomain(standaloneStartUrl || window.location.href, key, name || key, diocese);
+            _cacheParishByDomain(
+              standaloneStartUrl || window.location.href,
+              key,
+              name || key,
+              diocese,
+              recipe.start_url || window.location.href
+            );
             clearStandaloneRecipe();
             refreshStepCount();
+            void checkStartUrlDrift();
           } else {
             showStatus(`❌ ${(response && response.error) || "Unknown error. Check GitHub settings in the popup."}`, "error");
           }
@@ -3112,6 +3521,59 @@
         showStatus("🗑 Steps cleared.", "info");
       });
       pushSection.appendChild(clearBtn);
+
+      updateStartUrlBtn.addEventListener("click", async () => {
+        if (!driftRecipeKey || !driftRecipePath) return;
+        updateStartUrlBtn.disabled = true;
+        updateStartUrlBtn.textContent = "⏳ Updating…";
+        try {
+          const loaded = await loadRecipeFromRawGithub(driftRecipeKey);
+          const baseRecipe = loaded?.recipe || driftRecipeObject;
+          if (!baseRecipe) {
+            showStatus("❌ Could not load current recipe for update.", "error");
+            return;
+          }
+          const nextRecipe = {
+            ...baseRecipe,
+            start_url: window.location.href,
+          };
+          const commitMessage = `chore: update start_url for ${driftRecipeKey} [from extension]`;
+          _safeSendMessage(
+            {
+              type: "push_github_file",
+              path: driftRecipePath,
+              content: JSON.stringify(nextRecipe, null, 2),
+              commitMessage,
+            },
+            (response, bridgeError) => {
+              updateStartUrlBtn.disabled = false;
+              updateStartUrlBtn.textContent = "Update start_url";
+              if (bridgeError || !response?.ok) {
+                showStatus(
+                  `❌ ${(bridgeError || response?.error || "Could not update recipe start_url.")}`,
+                  "error"
+                );
+                return;
+              }
+              driftBanner.style.display = "none";
+              showStatus("✅ start_url updated to this page.", "ok");
+              _cacheParishByDomain(
+                window.location.href,
+                driftRecipeKey,
+                String(nextRecipe.display_name || driftRecipeKey),
+                String(nextRecipe.diocese || ""),
+                window.location.href
+              );
+            }
+          );
+        } catch (_e) {
+          updateStartUrlBtn.disabled = false;
+          updateStartUrlBtn.textContent = "Update start_url";
+          showStatus("❌ Could not update recipe start_url.", "error");
+        }
+      });
+
+      void checkStartUrlDrift();
 
       body.appendChild(pushSection);
     }
@@ -3326,6 +3788,17 @@
         event.target.closest("#ph-floating-toolbar")
       )
         return;
+      if (aiTrainingEnabled && event.target instanceof Element && typeof _recordAiSample === "function") {
+        const linkEl = event.target.closest("a[href]");
+        if (linkEl) {
+          const href = linkEl.getAttribute("href") || "";
+          try {
+            const absUrl = new URL(href, window.location.href).href;
+            const label = (linkEl.innerText || linkEl.textContent || "").trim();
+            void _recordAiSample(absUrl, label);
+          } catch (_e) {}
+        }
+      }
       // Skip clicks during pick-link mode (handled by the dedicated handler)
       if (pickLinkActive) return;
 
