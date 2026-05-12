@@ -36,19 +36,24 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
           pattern: "*-mega-bulletin-pdf"
-          path: mega_pdf
+          path: _harvest_artifacts
           merge-multiple: true
 
       - name: Verify mega PDFs for Pages deploy
         env:
           EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id || '' }}
         run: |
           set -euo pipefail
           mkdir -p mega_pdf
+          find mega_pdf -maxdepth 1 -type f -name '*.pdf' -delete || true
+          if [ -d _harvest_artifacts ]; then
+            find _harvest_artifacts -type f -name '*_mega_bulletin.pdf' -exec cp {} mega_pdf/ \;
+          fi
           shopt -s nullglob
           pdfs=(mega_pdf/*_mega_bulletin.pdf)
           if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then
-            echo "Error: no mega PDF artifacts were downloaded from workflow run ${GITHUB_EVENT_WORKFLOW_RUN_ID:-unknown}."
+            echo "Error: no mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
             exit 1
           fi
           for pdf in "${pdfs[@]}"; do
