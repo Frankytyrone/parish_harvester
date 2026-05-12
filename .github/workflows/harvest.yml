@@ -196,11 +196,11 @@ jobs:
           git push || true
 
       - name: Commit mega PDFs for GitHub Pages
-        if: always() && (hashFiles('mega_pdf/derry_mega_bulletin.pdf') != '' || hashFiles('mega_pdf/down_and_connor_mega_bulletin.pdf') != '')
+        if: success() && (hashFiles('mega_pdf/derry_mega_bulletin.pdf') != '' || hashFiles('mega_pdf/down_and_connor_mega_bulletin.pdf') != '')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add mega_pdf/derry_mega_bulletin.pdf mega_pdf/down_and_connor_mega_bulletin.pdf mega_pdf/index.html
+          git add mega_pdf/derry_mega_bulletin.pdf mega_pdf/down_and_connor_mega_bulletin.pdf mega_pdf/index.html || true
           if git diff --cached --quiet; then
             echo "No mega PDF changes to commit."
             exit 0
