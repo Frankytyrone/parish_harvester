@@ -278,6 +278,16 @@ https://www.antrimparish.com
         self.assertIn("parish_trainer.zip", workflow)
         self.assertIn("_site/updates.xml", workflow)
 
+    def test_extension_version_bump_workflow_configuration(self) -> None:
+        workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "bump-extension-version.yml").read_text(encoding="utf-8")
+        self.assertIn("push:", workflow)
+        self.assertIn("branches: [main]", workflow)
+        self.assertIn("github.actor != 'github-actions[bot]'", workflow)
+        self.assertIn("!contains(github.event.head_commit.message, '[skip ci]')", workflow)
+        self.assertIn('manifest_path = Path("extension/manifest.json")', workflow)
+        self.assertIn("version must be major.minor.patch", workflow)
+        self.assertIn('git commit -m "chore: bump extension version [skip ci]"', workflow)
+
     def test_bulletin_page_limit_constant(self) -> None:
         self.assertEqual(_MAX_BULLETIN_PAGES, 4)
 
