@@ -29,6 +29,58 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Download mega PDF artifacts from harvest run
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: "*-mega-bulletin-pdf"
+          path: _harvest_artifacts
+          merge-multiple: true
+
+      - name: Verify mega PDFs for Pages deploy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p mega_pdf
+          # Remove any stale PDFs before copying this run's verified artifacts.
+          find mega_pdf -maxdepth 1 -type f -name '*_mega_bulletin.pdf' -delete
+          if [ -d _harvest_artifacts ]; then
+            while IFS= read -r -d '' pdf; do
+              dest="mega_pdf/$(basename "${pdf}")"
+              if [ -e "${dest}" ]; then
+                echo "Error: duplicate mega PDF filename downloaded: ${dest}"
+                exit 1
+              fi
+              cp "${pdf}" "${dest}"
+            done < <(find _harvest_artifacts -type f -name '*_mega_bulletin.pdf' -print0)
+          fi
+          shopt -s nullglob
+          pdfs=(mega_pdf/*_mega_bulletin.pdf)
+          if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then
+            echo "Error: no mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
+            echo "Check that the upstream Harvest Parish Bulletins run succeeded, uploaded the diocesan *-mega-bulletin-pdf artifacts, and that those artifacts have not expired."
+            exit 1
+          fi
+          for pdf in "${pdfs[@]}"; do
+            if [ ! -s "${pdf}" ]; then
+              echo "Error: mega PDF is missing or empty: ${pdf}"
+              exit 1
+            fi
+            python - "${pdf}" <<'PY'
+            from pathlib import Path
+            import sys
+
+            path = Path(sys.argv[1])
+            if path.read_bytes()[:5] != b"%PDF-":
+                raise SystemExit(f"Error: file does not look like a PDF: {path}")
+            PY
+            ls -lh "${pdf}"
+          done
+
       - name: Build Pages site (mega PDFs + extension updates)
         env:
           CHROME_EXTENSION_APP_ID: ${{ vars.CHROME_EXTENSION_APP_ID }}
