@@ -328,16 +328,16 @@ https://www.antrimparish.com
 
     def test_ocr_convert_prefers_github_then_mistral_then_openai(self) -> None:
         source = (Path(__file__).resolve().parent / "ocr" / "convert_bulletin.py").read_text(encoding="utf-8")
-        self.assertIn("Step 2/4 — Running image OCR with GitHub Models (gpt-4o-mini) ...", source)
-        self.assertIn("Step 3/4 — Trying Mistral OCR (mistral-ocr-latest) on PDF ...", source)
-        self.assertIn("Step 4/4 — Running image OCR with OpenAI gpt-4o-mini fallback ...", source)
+        self.assertIn("Step 2/5 — Running image OCR with GitHub Models (gpt-4o-mini) ...", source)
+        self.assertIn("Step 3/5 — Trying Mistral OCR (mistral-ocr-latest) on PDF ...", source)
+        self.assertIn("Step 4/5 — Running image OCR with OpenAI gpt-4o-mini fallback ...", source)
         self.assertLess(
-            source.index("Step 2/4 — Running image OCR with GitHub Models (gpt-4o-mini) ..."),
-            source.index("Step 3/4 — Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
+            source.index("Step 2/5 — Running image OCR with GitHub Models (gpt-4o-mini) ..."),
+            source.index("Step 3/5 — Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
         )
         self.assertLess(
-            source.index("Step 3/4 — Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
-            source.index("Step 4/4 — Running image OCR with OpenAI gpt-4o-mini fallback ..."),
+            source.index("Step 3/5 — Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
+            source.index("Step 4/5 — Running image OCR with OpenAI gpt-4o-mini fallback ..."),
         )
 
     def test_extension_version_bump_workflow_configuration(self) -> None:

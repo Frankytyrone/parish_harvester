@@ -298,19 +298,19 @@ def main():
     images = None
 
     if github_token:
-        print("Step 1/3 — Converting PDF pages to images ...")
+        print("Step 1/5 — Converting PDF pages to images ...")
         images = pdf_to_images(pdf_file)
         print(f"  {len(images)} page(s) found.")
-        print("Step 2/4 — Running image OCR with GitHub Models (gpt-4o-mini) ...")
+        print("Step 2/5 — Running image OCR with GitHub Models (gpt-4o-mini) ...")
         try:
             pages_text, provider_used = ocr_images(images, allow_openai_fallback=False)
         except Exception as e:
             print(f"  GitHub Models OCR failed ({type(e).__name__}: {e}). Falling back to Mistral OCR...")
     else:
-        print("Step 1/3 — GITHUB_TOKEN not set, skipping GitHub Models OCR ...")
+        print("Step 1/5 — GITHUB_TOKEN not set, skipping GitHub Models OCR ...")
 
     if pages_text is None and mistral_api_key:
-        print("Step 3/4 — Trying Mistral OCR (mistral-ocr-latest) on PDF ...")
+        print("Step 3/5 — Trying Mistral OCR (mistral-ocr-latest) on PDF ...")
         try:
             mistral_pages = ocr_with_mistral(pdf_file)
             pages_text = [page_text.splitlines() for page_text in mistral_pages]
@@ -319,7 +319,7 @@ def main():
         except Exception as e:
             print(f"  Mistral OCR failed ({type(e).__name__}: {e}). Falling back to OpenAI OCR...")
     elif pages_text is None:
-        print("Step 3/4 — MISTRAL_API_KEY not set, skipping Mistral OCR ...")
+        print("Step 3/5 — MISTRAL_API_KEY not set, skipping Mistral OCR ...")
 
     if pages_text is None:
         if not openai_api_key:
@@ -327,10 +327,10 @@ def main():
             print("Set OPENAI_API_KEY for final fallback OCR.")
             sys.exit(1)
         if images is None:
-            print("Step 1/3 — Converting PDF pages to images ...")
+            print("Step 1/5 — Converting PDF pages to images ...")
             images = pdf_to_images(pdf_file)
             print(f"  {len(images)} page(s) found.")
-        print("Step 4/4 — Running image OCR with OpenAI gpt-4o-mini fallback ...")
+        print("Step 4/5 — Running image OCR with OpenAI gpt-4o-mini fallback ...")
         pages_text, provider_used = ocr_images(images, force_openai=True, allow_openai_fallback=False)
 
     print("Step 5/5 — Building HTML ...")
