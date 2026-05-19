@@ -50,7 +50,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p mega_pdf
-          # Remove any stale PDFs before copying this run's verified artifacts.
           find mega_pdf -maxdepth 1 -type f -name '*_mega_bulletin.pdf' -delete
           if [ -d _harvest_artifacts ]; then
             while IFS= read -r -d '' pdf; do
@@ -66,7 +65,6 @@ jobs:
           pdfs=(mega_pdf/*_mega_bulletin.pdf)
           if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then
             echo "Error: no mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
-            echo "Check that the upstream Harvest Parish Bulletins run succeeded, uploaded the diocesan *-mega-bulletin-pdf artifacts, and that those artifacts have not expired."
             exit 1
           fi
           for pdf in "${pdfs[@]}"; do
@@ -74,13 +72,10 @@ jobs:
               echo "Error: mega PDF is missing or empty: ${pdf}"
               exit 1
             fi
-            python3 -c "
-import pathlib
-import sys
-p = pathlib.Path(sys.argv[1])
-if p.read_bytes()[:5] != b'%PDF-':
-    raise SystemExit(f'Error: file does not look like a PDF: {p}')
-" "${pdf}"
+            if ! python3 -c "import sys; sig=open(sys.argv[1],'rb').read(5); sys.exit(0 if sig==b'%PDF-' else 1)" "${pdf}"; then
+              echo "Error: file does not look like a PDF: ${pdf}"
+              exit 1
+            fi
             ls -lh "${pdf}"
           done
 
@@ -103,62 +98,34 @@ if p.read_bytes()[:5] != b'%PDF-':
           mkdir -p _site/extension
           zip -qr _site/extension/parish_trainer.zip extension
           if [ ! -s _site/extension/parish_trainer.zip ]; then
-            echo "Error: extension package was not generated or is empty: _site/extension/parish_trainer.zip"
+            echo "Error: extension package was not generated or is empty."
             exit 1
           fi
 
-          VERSION=$(python3 -c "
-import json
-import pathlib
-try:
-    manifest = json.loads(pathlib.Path('extension/manifest.json').read_text(encoding='utf-8'))
-    print(manifest.get('version', '0.0.0'))
-except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
-    raise SystemExit(f'Error: failed to read extension/manifest.json version: {exc}')
-")
+          VERSION=$(python3 -c "import json,pathlib; m=json.loads(pathlib.Path('extension/manifest.json').read_text()); print(m.get('version','0.0.0'))")
           PREV_VERSION="unknown"
           MANIFEST_BUMPED="false"
           if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
-            PREV_VERSION=$(python3 -c "
-import json
-import subprocess
-r = subprocess.run(
-    ['git', 'show', 'HEAD^:extension/manifest.json'],
-    stderr=subprocess.DEVNULL,
-    text=True,
-    capture_output=True,
-)
-raw = r.stdout.strip()
-try:
-    print(json.loads(raw).get('version', 'unknown') if r.returncode == 0 and raw else 'unknown')
-except json.JSONDecodeError:
-    print('unknown')
-")
+            PREV_VERSION=$(python3 -c "import json,subprocess; r=subprocess.run(['git','show','HEAD^:extension/manifest.json'],capture_output=True,text=True); print(json.loads(r.stdout).get('version','unknown') if r.returncode==0 and r.stdout.strip() else 'unknown')" 2>/dev/null || echo "unknown")
             if git diff --name-only HEAD^ HEAD | grep -qx 'extension/manifest.json'; then
               MANIFEST_BUMPED="true"
             fi
           fi
+
           if [ -z "${CHROME_EXTENSION_APP_ID:-}" ]; then
-            echo "Warning: CHROME_EXTENSION_APP_ID not set, using placeholder; generated updates.xml will not update a real Chrome extension until this variable is configured." >&2
+            echo "Warning: CHROME_EXTENSION_APP_ID not set, using placeholder." >&2
             APP_ID="REPLACE_WITH_EXTENSION_ID"
           else
             APP_ID="${CHROME_EXTENSION_APP_ID}"
           fi
+
           PAGES_BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
-          cat > _site/updates.xml <<XML
-          <?xml version="1.0" encoding="UTF-8"?>
-          <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
-            <app appid="${APP_ID}">
-              <updatecheck codebase="${PAGES_BASE}/extension/parish_trainer.zip" version="${VERSION}" />
-            </app>
-          </gupdate>
-          XML
+
+          python3 -c "import sys; a,b,v=sys.argv[1],sys.argv[2],sys.argv[3]; open('_site/updates.xml','w').write('<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gupdate xmlns=\"http://www.google.com/update2/response\" protocol=\"2.0\">\n  <app appid=\"'+a+'\">\n    <updatecheck codebase=\"'+b+'/extension/parish_trainer.zip\" version=\"'+v+'\" />\n  </app>\n</gupdate>\n')" "${APP_ID}" "${PAGES_BASE}" "${VERSION}"
+
           if ! grep -Fq "version=\"${VERSION}\"" _site/updates.xml; then
             echo "Error: generated updates.xml does not contain extension version ${VERSION}."
             exit 1
-          fi
-          if [ "${MANIFEST_BUMPED}" = "true" ] && [ "${EVENT_NAME}" = "push" ]; then
-            echo "Detected extension manifest version bump: ${PREV_VERSION} -> ${VERSION}"
           fi
 
           {
