@@ -323,7 +323,7 @@ def main():
 
     if pages_text is None:
         if not openai_api_key:
-            print("Error: GitHub Models/Mistral OCR was unavailable/failed and OPENAI_API_KEY is not set.")
+            print("Error: GitHub Models and Mistral OCR were unavailable or failed, and OPENAI_API_KEY is not set.")
             print("Set OPENAI_API_KEY for final fallback OCR.")
             sys.exit(1)
         if images is None:

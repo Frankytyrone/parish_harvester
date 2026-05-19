@@ -326,7 +326,7 @@ https://www.antrimparish.com
         self.assertIn("OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}", workflow)
         self.assertIn("git add docs", workflow)
 
-    def test_ocr_convert_prefers_github_then_mistral_then_openai(self) -> None:
+    def test_ocr_convert_provider_fallback_order(self) -> None:
         source = (Path(__file__).resolve().parent / "ocr" / "convert_bulletin.py").read_text(encoding="utf-8")
         self.assertIn("Running image OCR with GitHub Models (gpt-4o-mini) ...", source)
         self.assertIn("Trying Mistral OCR (mistral-ocr-latest) on PDF ...", source)
