@@ -1,0 +1,4 @@
+openai
+pdf2image
+Pillow
+mistralai

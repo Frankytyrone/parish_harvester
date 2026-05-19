@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parish Bulletin Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: linear-gradient(180deg, #eff9f8 0%, #f8fbfb 100%); color: #163030; }
+    .hero { padding: 44px 20px 24px; background: linear-gradient(135deg, #1a7a7a 0%, #114b4b 100%); color: white; }
+    .hero-inner, .content { max-width: 1160px; margin: 0 auto; }
+    .hero h1 { margin: 0 0 10px; font-size: clamp(2.1rem, 4vw, 3.2rem); }
+    .hero p { margin: 0; max-width: 760px; color: rgba(255,255,255,0.88); font-size: 1.05rem; }
+    .content { padding: 28px 20px 40px; }
+    .section-title { margin: 0 0 16px; color: #1a7a7a; font-size: 1.45rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .card { background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 22px; box-shadow: 0 14px 34px rgba(26, 122, 122, 0.08); }
+    .eyebrow { margin: 0 0 8px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; font-weight: 700; }
+    .card h2 { margin: 0 0 10px; font-size: 1.45rem; }
+    .card p { margin: 0 0 18px; color: #4b5563; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; padding: 11px 16px; border-radius: 999px; font-weight: 700; text-decoration: none; }
+    .button.primary { background: #1a7a7a; color: white; }
+    .button.secondary { background: #edf7f6; color: #1a7a7a; border: 1px solid #cfe8e6; }
+    .archive-card { margin-top: 24px; background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 20px; box-shadow: 0 12px 30px rgba(26, 122, 122, 0.06); }
+    .archive-card a { color: #1a7a7a; font-weight: 700; text-decoration: none; }
+    .archive-card a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>Parish Bulletin Dashboard</h1>
+      <p>Read the latest diocesan mega PDFs, switch to OCR side-by-side viewer pages, and browse the growing bulletin archive published to GitHub Pages.</p>
+    </div>
+  </section>
+  <main class="content">
+    <h2 class="section-title">Mega PDF cards</h2>
+    <div class="cards">
+        <article class="card">
+          <p class="eyebrow">Mega PDF card</p>
+          <h2>Derry Diocese</h2>
+          <p>Latest OCR viewer: <strong>Archive</strong></p>
+          <div class="actions">
+            <a class="button secondary" href="mega_pdf/index.html#derry">👁 View Online</a>
+            <a class="button primary" href="bulletins/index.html">📖 Read OCR Text</a>
+            <a class="button secondary" href="mega_pdf/derry_mega_bulletin.pdf" download>⬇ Download PDF</a>
+          </div>
+        </article>
+            
+        <article class="card">
+          <p class="eyebrow">Mega PDF card</p>
+          <h2>Down &amp; Connor Diocese</h2>
+          <p>Latest OCR viewer: <strong>Archive</strong></p>
+          <div class="actions">
+            <a class="button secondary" href="mega_pdf/index.html#down_and_connor">👁 View Online</a>
+            <a class="button primary" href="bulletins/index.html">📖 Read OCR Text</a>
+            <a class="button secondary" href="mega_pdf/down_and_connor_mega_bulletin.pdf" download>⬇ Download PDF</a>
+          </div>
+        </article>
+            </div>
+    <div class="archive-card">
+      <p><a href="bulletins/index.html">Browse the full OCR bulletin archive</a></p>
+      <p><a href="mega_pdf/index.html">Open the mega PDF tab viewer</a></p>
+    </div>
+  </main>
+</body>
+</html>

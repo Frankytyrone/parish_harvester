@@ -83,8 +83,8 @@
     </header>
 
     <div class="tabs">
-      <button class="tab-btn active" onclick="showPanel('derry')">Derry Diocese</button>
-      <button class="tab-btn" onclick="showPanel('down_and_connor')">Down &amp; Connor Diocese</button>
+      <button class="tab-btn active" data-diocese="derry" onclick="showPanel('derry', this)">Derry Diocese</button>
+      <button class="tab-btn" data-diocese="down_and_connor" onclick="showPanel('down_and_connor', this)">Down &amp; Connor Diocese</button>
     </div>
 
     <div id="panel-derry" class="panel active">
@@ -106,11 +106,20 @@
     </div>
 
     <script>
-      function showPanel(diocese) {
+      function showPanel(diocese, button) {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('panel-' + diocese).classList.add('active');
-        event.target.classList.add('active');
+        const activeButton = button || document.querySelector('.tab-btn[data-diocese="' + diocese + '"]');
+        if (activeButton) activeButton.classList.add('active');
+        if (window.location.hash !== '#' + diocese) {
+          window.location.hash = diocese;
+        }
+      }
+
+      const hashDiocese = (window.location.hash || '').replace('#', '');
+      if (hashDiocese === 'derry' || hashDiocese === 'down_and_connor') {
+        showPanel(hashDiocese);
       }
     </script>
   </body>
