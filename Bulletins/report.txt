@@ -7,11 +7,11 @@ Failed     : 35
 
 Downloaded bulletins:
 
+  ✅ Ardmore — ardmoreparish.pdf
   ✅ Banagher — banagherparish.pdf
   ✅ Carndonagh — carndonaghparish.pdf
   ✅ Castlederg — castledergparish.pdf
   ✅ Claudy — parishofclaudy.pdf
-  ✅ Clonleigh (Strabane Pastoral Area) — clonleighparish.pdf
   ✅ Clonmany — clonmanyparish.pdf
   ✅ Culdaff — culdaffparish.pdf
   ✅ Culmoe — culmoreparish.pdf
@@ -33,6 +33,7 @@ Downloaded bulletins:
   ✅ Star of the Sea (Magilligan) — staroftheseacatholic.pdf
   ✅ St Eugene's Cathedral (Templemore) — steugenescathedral.pdf
   ✅ St Mary's Parish Creggan — stmarysparishcreggan.pdf
+  ✅ Waterside (& Strathfoyle amalgamated) — watersideparish.pdf
   ✅ Camus — camusparish.pdf
   ✅ Drumragh — drumraghparish.pdf
   ✅ Granaghan — granaghanparish.pdf
@@ -57,7 +58,6 @@ Downloaded bulletins:
   ✅ Saul and Ballee — saulandballeeparish.pdf
   ✅ St Bernadettes — stbernadettesparish.pdf
   ✅ St Brigids Belfast — stbrigidsparishbelfast.pdf
-  ✅ St Colmcilles — st-colmcilles.pdf
   ✅ St Michael the Archangel — saintmichaelthearchangel.pdf
   ✅ St Oliver Plunkett — stoliverplunkettparish.pdf
   ✅ Holy Family — holy-familyparish.pdf
@@ -74,38 +74,38 @@ HTML-only parishes (clickable links in mega PDF):
 
 Failed parishes:
 
-  ❌ Ardmore — Total timeout exceeded
   ❌ Ballinascreen (& Desertmartin amalgamated) — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Bellaghy — Recipe replay failed: Page.goto: net::ERR_ABORTED at https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf
 Call log:
   - navigating to "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf", waiting until "domcontentloaded"
 
   ❌ Buncrana — Recipe replay failed: Recipe finished without downloading a document
+  ❌ Clonleigh (Strabane Pastoral Area) — Total timeout exceeded
   ❌ Greenlough — Page.goto: net::ERR_ABORTED at http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf
 Call log:
   - navigating to "http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf", waiting until "domcontentloaded"
 
   ❌ Three Patrons — No downloadable bulletin links found
-  ❌ Waterside (& Strathfoyle amalgamated) — Page.goto: net::ERR_ABORTED at https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf
-Call log:
-  - navigating to "https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf", waiting until "domcontentloaded"
-
   ❌ Aghyaran — Recipe returning wrong bulletin PDF (Aghyaran matched Moville); manual retraining required via toolbar.
   ❌ Ardstraw East — Recipe returning wrong PDF - needs manual retraining via toolbar
   ❌ Coleraine (St John) — Website DNS no longer resolves (parishofstjohncoleraine.com).
   ❌ Urney and Castlefin — Website DNS no longer resolves (urneyandcastlefinparish.com).
-  ❌ Antrim — Total timeout exceeded
+  ❌ Antrim — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Ballyclare and Ballygowan — Total timeout exceeded
   ❌ Derriaghy — Total timeout exceeded
   ❌ Hannahstown — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Holy Rosary Belfast — Total timeout exceeded
+  ❌ Holy Rosary Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Kilmore and Killyleagh — Total timeout exceeded
   ❌ Maghera — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Portaferry — Total timeout exceeded
+  ❌ Portaferry — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Portstewart — Total timeout exceeded
   ❌ St Agnes Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Saint Annes — Recipe replay produced no valid PDF
+  ❌ Saint Annes — Total timeout exceeded
   ❌ Saint Anthony — Total timeout exceeded
+  ❌ St Colmcilles — Recipe replay failed: Page.goto: Timeout 15000ms exceeded.
+Call log:
+  - navigating to "https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/", waiting until "domcontentloaded"
+
   ❌ St Gerards — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
   ❌ St Patricks Belfast — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
   ❌ St Teresas — Recipe replay failed: Recipe download step did not find a matching document URL

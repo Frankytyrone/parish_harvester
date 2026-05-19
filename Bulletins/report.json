@@ -8,6 +8,13 @@
   },
   "downloaded": [
     {
+      "parish": "ardmoreparish",
+      "display_name": "Ardmore",
+      "url": "http://www.ardmoreparish.com/news.html",
+      "file": "ardmoreparish.pdf",
+      "file_type": "pdf"
+    },
+    {
       "parish": "banagherparish",
       "display_name": "Banagher",
       "url": "https://www.banagherparish.com/information#47-9-newsletters",
@@ -34,13 +41,6 @@
       "url": "http://parishofclaudy.com/onewebmedia/Diocese of Derry - GDPR Guide for Parishes v1 (Feb2019).pdf",
       "file": "parishofclaudy.pdf",
       "file_type": "pdf"
-    },
-    {
-      "parish": "clonleighparish",
-      "display_name": "Clonleigh (Strabane Pastoral Area)",
-      "url": "https://clonleighparish.com/2026/05/15/9417/",
-      "file": "clonleighparish.pdf",
-      "file_type": "print_to_pdf"
     },
     {
       "parish": "clonmanyparish",
@@ -187,6 +187,13 @@
       "display_name": "St Mary's Parish Creggan",
       "url": "https://assets.cdn.filesafe.space/t4AV7E7OSM542PucNRsH/media/6a02d38982125b98745bd097.pdf",
       "file": "stmarysparishcreggan.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "watersideparish",
+      "display_name": "Waterside (& Strathfoyle amalgamated)",
+      "url": "https://watersideparish.net/parish-bulletin/",
+      "file": "watersideparish.pdf",
       "file_type": "pdf"
     },
     {
@@ -358,13 +365,6 @@
       "file_type": "pdf"
     },
     {
-      "parish": "st-colmcilles",
-      "display_name": "St Colmcilles",
-      "url": "https://st-colmcilles.net/wp-content/uploads/2026/05/Parish-Bulletin-10052026.pdf",
-      "file": "st-colmcilles.pdf",
-      "file_type": "pdf"
-    },
-    {
       "parish": "saintmichaelthearchangel",
       "display_name": "St Michael the Archangel",
       "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1778883138000",
@@ -434,12 +434,6 @@
   "skipped": [],
   "failed": [
     {
-      "parish": "ardmoreparish",
-      "display_name": "Ardmore",
-      "url": "http://www.ardmoreparish.com/news.html",
-      "error": "Total timeout exceeded"
-    },
-    {
       "parish": "parishofballinascreen",
       "display_name": "Ballinascreen (& Desertmartin amalgamated)",
       "url": "https://www.parishofballinascreen.com",
@@ -458,6 +452,12 @@
       "error": "Recipe replay failed: Recipe finished without downloading a document"
     },
     {
+      "parish": "clonleighparish",
+      "display_name": "Clonleigh (Strabane Pastoral Area)",
+      "url": "https://clonleighparish.com/2026/05/16/strabane-pastoral-area-newsletter-for-sunday-17th-may-2026/",
+      "error": "Total timeout exceeded"
+    },
+    {
       "parish": "greenlough",
       "display_name": "Greenlough",
       "url": "http://www.greenlough.com/publications/newsletter/7th_Sunday_of_Easter_[2026-5-17].pdf",
@@ -468,12 +468,6 @@
       "display_name": "Three Patrons",
       "url": "https://www.threepatrons.org/files/10/Weekly-Bulletins/96/",
       "error": "No downloadable bulletin links found"
-    },
-    {
-      "parish": "watersideparish",
-      "display_name": "Waterside (& Strathfoyle amalgamated)",
-      "url": "https://watersideparish.net/wp-content/uploads/2026/04/newsletter_170526oo.pdf",
-      "error": "Page.goto: net::ERR_ABORTED at https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf\nCall log:\n  - navigating to \"https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf\", waiting until \"domcontentloaded\"\n"
     },
     {
       "parish": "parishofaghyaran",
@@ -503,7 +497,7 @@
       "parish": "antrimparish",
       "display_name": "Antrim",
       "url": "https://www.antrimparish.com/bulletinpage/",
-      "error": "Total timeout exceeded"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "ballyclareballygowan",
@@ -527,7 +521,7 @@
       "parish": "holyrosaryparishbelfast",
       "display_name": "Holy Rosary Belfast",
       "url": "https://www.holyrosaryparishbelfast.net/weekly-bulletin",
-      "error": "Total timeout exceeded"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "kilmoreandkillyleagh",
@@ -545,7 +539,7 @@
       "parish": "portaferryparish",
       "display_name": "Portaferry",
       "url": "https://portaferryparish.com/bulletin",
-      "error": "Total timeout exceeded"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "portstewartparish",
@@ -563,13 +557,19 @@
       "parish": "saintannesparish",
       "display_name": "Saint Annes",
       "url": "https://www.saintannesparish.net",
-      "error": "Recipe replay produced no valid PDF"
+      "error": "Total timeout exceeded"
     },
     {
       "parish": "saintanthony",
       "display_name": "Saint Anthony",
       "url": "http://www.saintanthony.co.uk",
       "error": "Total timeout exceeded"
+    },
+    {
+      "parish": "st-colmcilles",
+      "display_name": "St Colmcilles",
+      "url": "https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/",
+      "error": "Recipe replay failed: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/\", waiting until \"domcontentloaded\"\n"
     },
     {
       "parish": "stgerardsparish",
