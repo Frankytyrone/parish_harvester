@@ -173,6 +173,7 @@ https://www.antrimparish.com
         popup_js = (repo_root / "extension" / "popup.js").read_text(encoding="utf-8")
         manifest = json.loads((repo_root / "extension" / "manifest.json").read_text(encoding="utf-8"))
 
+        self.assertIn("version", manifest)
         self.assertRegex(manifest.get("version", ""), r"^\d+\.\d+\.\d+$")
         self.assertEqual(
             manifest.get("update_url"),

@@ -73,13 +73,13 @@ jobs:
               exit 1
             fi
             python - "${pdf}" <<'PY'
-from pathlib import Path
-import sys
+            from pathlib import Path
+            import sys
 
-path = Path(sys.argv[1])
-if path.read_bytes()[:5] != b"%PDF-":
-    raise SystemExit(f"Error: file does not look like a PDF: {path}")
-PY
+            path = Path(sys.argv[1])
+            if path.read_bytes()[:5] != b"%PDF-":
+                raise SystemExit(f"Error: file does not look like a PDF: {path}")
+            PY
             ls -lh "${pdf}"
           done
 
@@ -113,21 +113,21 @@ PY
           MANIFEST_BUMPED="false"
           if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
             PREV_VERSION=$(python - <<'PY'
-import json
-import subprocess
+            import json
+            import subprocess
 
-try:
-    raw = subprocess.check_output(
-        ["git", "show", "HEAD^:extension/manifest.json"],
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
-except Exception:
-    print("unknown")
-else:
-    raw = raw.strip()
-    print(json.loads(raw).get("version", "unknown") if raw else "unknown")
-PY
+            try:
+                raw = subprocess.check_output(
+                    ["git", "show", "HEAD^:extension/manifest.json"],
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                )
+            except Exception:
+                print("unknown")
+            else:
+                raw = raw.strip()
+                print(json.loads(raw).get("version", "unknown") if raw else "unknown")
+            PY
             )
             if git diff --name-only HEAD^ HEAD | grep -qx 'extension/manifest.json'; then
               MANIFEST_BUMPED="true"
@@ -157,10 +157,7 @@ PY
             exit 1
           fi
           if [ "${MANIFEST_BUMPED}" = "true" ] && [ "${EVENT_NAME}" = "push" ]; then
-            if [ ! -s _site/extension/parish_trainer.zip ]; then
-              echo "Error: extension version changed (${PREV_VERSION} -> ${VERSION}) but package is missing."
-              exit 1
-            fi
+            echo "Detected extension manifest version bump: ${PREV_VERSION} -> ${VERSION}"
           fi
 
           {

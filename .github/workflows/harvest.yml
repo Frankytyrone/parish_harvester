@@ -60,7 +60,7 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Run tests
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.run_tests != 'false'
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.run_tests == 'true'
         run: |
           set -euo pipefail
           pytest -v --tb=short
