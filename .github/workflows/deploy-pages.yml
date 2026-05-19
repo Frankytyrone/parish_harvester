@@ -139,7 +139,7 @@ except json.JSONDecodeError:
             fi
           fi
           if [ -z "${CHROME_EXTENSION_APP_ID:-}" ]; then
-            echo "Warning: CHROME_EXTENSION_APP_ID not set, using placeholder" >&2
+            echo "Warning: CHROME_EXTENSION_APP_ID not set, using placeholder; generated updates.xml will not update a real Chrome extension until this variable is configured." >&2
             APP_ID="REPLACE_WITH_EXTENSION_ID"
           else
             APP_ID="${CHROME_EXTENSION_APP_ID}"
