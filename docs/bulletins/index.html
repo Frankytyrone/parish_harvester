@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OCR Bulletin Archive</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f8f8;
+      color: #1f2937;
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 48px; }
+    a { color: #1b6b6b; }
+    h1 { margin: 0 0 10px; color: #1b6b6b; font-size: clamp(2rem, 4vw, 3rem); }
+    p { color: #475569; }
+    .archive-list { display: grid; gap: 16px; margin-top: 28px; }
+    .archive-card {
+      background: #fff;
+      border: 1px solid #d5e2e2;
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+    .archive-card strong { color: #10233f; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .archive-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+    .archive-actions a { font-weight: 700; text-decoration: none; }
+    .empty {
+      background: #fff;
+      border: 1px dashed #b6c8c8;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 28px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <a href="../index.html">← Back to home</a>
+    <h1>OCR Bulletin Archive</h1>
+    <p>Newest bulletin pages appear first after each successful harvest and Pages deploy.</p>
+    <div class="empty">No OCR bulletin pages have been generated yet.</div>
+  </main>
+</body>
+</html>

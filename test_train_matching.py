@@ -277,6 +277,7 @@ https://www.antrimparish.com
     def test_deploy_pages_builds_extension_update_assets(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "deploy-pages.yml").read_text(encoding="utf-8")
         self.assertIn("push:", workflow)
+        self.assertIn("docs/**", workflow)
         self.assertIn("extension/**", workflow)
         self.assertIn("Download mega PDF artifacts from harvest run", workflow)
         self.assertIn("actions/download-artifact@v4", workflow)
@@ -291,6 +292,9 @@ https://www.antrimparish.com
         self.assertIn("Error: duplicate mega PDF filename downloaded:", workflow)
         self.assertIn("done < <(find _harvest_artifacts -type f -name '*_mega_bulletin.pdf' -print0)", workflow)
         self.assertIn('pdfs=(mega_pdf/*_mega_bulletin.pdf)', workflow)
+        self.assertIn('if [ "${EVENT_NAME}" = "push" ] && [ ${#pdfs[@]} -eq 0 ]; then', workflow)
+        self.assertIn('url="${PAGES_BASE}/mega_pdf/${diocese}_mega_bulletin.pdf"', workflow)
+        self.assertIn('curl -fsSL "${url}" -o "${dest}" || rm -f "${dest}"', workflow)
         self.assertIn('if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then', workflow)
         self.assertIn("Check that the upstream Harvest Parish Bulletins run succeeded", workflow)
         self.assertIn("Error: mega PDF is missing or empty:", workflow)
@@ -300,9 +304,29 @@ https://www.antrimparish.com
         self.assertIn("Build Pages site (mega PDFs + extension updates)", workflow)
         self.assertIn("EXTENSION_PREV_VERSION", workflow)
         self.assertIn("Publish deploy summary", workflow)
-        self.assertIn("cp -a mega_pdf/. _site/", workflow)
+        self.assertIn('python -c "from pathlib import Path;', workflow)
+        self.assertIn("cp -a docs/. _site/", workflow)
+        self.assertIn("mkdir -p _site/mega_pdf", workflow)
+        self.assertIn("cp -a mega_pdf/. _site/mega_pdf/", workflow)
         self.assertIn("parish_trainer.zip", workflow)
         self.assertIn("_site/updates.xml", workflow)
+
+    def test_ocr_bulletin_workflow_configuration(self) -> None:
+        workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "ocr-bulletin.yml").read_text(encoding="utf-8")
+        self.assertIn('workflows: ["Deploy mega PDFs to GitHub Pages"]', workflow)
+        self.assertIn("python-version: \"3.11\"", workflow)
+        self.assertIn("sudo apt-get install -y poppler-utils", workflow)
+        self.assertIn("python -m pip install -r ocr/requirements-ocr.txt", workflow)
+        self.assertIn("https://frankytyrone.github.io/parish_harvester/mega_pdf/${diocese}_mega_bulletin.pdf", workflow)
+        self.assertIn('python ocr/convert_bulletin.py "${diocese}_mega_bulletin.pdf" "${DATE}"', workflow)
+        self.assertIn("python ocr/build_bulletin_viewer.py", workflow)
+        self.assertIn('git commit -m "chore: auto-generate OCR bulletin viewer ${DATE}"', workflow)
+
+    def test_docs_index_links_to_latest_ocr_pages(self) -> None:
+        source = (Path(__file__).resolve().parent / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("📖 Read OCR Text", source)
+        self.assertIn("./bulletins/derry-latest.html", source)
+        self.assertIn("./bulletins/down_and_connor-latest.html", source)
 
     def test_extension_version_bump_workflow_configuration(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "bump-extension-version.yml").read_text(encoding="utf-8")

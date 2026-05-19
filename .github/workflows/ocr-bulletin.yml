@@ -1,0 +1,72 @@
+name: Generate OCR bulletin viewer pages
+
+on:
+  workflow_run:
+    workflows: ["Deploy mega PDFs to GitHub Pages"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+jobs:
+  build-ocr-viewers:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+
+      - name: Install OCR Python dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -r ocr/requirements-ocr.txt
+
+      - name: Generate OCR viewer pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          DATE="$(date -u +%Y-%m-%d)"
+          mkdir -p docs/bulletins
+          for diocese in derry down_and_connor; do
+            curl -fsSL \
+              -o "${diocese}_mega_bulletin.pdf" \
+              "https://frankytyrone.github.io/parish_harvester/mega_pdf/${diocese}_mega_bulletin.pdf"
+            python ocr/convert_bulletin.py "${diocese}_mega_bulletin.pdf" "${DATE}"
+            python ocr/build_bulletin_viewer.py \
+              --diocese "${diocese}" \
+              --date "${DATE}" \
+              --ocr-html "bulletin-${DATE}.html" \
+              --output "docs/bulletins/${diocese}-${DATE}.html" \
+              --latest-output "docs/bulletins/${diocese}-latest.html" \
+              --bulletins-dir docs/bulletins
+          done
+
+      - name: Commit OCR pages
+        run: |
+          set -euo pipefail
+          DATE="$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/bulletins/
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: auto-generate OCR bulletin viewer ${DATE}"
+            git push
+          fi

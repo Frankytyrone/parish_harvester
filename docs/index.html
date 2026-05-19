@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Parish Harvester Bulletin Hub</title>
+    <style>
+      :root {
+        --teal: #1b6b6b;
+        --navy: #10233f;
+        --bg: #f5f8f8;
+        --card: #ffffff;
+        --border: #d5e2e2;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        color: #1f2937;
+      }
+      main {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 36px 24px 48px;
+      }
+      h1 {
+        margin: 0;
+        color: var(--teal);
+        font-size: clamp(2.2rem, 5vw, 3.6rem);
+      }
+      .lede {
+        margin: 14px 0 28px;
+        color: #475569;
+        font-size: 1.05rem;
+        line-height: 1.7;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+      .toolbar a,
+      .card-actions a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 10px 16px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+      }
+      .toolbar a.primary,
+      .card-actions a.primary {
+        background: var(--teal);
+        color: #fff;
+      }
+      .toolbar a.secondary,
+      .card-actions a.secondary {
+        background: #fff;
+        color: var(--navy);
+        border: 1px solid var(--border);
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      }
+      .eyebrow {
+        color: var(--navy);
+        font-size: 0.9rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .card h2 {
+        margin: 10px 0 12px;
+        color: var(--teal);
+        font-size: 1.8rem;
+      }
+      .card p {
+        margin: 0 0 18px;
+        color: #475569;
+        line-height: 1.6;
+      }
+      .card-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      @media (max-width: 960px) {
+        .cards { grid-template-columns: 1fr; }
+        .card-actions { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Parish Harvester Bulletin Hub</h1>
+      <p class="lede">
+        Browse the latest diocese mega PDFs, open the searchable OCR side-by-side readers,
+        or jump into the full archive after each successful harvest and deploy run.
+      </p>
+      <div class="toolbar">
+        <a class="primary" href="./bulletins/index.html">📚 OCR Bulletin Archive</a>
+        <a class="secondary" href="./mega_pdf/index.html">📄 Mega PDF Viewer</a>
+      </div>
+      <section class="cards">
+        <article class="card">
+          <div class="eyebrow">Mega PDF + OCR Reader</div>
+          <h2>Derry Diocese</h2>
+          <p>Open the latest Derry mega bulletin PDF, download it, or switch to the side-by-side OCR text reader.</p>
+          <div class="card-actions">
+            <a class="secondary" href="./mega_pdf/derry_mega_bulletin.pdf" target="_blank" rel="noopener noreferrer">👀 View PDF</a>
+            <a class="secondary" href="./mega_pdf/derry_mega_bulletin.pdf" download>⬇ Download PDF</a>
+            <a class="primary" href="./bulletins/derry-latest.html">📖 Read OCR Text</a>
+          </div>
+        </article>
+        <article class="card">
+          <div class="eyebrow">Mega PDF + OCR Reader</div>
+          <h2>Down &amp; Connor Diocese</h2>
+          <p>Open the latest Down &amp; Connor mega bulletin PDF, download it, or switch to the side-by-side OCR text reader.</p>
+          <div class="card-actions">
+            <a class="secondary" href="./mega_pdf/down_and_connor_mega_bulletin.pdf" target="_blank" rel="noopener noreferrer">👀 View PDF</a>
+            <a class="secondary" href="./mega_pdf/down_and_connor_mega_bulletin.pdf" download>⬇ Download PDF</a>
+            <a class="primary" href="./bulletins/down_and_connor-latest.html">📖 Read OCR Text</a>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

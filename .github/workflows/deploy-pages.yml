@@ -10,7 +10,9 @@ on:
   push:
     branches: [main]
     paths:
+      - docs/**
       - extension/**
+      - mega_pdf/**
       - updates.xml
       - .github/workflows/deploy-pages.yml
   workflow_dispatch:
@@ -62,6 +64,15 @@ jobs:
           fi
           shopt -s nullglob
           pdfs=(mega_pdf/*_mega_bulletin.pdf)
+          if [ "${EVENT_NAME}" = "push" ] && [ ${#pdfs[@]} -eq 0 ]; then
+            PAGES_BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+            for diocese in derry down_and_connor; do
+              url="${PAGES_BASE}/mega_pdf/${diocese}_mega_bulletin.pdf"
+              dest="mega_pdf/${diocese}_mega_bulletin.pdf"
+              curl -fsSL "${url}" -o "${dest}" || rm -f "${dest}"
+            done
+            pdfs=(mega_pdf/*_mega_bulletin.pdf)
+          fi
           if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then
             echo "Error: no mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
             echo "Check that the upstream Harvest Parish Bulletins run succeeded, uploaded the diocesan *-mega-bulletin-pdf artifacts, and that those artifacts have not expired."
@@ -72,14 +83,7 @@ jobs:
               echo "Error: mega PDF is missing or empty: ${pdf}"
               exit 1
             fi
-            python - "${pdf}" <<'PY'
-            from pathlib import Path
-            import sys
-
-            path = Path(sys.argv[1])
-            if path.read_bytes()[:5] != b"%PDF-":
-                raise SystemExit(f"Error: file does not look like a PDF: {path}")
-            PY
+            python -c "from pathlib import Path; import sys; path = Path(sys.argv[1]); prefix = path.read_bytes()[:5]; sys.exit(f'Error: file does not look like a PDF: {path}') if prefix != b'%PDF-' else None" "${pdf}"
             ls -lh "${pdf}"
           done
 
@@ -91,8 +95,12 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir -p _site
+          if [ -d docs ]; then
+            cp -a docs/. _site/
+          fi
+          mkdir -p _site/mega_pdf
           if [ -d mega_pdf ]; then
-            cp -a mega_pdf/. _site/
+            cp -a mega_pdf/. _site/mega_pdf/
           fi
 
           mkdir -p _site/extension

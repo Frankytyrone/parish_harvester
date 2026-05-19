@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DOWN & CONNOR DIOCESE BIG BULLETIN - Latest</title>
+  <style>
+    :root {
+      --teal: #1b6b6b;
+      --teal-link: #1b7a7a;
+      --navy: #10233f;
+      --navy-soft: #1b2e4b;
+      --bg: #f5f8f8;
+      --card: #ffffff;
+      --border: #d5e2e2;
+      --amber-bg: #fff3cd;
+      --amber-border: #ffc107;
+      --orange: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: #1f2937;
+    }
+    a { color: var(--teal-link); }
+    nav {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+    }
+    nav a {
+      color: var(--teal);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .hero {
+      padding: 28px 24px 14px;
+    }
+    .hero h1 {
+      margin: 0;
+      color: var(--teal);
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+    }
+    main {
+      padding: 0 24px 40px;
+    }
+    .download-link {
+      display: inline-block;
+      margin: 10px 0 22px;
+      color: var(--teal-link);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .viewer-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+      align-items: start;
+    }
+    .col {
+      min-width: 0;
+    }
+    .panel-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+    .panel-card h2, .parish-list h2 {
+      margin: 0 0 18px;
+      color: var(--navy);
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .pdf-frame {
+      width: 100%;
+      min-height: 72vh;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+    }
+    .pro-tip {
+      margin-top: 16px;
+      background: var(--navy);
+      color: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .pro-tip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+    .pro-tip button {
+      appearance: none;
+      border: none;
+      background: var(--orange);
+      color: #fff;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      font-size: 1.3rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .pro-tip-body {
+      padding: 0 16px 16px;
+      font-size: 0.97rem;
+      line-height: 1.6;
+    }
+    .ocr-scroll {
+      min-height: 72vh;
+      max-height: 72vh;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      background: #fff;
+      font-family: Georgia, 'Times New Roman', serif;
+      line-height: 1.7;
+    }
+    .ocr-scroll p { margin: 0 0 0.45rem; }
+    .ocr-scroll hr { border: 0; border-top: 1px solid #d7dddd; margin: 1.5rem 0; }
+    .ocr-page-heading {
+      margin: 0 0 1rem;
+      color: var(--navy);
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .amber-note {
+      margin-top: 16px;
+      background: var(--amber-bg);
+      border: 1px solid var(--amber-border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #5c4400;
+      font-weight: 700;
+    }
+    .ocr-explainer {
+      margin: 12px 2px 0;
+      color: #475569;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .parish-list {
+      margin-top: 28px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+    .parish-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px 20px;
+    }
+    .parish-grid a {
+      color: var(--teal);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .parish-grid a:hover, .download-link:hover, nav a:hover { text-decoration: underline; }
+    @media (max-width: 960px) {
+      .viewer-grid, .parish-grid { grid-template-columns: 1fr; }
+      .pdf-frame, .ocr-scroll { min-height: 55vh; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <nav><a href="../index.html">Home</a> · <a href="./index.html">OCR bulletin archive</a></nav>
+  <div class="hero">
+    <h1>DOWN & CONNOR DIOCESE BIG BULLETIN</h1>
+  </div>
+  <main>
+    <a class="download-link" href="../mega_pdf/down_and_connor_mega_bulletin.pdf" download>Download PDF</a>
+    <div class="viewer-grid">
+      <div class="col">
+        <div class="panel-card">
+          <h2>Bulletins Original PDF Version</h2>
+          <iframe class="pdf-frame" src="../mega_pdf/down_and_connor_mega_bulletin.pdf#view=FitH" title="DOWN & CONNOR DIOCESE BIG BULLETIN PDF"></iframe>
+          <div class="pro-tip">
+            <div class="pro-tip-header">
+              <span>🔍 PRO TIP: FIND TEXT INSTANTLY</span>
+              <button type="button" aria-expanded="false" onclick="toggleTip(this)">+</button>
+            </div>
+            <div class="pro-tip-body" hidden>
+              Use the browser PDF viewer controls to jump pages fast, then press Ctrl+F (or Cmd+F on Mac) to search the original bulletin instantly.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="panel-card">
+          <h2>Bulletins OCR Extracted Plain Text</h2>
+          <div class="ocr-scroll">
+            <h3 class="ocr-page-heading">OCR VIEWER WILL APPEAR HERE SOON</h3><p>The latest side-by-side OCR page is generated automatically after the next successful harvest and deploy run.</p>
+          </div>
+          <div class="amber-note">Note: The plain-text OCR version is auto-generated, so always check the original PDF if anything looks unclear.</div>
+          <p class="ocr-explainer">*OCR (Optical Character Recognition) is technology that reads text from the bulletin pages and turns it into searchable, copyable plain text.</p>
+        </div>
+      </div>
+    </div>
+    <section class="parish-list">
+      <h2>Parishes With Working Bulletin Links</h2>
+      <div class="parish-grid">
+        <a href="https://www.aghagallonandballinderryparish.ie" target="_blank" rel="noopener noreferrer">Aghagallon and Ballinderry</a>
+        <a href="https://www.antrimparish.com/bulletinpage/" target="_blank" rel="noopener noreferrer">Antrim</a>
+        <a href="https://www.ballycastleparish.com/s/12th-April-2026.pdf" target="_blank" rel="noopener noreferrer">Ballycastle</a>
+        <a href="https://ballyclareballygowan.com/notice%20board.htm" target="_blank" rel="noopener noreferrer">Ballyclare and Ballygowan</a>
+        <a href="https://ballymenaparish.org" target="_blank" rel="noopener noreferrer">Ballymena</a>
+        <a href="https://www.ballymoneyparish.com" target="_blank" rel="noopener noreferrer">Ballymoney</a>
+        <a href="https://www.bangorparish.com" target="_blank" rel="noopener noreferrer">Bangor</a>
+        <a href="https://parishofbright.net/wp-content/uploads/2026/04/Bulletin-5-04-2026.pdf" target="_blank" rel="noopener noreferrer">Bright</a>
+        <a href="https://www.carrickparish.org" target="_blank" rel="noopener noreferrer">Carrickfergus</a>
+        <a href="https://derriaghycatholicparish.com" target="_blank" rel="noopener noreferrer">Derriaghy</a>
+        <a href="https://www.dunsfordandardglassparish.com/?page_id=623" target="_blank" rel="noopener noreferrer">Dunsford and Ardglass</a>
+        <a href="https://glenariffeparish.org/whats-on" target="_blank" rel="noopener noreferrer">Glenariffe</a>
+        <a href="https://www.glenavyandkilleadparish.com" target="_blank" rel="noopener noreferrer">Glenavy and Killead</a>
+        <a href="https://www.loughshoreparishes.org/sunday-bulletin/" target="_blank" rel="noopener noreferrer">Loughshore</a>
+        <a href="https://www.parishofhannahstown.com/weekly-bulletins" target="_blank" rel="noopener noreferrer">Hannahstown</a>
+        <a href="http://www.holycrossparishbelfast.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer">Holy Cross Belfast</a>
+        <a href="https://www.holyrosaryparishbelfast.net/weekly-bulletin" target="_blank" rel="noopener noreferrer">Holy Rosary Belfast</a>
+        <a href="https://www.kilmoreandkillyleagh.com" target="_blank" rel="noopener noreferrer">Kilmore and Killyleagh</a>
+        <a href="https://parishoflisburn.org" target="_blank" rel="noopener noreferrer">Lisburn</a>
+        <a href="https://www.parishofmaghera.com/copy-of-sunday-missalette" target="_blank" rel="noopener noreferrer">Maghera</a>
+        <a href="https://www.ourladyqueenofpeacekilwee.com/bulletins" target="_blank" rel="noopener noreferrer">Our Lady Queen of Peace</a>
+        <a href="https://portaferryparish.com/bulletin" target="_blank" rel="noopener noreferrer">Portaferry</a>
+        <a href="https://portstewartparish.website/mdocs-posts/" target="_blank" rel="noopener noreferrer">Portstewart</a>
+        <a href="https://www.stmacnissirandalstown.com/bulletin" target="_blank" rel="noopener noreferrer">St MacNissi Randalstown</a>
+        <a href="https://www.sacredheartparishbelfast.com/gallery/Parish%20Bulletin%2012th%20April%202026.pdf" target="_blank" rel="noopener noreferrer">Sacred Heart Belfast</a>
+        <a href="https://www.saulandballeeparish.com" target="_blank" rel="noopener noreferrer">Saul and Ballee</a>
+        <a href="https://www.stagnesbelfast.com/" target="_blank" rel="noopener noreferrer">St Agnes Belfast</a>
+        <a href="https://www.saintannesparish.net" target="_blank" rel="noopener noreferrer">Saint Annes</a>
+        <a href="http://www.saintanthony.co.uk" target="_blank" rel="noopener noreferrer">Saint Anthony</a>
+        <a href="https://www.stbernadettesparish.org/bulletin/uploaded/Parish%20Bulletin%2012th%20April%202026.pdf" target="_blank" rel="noopener noreferrer">St Bernadettes</a>
+        <a href="https://stbrigidsparishbelfast.org" target="_blank" rel="noopener noreferrer">St Brigids Belfast</a>
+        <a href="https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/" target="_blank" rel="noopener noreferrer">St Colmcilles</a>
+        <a href="https://stgerardsparish.org/parish-news-events/" target="_blank" rel="noopener noreferrer">St Gerards</a>
+        <a href="https://saintmichaelthearchangel.godaddysites.com/" target="_blank" rel="noopener noreferrer">St Michael the Archangel</a>
+        <a href="https://stoliverplunkettparish.ie" target="_blank" rel="noopener noreferrer">St Oliver Plunkett</a>
+        <a href="https://www.stpatricksbelfast.org/category/weekly-bulletins/" target="_blank" rel="noopener noreferrer">St Patricks Belfast</a>
+        <a href="https://stteresasparish.church/parish-news/" target="_blank" rel="noopener noreferrer">St Teresas</a>
+        <a href="https://www.stmarysbelfast.org/news" target="_blank" rel="noopener noreferrer">St Mary&#x27;s Belfast</a>
+        <a href="https://www.christtheredeemer.co.uk/parish-bulletin" target="_blank" rel="noopener noreferrer">Christ the Redeemer</a>
+        <a href="https://www.corpuschristiparishbelfast.com/news" target="_blank" rel="noopener noreferrer">Corpus Christi Belfast</a>
+        <a href="https://www.drumbocarryduff.ie/#sbp-bulletin" target="_blank" rel="noopener noreferrer">Drumbo and Carryduff</a>
+        <a href="https://www.holy-familyparish.com/bulletin/" target="_blank" rel="noopener noreferrer">Holy Family</a>
+        <a href="https://holytrinityparishbelfast.com/newsletters/" target="_blank" rel="noopener noreferrer">Holy Trinity Belfast</a>
+        <a href="https://www.nativityparish.com/news" target="_blank" rel="noopener noreferrer">Nativity</a>
+        <a href="https://stmarysportglenone.co.uk/?page_id=40" target="_blank" rel="noopener noreferrer">Port Glenone</a>
+        <a href="https://www.stlukesparishbelfast.com/news" target="_blank" rel="noopener noreferrer">St Luke&#x27;s Belfast</a>
+        <a href="https://www.saintmalachysparish.com/" target="_blank" rel="noopener noreferrer">Saint Malachy&#x27;s</a>
+        <a href="https://www.stmarysonthehill.online/" target="_blank" rel="noopener noreferrer">St Mary&#x27;s on the Hill</a>
+        <a href="https://www.stmatthewsparish.com/news" target="_blank" rel="noopener noreferrer">St Matthew&#x27;s</a>
+        <a href="https://stpatricksdownpatrick.com/parish-bulletins/" target="_blank" rel="noopener noreferrer">St Patrick&#x27;s Downpatrick</a>
+        <a href="https://www.stvincentdepaulparishbelfast.com/news" target="_blank" rel="noopener noreferrer">St Vincent de Paul Belfast</a>
+      </div>
+    </section>
+  </main>
+  <script>
+    function toggleTip(button) {
+      const body = button.parentElement.nextElementSibling;
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      button.textContent = expanded ? '+' : '−';
+      body.hidden = expanded;
+    }
+  </script>
+</body>
+</html>
