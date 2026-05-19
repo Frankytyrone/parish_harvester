@@ -105,16 +105,27 @@ def ocr_with_mistral(pdf_path):
     return pages
 
 
-def ocr_images(images, force_openai=False, allow_openai_fallback=True):
+def ocr_images(images, mode="github_then_openai"):
     """Run OCR across images and return (pages_text, provider_summary)."""
     github_token = os.environ.get("GITHUB_TOKEN")
     openai_api_key = os.environ.get("OPENAI_API_KEY")
 
-    if not github_token and not openai_api_key:
-        print("Error: Neither GITHUB_TOKEN nor OPENAI_API_KEY is set. Please set at least one credential.")
-        sys.exit(1)
+    if mode == "github_only":
+        if not github_token:
+            print("Error: GITHUB_TOKEN is required for GitHub Models OCR mode.")
+            sys.exit(1)
+        use_github_models = True
+    elif mode == "openai_only":
+        if not openai_api_key:
+            print("Error: OPENAI_API_KEY is required for OpenAI OCR mode.")
+            sys.exit(1)
+        use_github_models = False
+    else:
+        if not github_token and not openai_api_key:
+            print("Error: Neither GITHUB_TOKEN nor OPENAI_API_KEY is set. Please set at least one credential.")
+            sys.exit(1)
+        use_github_models = bool(github_token)
 
-    use_github_models = bool(github_token) and not force_openai
     if use_github_models:
         print("  Using GitHub Models (gpt-4o-mini) for image OCR...")
         client = OpenAI(
@@ -154,7 +165,7 @@ def ocr_images(images, force_openai=False, allow_openai_fallback=True):
                 ],
             )
         except Exception as e:
-            if use_github_models and allow_openai_fallback and openai_api_key:
+            if use_github_models and mode == "github_then_openai" and openai_api_key:
                 print(
                     f"  GitHub Models failed on page {i} ({type(e).__name__}: {e}), "
                     "falling back to OpenAI gpt-4o-mini..."
@@ -303,7 +314,7 @@ def main():
         print(f"  {len(images)} page(s) found.")
         print("Running image OCR with GitHub Models (gpt-4o-mini) ...")
         try:
-            pages_text, provider_used = ocr_images(images, allow_openai_fallback=False)
+            pages_text, provider_used = ocr_images(images, mode="github_only")
         except Exception as e:
             print(f"  GitHub Models OCR failed ({type(e).__name__}: {e}). Falling back to Mistral OCR...")
     else:
@@ -331,7 +342,7 @@ def main():
             images = pdf_to_images(pdf_file)
             print(f"  {len(images)} page(s) found.")
         print("Running image OCR with OpenAI gpt-4o-mini fallback ...")
-        pages_text, provider_used = ocr_images(images, force_openai=True, allow_openai_fallback=False)
+        pages_text, provider_used = ocr_images(images, mode="openai_only")
 
     print("Building HTML ...")
     content = build_html_content(pages_text)
