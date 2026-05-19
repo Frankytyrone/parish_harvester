@@ -74,7 +74,10 @@ jobs:
               echo "Error: mega PDF is missing or empty: ${pdf}"
               exit 1
             fi
-            python3 -c "import pathlib, sys; p = pathlib.Path(sys.argv[1]); p.read_bytes()[:5] != b'%PDF-' and sys.exit(f'Error: file does not look like a PDF: {p}')" "${pdf}"
+            if [ "$(head -c 5 "${pdf}")" != "%PDF-" ]; then
+              echo "Error: file does not look like a PDF: ${pdf}" >&2
+              exit 1
+            fi
             ls -lh "${pdf}"
           done
 
