@@ -1,4 +1,6 @@
 name: Deploy mega PDFs to GitHub Pages
+# Core release workflow. Keep independent from advisory Copilot workflows,
+# which can be rate-limited (HTTP 429) and should not block pages publishing.
 
 on:
   workflow_run:
@@ -71,13 +73,13 @@ jobs:
               exit 1
             fi
             python - "${pdf}" <<'PY'
-            from pathlib import Path
-            import sys
+from pathlib import Path
+import sys
 
-            path = Path(sys.argv[1])
-            if path.read_bytes()[:5] != b"%PDF-":
-                raise SystemExit(f"Error: file does not look like a PDF: {path}")
-            PY
+path = Path(sys.argv[1])
+if path.read_bytes()[:5] != b"%PDF-":
+    raise SystemExit(f"Error: file does not look like a PDF: {path}")
+PY
             ls -lh "${pdf}"
           done
 
@@ -95,6 +97,10 @@ jobs:
 
           mkdir -p _site/extension
           zip -qr _site/extension/parish_trainer.zip extension
+          if [ ! -s _site/extension/parish_trainer.zip ]; then
+            echo "Error: extension package was not generated or is empty: _site/extension/parish_trainer.zip"
+            exit 1
+          fi
 
           VERSION=$(python - <<'PY'
           import json
@@ -103,6 +109,14 @@ jobs:
           print(manifest.get("version", "0.0.0"))
           PY
           )
+          PREV_VERSION="unknown"
+          MANIFEST_BUMPED="false"
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            PREV_VERSION=$(git show HEAD^:extension/manifest.json 2>/dev/null | python -c 'import json,sys; t=sys.stdin.read().strip(); print(json.loads(t).get("version","unknown") if t else "unknown")')
+            if git diff --name-only HEAD^ HEAD | grep -qx 'extension/manifest.json'; then
+              MANIFEST_BUMPED="true"
+            fi
+          fi
           if [ -z "${CHROME_EXTENSION_APP_ID:-}" ]; then
             if [ "${EVENT_NAME}" = "push" ]; then
               echo "Error: CHROME_EXTENSION_APP_ID repository variable must be set for extension update publishing."
@@ -122,6 +136,28 @@ jobs:
             </app>
           </gupdate>
           XML
+          if ! grep -Fq "version=\"${VERSION}\"" _site/updates.xml; then
+            echo "Error: generated updates.xml does not contain extension version ${VERSION}."
+            exit 1
+          fi
+          if [ "${MANIFEST_BUMPED}" = "true" ] && [ "${EVENT_NAME}" = "push" ]; then
+            if [ ! -s _site/extension/parish_trainer.zip ]; then
+              echo "Error: extension version changed (${PREV_VERSION} -> ${VERSION}) but package is missing."
+              exit 1
+            fi
+            if ! grep -Fq "version=\"${VERSION}\"" _site/updates.xml; then
+              echo "Error: extension version changed (${PREV_VERSION} -> ${VERSION}) but updates.xml was not updated."
+              exit 1
+            fi
+          fi
+
+          {
+            echo "EXTENSION_PREV_VERSION=${PREV_VERSION}"
+            echo "EXTENSION_NEW_VERSION=${VERSION}"
+            echo "EXTENSION_MANIFEST_BUMPED=${MANIFEST_BUMPED}"
+            echo "EXTENSION_PACKAGE_URL=${PAGES_BASE}/extension/parish_trainer.zip"
+            echo "EXTENSION_UPDATES_URL=${PAGES_BASE}/updates.xml"
+          } >> "$GITHUB_ENV"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -132,9 +168,26 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+      - name: Publish deploy summary
+        run: |
+          set -euo pipefail
+          {
+            echo "## 🚀 Pages deploy summary"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Previous extension version | ${EXTENSION_PREV_VERSION:-unknown} |"
+            echo "| New extension version | ${EXTENSION_NEW_VERSION:-unknown} |"
+            echo "| Manifest changed in commit | ${EXTENSION_MANIFEST_BUMPED:-false} |"
+            echo "| Extension package URL | ${EXTENSION_PACKAGE_URL:-not-set} |"
+            echo "| Update manifest URL | ${EXTENSION_UPDATES_URL:-not-set} |"
+            echo "| Deployed Pages URL | ${{ steps.deployment.outputs.page_url }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Clean mega PDFs from repository after deploy
         if: github.event_name == 'workflow_run'
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p mega_pdf Bulletins/current
@@ -142,6 +195,8 @@ jobs:
           find Bulletins/current -maxdepth 1 -type f -name '*.pdf' -delete || true
           find Bulletins -maxdepth 1 -type f -name 'all_bulletins_*.pdf' -delete || true
           touch mega_pdf/.gitkeep Bulletins/current/.gitkeep
-          git add -A mega_pdf Bulletins/current Bulletins/all_bulletins_*.pdf || true
+          shopt -s nullglob
+          pdfs=(Bulletins/all_bulletins_*.pdf)
+          git add -A mega_pdf Bulletins/current "${pdfs[@]}"
           git diff --cached --quiet || git commit -m "chore: clean deployed PDFs [skip ci]"
           git push origin HEAD:main || true

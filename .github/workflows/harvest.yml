@@ -19,6 +19,14 @@ on:
         required: false
         default: ''
         type: string
+      run_tests:
+        description: 'Run tests before harvesting (set false for emergency/manual runs)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 permissions:
   contents: write
@@ -37,18 +45,29 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: |
+          set -euo pipefail
+          pip install -r requirements.txt
+          pip install pytest
 
       - name: Install Playwright browsers
-        run: python -m playwright install --with-deps chromium
+        run: |
+          set -euo pipefail
+          python -m playwright install --with-deps chromium
 
       - name: Run tests
-        run: pytest -v --tb=short
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.run_tests != 'false'
+        run: |
+          set -euo pipefail
+          pytest -v --tb=short
 
       - name: Run Bulletin Harvester
         run: |
+          set -euo pipefail
           ARGS="--diocese ${{ github.event.inputs.diocese || 'all' }}"
           if [ -n "${{ github.event.inputs.target_parish }}" ]; then
             ARGS="$ARGS --target-parish ${{ github.event.inputs.target_parish }}"
@@ -67,9 +86,23 @@ jobs:
           MAILGUN_DOMAIN: ${{ secrets.MAILGUN_DOMAIN }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
 
+      - name: Validate harvest outputs
+        if: success()
+        run: |
+          set -euo pipefail
+          if [ ! -f Bulletins/report.json ]; then
+            echo "Error: expected harvest output missing: Bulletins/report.json"
+            exit 1
+          fi
+          if [ ! -f Bulletins/report.txt ]; then
+            echo "Error: expected harvest output missing: Bulletins/report.txt"
+            exit 1
+          fi
+
       - name: Write workflow step summary
         if: always()
         run: |
+          set -euo pipefail
           if [ -f Bulletins/report.json ]; then
             python - <<'PYEOF'
           import json, os
@@ -99,13 +132,21 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
               fh.write("\n".join(lines))
           PYEOF
+          else
+            {
+              echo "## ❌ Bulletin Harvest failed before report generation"
+              echo ""
+              echo "Expected \`Bulletins/report.json\` was not created."
+              echo "See failed logs in run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Post GitHub Issue summary
-        if: always()
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           if [ -f Bulletins/report.json ]; then
             DIOCESE="${{ github.event.inputs.diocese || 'all' }}"
             REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
@@ -188,8 +229,9 @@ jobs:
           fi
 
       - name: Commit bulletins back to repo
-        if: always()
+        if: success()
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html || true
@@ -201,8 +243,9 @@ jobs:
 
       - name: Prepare standalone Mega PDF artifact
         id: prepare_mega_pdf
-        if: always()
+        if: success()
         run: |
+          set -euo pipefail
           echo "mega_pdf_ready=false" >> "$GITHUB_OUTPUT"
           if [ -f Bulletins/report.json ]; then
             TARGET_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date',''))")
@@ -217,7 +260,7 @@ jobs:
           fi
 
       - name: Upload Mega Bulletin PDF artifact
-        if: always() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
+        if: success() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Mega-Bulletin-PDF
@@ -225,8 +268,9 @@ jobs:
           retention-days: 30
 
       - name: Upload per-diocese Mega PDF artifacts
-        if: always()
+        if: success()
         run: |
+          set -euo pipefail
           # Upload one artifact per diocese mega PDF found in mega_pdf/
           shopt -s nullglob
           for pdf in mega_pdf/*_mega_bulletin.pdf; do
@@ -237,7 +281,7 @@ jobs:
           ls -lh mega_pdf/ 2>/dev/null || echo "No mega_pdf/ directory yet."
 
       - name: Upload derry mega bulletin PDF
-        if: always() && hashFiles('mega_pdf/derry_mega_bulletin.pdf') != ''
+        if: success() && hashFiles('mega_pdf/derry_mega_bulletin.pdf') != ''
         uses: actions/upload-artifact@v4
         with:
           name: derry-mega-bulletin-pdf
@@ -245,7 +289,7 @@ jobs:
           retention-days: 30
 
       - name: Upload down_and_connor mega bulletin PDF
-        if: always() && hashFiles('mega_pdf/down_and_connor_mega_bulletin.pdf') != ''
+        if: success() && hashFiles('mega_pdf/down_and_connor_mega_bulletin.pdf') != ''
         uses: actions/upload-artifact@v4
         with:
           name: down_and_connor-mega-bulletin-pdf
@@ -253,11 +297,12 @@ jobs:
           retention-days: 30
 
       - name: Upload Mega PDF to Google Drive
-        if: always() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
+        if: success() && steps.prepare_mega_pdf.outputs.mega_pdf_ready == 'true'
         env:
           GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
           GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         run: |
+          set -euo pipefail
           if [ -z "${GDRIVE_SERVICE_ACCOUNT}" ] || [ -z "${GDRIVE_FOLDER_ID}" ]; then
             echo "⏭️  Google Drive upload skipped — GDRIVE_SERVICE_ACCOUNT or GDRIVE_FOLDER_ID secret not set."
             exit 0
@@ -287,7 +332,7 @@ jobs:
           echo "✅ Mega PDF uploaded to Google Drive folder ${GDRIVE_FOLDER_ID}"
 
       - name: Upload Bulletins artifact
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: bulletins-${{ github.run_id }}
@@ -295,7 +340,7 @@ jobs:
           retention-days: 30
 
       - name: Upload dashboard artifact
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: harvest-dashboard-${{ github.run_id }}
@@ -303,14 +348,17 @@ jobs:
           retention-days: 30
 
       - name: Clean transient bulletin PDFs from repository
-        if: always()
+        if: success()
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p Bulletins/current
           find Bulletins/current -maxdepth 1 -type f -name '*.pdf' -delete || true
           find Bulletins -maxdepth 1 -type f -name 'all_bulletins_*.pdf' -delete || true
           touch Bulletins/current/.gitkeep
-          git add -A Bulletins/current Bulletins/all_bulletins_*.pdf || true
+          shopt -s nullglob
+          pdfs=(Bulletins/all_bulletins_*.pdf)
+          git add -A Bulletins/current "${pdfs[@]}"
           git diff --cached --quiet || git commit -m "chore: clean transient bulletin PDFs [skip ci]"
           git push origin HEAD:main || true
