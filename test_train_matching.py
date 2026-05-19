@@ -311,14 +311,34 @@ https://www.antrimparish.com
     def test_ocr_bulletin_workflow_configuration(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "ocr-bulletin.yml").read_text(encoding="utf-8")
         self.assertIn("workflow_run:", workflow)
-        self.assertIn('workflows: ["Deploy mega PDFs to GitHub Pages"]', workflow)
+        self.assertIn('workflows: ["Harvest Parish Bulletins"]', workflow)
         self.assertIn("if: github.event.workflow_run.conclusion == 'success'", workflow)
         self.assertNotIn("github.event.workflow_run.event == 'workflow_run'", workflow)
         self.assertIn("poppler-utils", workflow)
         self.assertIn("requirements-ocr.txt", workflow)
+        self.assertIn("Download mega PDF artifacts from harvest run", workflow)
+        self.assertIn("actions/download-artifact@v4", workflow)
+        self.assertIn("run-id: ${{ github.event.workflow_run.id }}", workflow)
+        self.assertIn('pattern: "*-mega-bulletin-pdf"', workflow)
+        self.assertIn("path: /tmp/ocr-bulletins/", workflow)
         self.assertIn("ocr/convert_bulletin.py", workflow)
         self.assertIn("ocr/generate_bulletin_pages.py", workflow)
+        self.assertIn("OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}", workflow)
         self.assertIn("git add docs", workflow)
+
+    def test_ocr_convert_prefers_github_then_mistral_then_openai(self) -> None:
+        source = (Path(__file__).resolve().parent / "ocr" / "convert_bulletin.py").read_text(encoding="utf-8")
+        self.assertIn("Step 2/4 — Running image OCR with GitHub Models (gpt-4o-mini) ...", source)
+        self.assertIn("Step 3/4 — Trying Mistral OCR (mistral-ocr-latest) on PDF ...", source)
+        self.assertIn("Step 4/4 — Running image OCR with OpenAI gpt-4o-mini fallback ...", source)
+        self.assertLess(
+            source.index("Step 2/4 — Running image OCR with GitHub Models (gpt-4o-mini) ..."),
+            source.index("Step 3/4 — Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
+        )
+        self.assertLess(
+            source.index("Step 3/4 — Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
+            source.index("Step 4/4 — Running image OCR with OpenAI gpt-4o-mini fallback ..."),
+        )
 
     def test_extension_version_bump_workflow_configuration(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "bump-extension-version.yml").read_text(encoding="utf-8")
