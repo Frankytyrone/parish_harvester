@@ -173,7 +173,8 @@ https://www.antrimparish.com
         popup_js = (repo_root / "extension" / "popup.js").read_text(encoding="utf-8")
         manifest = json.loads((repo_root / "extension" / "manifest.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(manifest["version"], "1.30.0")
+        self.assertIn("version", manifest)
+        self.assertRegex(manifest.get("version", ""), r"^\d+\.\d+\.\d+$")
         self.assertEqual(
             manifest.get("update_url"),
             "https://frankytyrone.github.io/parish_harvester/updates.xml",
@@ -266,8 +267,11 @@ https://www.antrimparish.com
     def test_harvest_workflow_runs_tests_before_harvester(self) -> None:
         repo_root = Path(__file__).resolve().parent
         workflow = (repo_root / ".github" / "workflows" / "harvest.yml").read_text(encoding="utf-8")
+        self.assertIn("run_tests:", workflow)
+        self.assertIn("pip install pytest", workflow)
         self.assertIn("- name: Run tests", workflow)
         self.assertIn("pytest -v --tb=short", workflow)
+        self.assertIn("Validate harvest outputs", workflow)
         self.assertLess(workflow.index("- name: Run tests"), workflow.index("- name: Run Bulletin Harvester"))
 
     def test_deploy_pages_builds_extension_update_assets(self) -> None:
@@ -294,6 +298,8 @@ https://www.antrimparish.com
         self.assertIn('if [ ! -s "${pdf}" ]; then', workflow)
         self.assertIn("exit 1", workflow)
         self.assertIn("Build Pages site (mega PDFs + extension updates)", workflow)
+        self.assertIn("EXTENSION_PREV_VERSION", workflow)
+        self.assertIn("Publish deploy summary", workflow)
         self.assertIn("cp -a mega_pdf/. _site/", workflow)
         self.assertIn("parish_trainer.zip", workflow)
         self.assertIn("_site/updates.xml", workflow)
@@ -306,7 +312,7 @@ https://www.antrimparish.com
         self.assertIn("!contains(github.event.head_commit.message, '[skip ci]')", workflow)
         self.assertIn('manifest_path = Path("extension/manifest.json")', workflow)
         self.assertIn("version must be major.minor.patch", workflow)
-        self.assertIn('git commit -m "chore: bump extension version [skip ci]"', workflow)
+        self.assertIn('git commit -m "chore: bump extension version"', workflow)
 
     def test_bulletin_page_limit_constant(self) -> None:
         self.assertEqual(_MAX_BULLETIN_PAGES, 4)

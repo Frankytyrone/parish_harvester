@@ -39,6 +39,7 @@ jobs:
 
       - name: Commit and push updated manifest
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add extension/manifest.json
@@ -46,5 +47,6 @@ jobs:
             echo "No manifest changes to commit."
             exit 0
           fi
-          git commit -m "chore: bump extension version [skip ci]"
+          # Keep CI enabled so deploy-pages publishes matching extension package + updates.xml.
+          git commit -m "chore: bump extension version"
           git push
