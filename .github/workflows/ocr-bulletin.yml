@@ -2,7 +2,7 @@ name: Generate OCR bulletin viewers
 
 on:
   workflow_run:
-    workflows: ["Deploy mega PDFs to GitHub Pages"]
+    workflows: ["Harvest Parish Bulletins"]
     types:
       - completed
 
@@ -39,23 +39,33 @@ jobs:
           set -euo pipefail
           pip install -r requirements.txt -r requirements-ocr.txt
 
+      - name: Download mega PDF artifacts from harvest run
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: "*-mega-bulletin-pdf"
+          path: /tmp/ocr-bulletins/
+          merge-multiple: true
+
       - name: Generate OCR viewer pages
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TODAY="$(date -u +%Y-%m-%d)"
-          BASE_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/mega_pdf"
           mkdir -p /tmp/ocr-bulletins
           for diocese in derry down_and_connor; do
             workdir="/tmp/ocr-bulletins/${diocese}"
             mkdir -p "${workdir}"
-            pdf_path="${workdir}/${diocese}_mega_bulletin.pdf"
+            pdf_path="$(find "${workdir}" /tmp/ocr-bulletins -type f -name "${diocese}_mega_bulletin.pdf" 2>/dev/null | head -n 1)"
             ocr_html="${workdir}/bulletin-${TODAY}.html"
-            curl -fsSL --retry 3 --retry-all-errors \
-              -o "${pdf_path}" \
-              "${BASE_URL}/${diocese}_mega_bulletin.pdf"
+            if [ -z "${pdf_path}" ] || [ ! -s "${pdf_path}" ]; then
+              echo "Error: missing downloaded mega PDF artifact: ${pdf_path}"
+              exit 1
+            fi
             (
               cd "${workdir}"
               python "${GITHUB_WORKSPACE}/ocr/convert_bulletin.py" "${pdf_path}" "${TODAY}"
