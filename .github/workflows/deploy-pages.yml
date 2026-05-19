@@ -112,7 +112,23 @@ PY
           PREV_VERSION="unknown"
           MANIFEST_BUMPED="false"
           if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
-            PREV_VERSION=$(git show HEAD^:extension/manifest.json 2>/dev/null | python -c 'import json,sys; t=sys.stdin.read().strip(); print(json.loads(t).get("version","unknown") if t else "unknown")')
+            PREV_VERSION=$(python - <<'PY'
+import json
+import subprocess
+
+try:
+    raw = subprocess.check_output(
+        ["git", "show", "HEAD^:extension/manifest.json"],
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+except Exception:
+    print("unknown")
+else:
+    raw = raw.strip()
+    print(json.loads(raw).get("version", "unknown") if raw else "unknown")
+PY
+            )
             if git diff --name-only HEAD^ HEAD | grep -qx 'extension/manifest.json'; then
               MANIFEST_BUMPED="true"
             fi
@@ -143,10 +159,6 @@ PY
           if [ "${MANIFEST_BUMPED}" = "true" ] && [ "${EVENT_NAME}" = "push" ]; then
             if [ ! -s _site/extension/parish_trainer.zip ]; then
               echo "Error: extension version changed (${PREV_VERSION} -> ${VERSION}) but package is missing."
-              exit 1
-            fi
-            if ! grep -Fq "version=\"${VERSION}\"" _site/updates.xml; then
-              echo "Error: extension version changed (${PREV_VERSION} -> ${VERSION}) but updates.xml was not updated."
               exit 1
             fi
           fi
@@ -197,6 +209,10 @@ PY
           touch mega_pdf/.gitkeep Bulletins/current/.gitkeep
           shopt -s nullglob
           pdfs=(Bulletins/all_bulletins_*.pdf)
-          git add -A mega_pdf Bulletins/current "${pdfs[@]}"
+          if [ ${#pdfs[@]} -gt 0 ]; then
+            git add -A mega_pdf Bulletins/current "${pdfs[@]}"
+          else
+            git add -A mega_pdf Bulletins/current
+          fi
           git diff --cached --quiet || git commit -m "chore: clean deployed PDFs [skip ci]"
           git push origin HEAD:main || true

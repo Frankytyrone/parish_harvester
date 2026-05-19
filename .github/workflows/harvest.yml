@@ -132,13 +132,12 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
               fh.write("\n".join(lines))
           PYEOF
-          else
-            {
-              echo "## ❌ Bulletin Harvest failed before report generation"
-              echo ""
-              echo "Expected \`Bulletins/report.json\` was not created."
-              echo "See failed logs in run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ ! -f Bulletins/report.json ]; then
+            echo "## ❌ Bulletin Harvest failed before report generation" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Expected \`Bulletins/report.json\` was not created." >> "$GITHUB_STEP_SUMMARY"
+            echo "See failed logs in run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Post GitHub Issue summary
@@ -359,6 +358,10 @@ jobs:
           touch Bulletins/current/.gitkeep
           shopt -s nullglob
           pdfs=(Bulletins/all_bulletins_*.pdf)
-          git add -A Bulletins/current "${pdfs[@]}"
+          if [ ${#pdfs[@]} -gt 0 ]; then
+            git add -A Bulletins/current "${pdfs[@]}"
+          else
+            git add -A Bulletins/current
+          fi
           git diff --cached --quiet || git commit -m "chore: clean transient bulletin PDFs [skip ci]"
           git push origin HEAD:main || true
