@@ -1,12 +1,28 @@
 {
-  "generated_at": "2026-05-12T15:36:09",
+  "generated_at": "2026-05-19T10:56:43",
   "stale": [
     {
       "key": "iskaheenparish",
       "display_name": "Iskaheen",
       "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1",
       "extracted_date": "2026-04-01",
-      "days_old": 41,
+      "days_old": 48,
+      "reason": "date_in_url"
+    },
+    {
+      "key": "saulandballeeparish",
+      "display_name": "Saul and Ballee",
+      "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf",
+      "extracted_date": "2026-05-10",
+      "days_old": 9,
+      "reason": "date_in_url"
+    },
+    {
+      "key": "st-colmcilles",
+      "display_name": "St Colmcilles",
+      "url": "https://st-colmcilles.net/wp-content/uploads/2026/05/Parish-Bulletin-10052026.pdf",
+      "extracted_date": "2026-05-10",
+      "days_old": 9,
       "reason": "date_in_url"
     },
     {
@@ -14,17 +30,11 @@
       "display_name": "St Oliver Plunkett",
       "url": "https://stoliverplunkettparish.ie/wp-content/uploads/2026/01/25-Jan-26.pdf",
       "extracted_date": "2026-01-25",
-      "days_old": 107,
+      "days_old": 114,
       "reason": "date_in_url"
     }
   ],
   "unknown_date": [
-    {
-      "key": "ardmoreparish",
-      "display_name": "Ardmore",
-      "url": "http://www.ardmoreparish.com/news.html",
-      "reason": "no_date_in_url"
-    },
     {
       "key": "banagherparish",
       "display_name": "Banagher",
@@ -58,7 +68,7 @@
     {
       "key": "limavadyparish",
       "display_name": "Limavady",
-      "url": "https://www.limavadyparish.org/onewebmedia/10-5-26.pdf",
+      "url": "https://www.limavadyparish.org/onewebmedia/17-5-26.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -92,9 +102,9 @@
       "reason": "no_date_in_url"
     },
     {
-      "key": "watersideparish",
-      "display_name": "Waterside (& Strathfoyle amalgamated)",
-      "url": "https://watersideparish.net/parish-bulletin/",
+      "key": "camusparish",
+      "display_name": "Camus",
+      "url": "https://camusparish.com/news/",
       "reason": "no_date_in_url"
     },
     {
@@ -112,7 +122,7 @@
     {
       "key": "aghagallonandballinderryparish",
       "display_name": "Aghagallon and Ballinderry",
-      "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-10th-May-2026.pdf",
+      "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-17th-May-2026.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -130,31 +140,31 @@
     {
       "key": "ballymoneyparish",
       "display_name": "Ballymoney",
-      "url": "https://www.ballymoneyparish.com/media/other/31871/26-05-10pdf.pdf",
+      "url": "https://www.ballymoneyparish.com/media/other/31871/26-05-17pdf.pdf",
       "reason": "no_date_in_url"
     },
     {
       "key": "bangorparish",
       "display_name": "Bangor",
-      "url": "https://www.bangorparish.com/wp-content/uploads/03-May-2026-NEWSLETTER.pdf",
+      "url": "https://www.bangorparish.com/wp-content/uploads/17-May-2026-NEWSLETTER.pdf",
       "reason": "no_date_in_url"
     },
     {
       "key": "carrickparish",
       "display_name": "Carrickfergus",
-      "url": "https://www.carrickparish.org/_files/ugd/15976c_5f21098419c34a44b3eb2af4680e6607.pdf",
+      "url": "https://www.carrickparish.org/_files/ugd/15976c_ade89cfb2cf34b49a9d61a26ed81a1c9.pdf",
       "reason": "no_date_in_url"
     },
     {
       "key": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/Minutes-of-PPC-27th-April-2026.pdf",
+      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
       "reason": "no_date_in_url"
     },
     {
       "key": "glenariffeparish",
       "display_name": "Glenariffe",
-      "url": "https://glenariffeparish.org/wp-content/uploads/2026/05/Sixth-Sunday-of-Easter-2026.pdf",
+      "url": "https://glenariffeparish.org/wp-content/uploads/2026/05/Ascension.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -178,13 +188,13 @@
     {
       "key": "ourladyqueenofpeacekilwee",
       "display_name": "Our Lady Queen of Peace",
-      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_df44b5f1cd2c48329dce71049e783129.pdf",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_7c95648bea124f62aea500a619c3dfe9.pdf",
       "reason": "no_date_in_url"
     },
     {
       "key": "stmacnissirandalstown",
       "display_name": "St MacNissi Randalstown",
-      "url": "https://www.stmacnissirandalstown.com/_files/ugd/725b73_1c4f82e957d9494788b2f6726fd3d6e4.pdf",
+      "url": "https://www.stmacnissirandalstown.com/_files/ugd/725b73_5b0e8e133e784a02a9b43ade99626eba.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -196,19 +206,25 @@
     {
       "key": "stbernadettesparish",
       "display_name": "St Bernadettes",
-      "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 10th May 2026.pdf",
+      "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 17th May 2026.pdf",
       "reason": "no_date_in_url"
     },
     {
       "key": "stbrigidsparishbelfast",
       "display_name": "St Brigids Belfast",
-      "url": "https://stbrigidsparishbelfast.org/assets/documents/Parish-Bulletin-10.05.26-FOR-PRINTING.pdf",
+      "url": "https://stbrigidsparishbelfast.org/assets/documents/Parish-Bulletin-17.05.26-FOR-PRINTING.pdf",
       "reason": "no_date_in_url"
     },
     {
       "key": "saintmichaelthearchangel",
       "display_name": "St Michael the Archangel",
-      "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1777627011919",
+      "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1778883138000",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "holy-familyparish",
+      "display_name": "Holy Family",
+      "url": "https://www.holy-familyparish.com/app/uploads/2026/05/Ascension-of-the-Lord.pdf",
       "reason": "no_date_in_url"
     },
     {
