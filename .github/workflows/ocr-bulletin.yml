@@ -60,9 +60,9 @@ jobs:
           for diocese in derry down_and_connor; do
             workdir="/tmp/ocr-bulletins/${diocese}"
             mkdir -p "${workdir}"
-            pdf_path="/tmp/ocr-bulletins/${diocese}_mega_bulletin.pdf"
+            pdf_path="$(find /tmp/ocr-bulletins -type f -name "${diocese}_mega_bulletin.pdf" | head -n 1)"
             ocr_html="${workdir}/bulletin-${TODAY}.html"
-            if [ ! -s "${pdf_path}" ]; then
+            if [ -z "${pdf_path}" ] || [ ! -s "${pdf_path}" ]; then
               echo "Error: missing downloaded mega PDF artifact: ${pdf_path}"
               exit 1
             fi

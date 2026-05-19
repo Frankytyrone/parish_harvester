@@ -331,13 +331,19 @@ https://www.antrimparish.com
         self.assertIn("Running image OCR with GitHub Models (gpt-4o-mini) ...", source)
         self.assertIn("Trying Mistral OCR (mistral-ocr-latest) on PDF ...", source)
         self.assertIn("Running image OCR with OpenAI gpt-4o-mini fallback ...", source)
+        github_idx = source.find("Running image OCR with GitHub Models (gpt-4o-mini) ...")
+        mistral_idx = source.find("Trying Mistral OCR (mistral-ocr-latest) on PDF ...")
+        openai_idx = source.find("Running image OCR with OpenAI gpt-4o-mini fallback ...")
+        self.assertGreaterEqual(github_idx, 0)
+        self.assertGreaterEqual(mistral_idx, 0)
+        self.assertGreaterEqual(openai_idx, 0)
         self.assertLess(
-            source.index("Running image OCR with GitHub Models (gpt-4o-mini) ..."),
-            source.index("Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
+            github_idx,
+            mistral_idx,
         )
         self.assertLess(
-            source.index("Trying Mistral OCR (mistral-ocr-latest) on PDF ..."),
-            source.index("Running image OCR with OpenAI gpt-4o-mini fallback ..."),
+            mistral_idx,
+            openai_idx,
         )
 
     def test_extension_version_bump_workflow_configuration(self) -> None:
