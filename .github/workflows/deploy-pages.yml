@@ -74,10 +74,14 @@ jobs:
               echo "Error: mega PDF is missing or empty: ${pdf}"
               exit 1
             fi
-            if [ "$(head -c 5 "${pdf}")" != "%PDF-" ]; then
-              echo "Error: file does not look like a PDF: ${pdf}" >&2
-              exit 1
-            fi
+            python3 -c "
+import sys
+p = sys.argv[1]
+with open(p, 'rb') as f:
+    sig = f.read(5)
+if sig != b'%PDF-':
+    raise SystemExit(f'Error: file does not look like a PDF: {p}')
+" "${pdf}"
             ls -lh "${pdf}"
           done
 
@@ -142,14 +146,21 @@ except json.JSONDecodeError:
             APP_ID="${CHROME_EXTENSION_APP_ID}"
           fi
           PAGES_BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
-          cat > _site/updates.xml <<XML
-          <?xml version="1.0" encoding="UTF-8"?>
-          <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
-            <app appid="${APP_ID}">
-              <updatecheck codebase="${PAGES_BASE}/extension/parish_trainer.zip" version="${VERSION}" />
-            </app>
-          </gupdate>
-          XML
+          python3 -c "
+import sys
+app_id = sys.argv[1]
+pages_base = sys.argv[2]
+version = sys.argv[3]
+xml = '''<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<gupdate xmlns=\"http://www.google.com/update2/response\" protocol=\"2.0\">
+  <app appid=\"{app_id}\">
+    <updatecheck codebase=\"{pages_base}/extension/parish_trainer.zip\" version=\"{version}\" />
+  </app>
+</gupdate>
+'''.format(app_id=app_id, pages_base=pages_base, version=version)
+with open('_site/updates.xml', 'w', encoding='utf-8') as f:
+    f.write(xml)
+" "${APP_ID}" "${PAGES_BASE}" "${VERSION}"
           if ! grep -Fq "version=\"${VERSION}\"" _site/updates.xml; then
             echo "Error: generated updates.xml does not contain extension version ${VERSION}."
             exit 1
