@@ -41,6 +41,7 @@ jobs:
 
       - name: Download mega PDF artifacts from harvest run
         uses: actions/download-artifact@v4
+        continue-on-error: false
         with:
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}

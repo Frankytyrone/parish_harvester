@@ -6,6 +6,6 @@
   <app appid="REPLACE_WITH_EXTENSION_ID">
     <updatecheck
       codebase="https://frankytyrone.github.io/parish_harvester/extension/parish_trainer.zip"
-      version="1.30.5" />
+      version="1.30.39" />
   </app>
 </gupdate>

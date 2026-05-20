@@ -611,10 +611,25 @@
         type: "iframe",
       };
     }
-    if (iframes.length > 0) {
+    const maybeDocIframes = iframes.filter((f) => {
+      const src = (f.getAttribute("src") || "").toLowerCase();
+      return (
+        src.includes("pdf") ||
+        src.includes("doc") ||
+        src.includes("bulletin") ||
+        src.includes("newsletter") ||
+        src.includes("viewer") ||
+        src.includes("drive.google") ||
+        src.includes("dropbox") ||
+        src.includes("filesafe") ||
+        src.includes("amazonaws") ||
+        src.includes("blob.core")
+      );
+    });
+    if (maybeDocIframes.length > 0) {
       return {
         emoji: "🖼️",
-        summary: `Found ${iframes.length} frame(s) — may contain a PDF viewer.`,
+        summary: `Found ${maybeDocIframes.length} frame(s) — may contain a PDF viewer.`,
         advice:
           "Click \"It's embedded in a frame\" to inspect the frames, or use \"Deep Detect\" if the PDF loads in the background.",
         type: "iframe_maybe",
@@ -1124,7 +1139,23 @@
     heading.textContent = `Found ${iframes.length} iframe(s) — click to select the bulletin:`;
     panel.appendChild(heading);
 
-    iframes.forEach((frame, idx) => {
+    // Score and sort iframes by date (bulletins/resolved URLs newest first)
+    const _iframeScores = iframes.map((frame, idx) => {
+      const _src = frame.getAttribute("src") || "";
+      const _lower = _src.toLowerCase();
+      let _resolved = _src;
+      if (_lower.includes("docs.google.com/viewer") || _lower.includes("docs.google.com/gview")) {
+        try {
+          const _p = new URL(_src, window.location.href).searchParams.get("url");
+          if (_p) _resolved = decodeURIComponent(_p);
+        } catch (_e2) {}
+      }
+      return { frame, domIdx: idx, ...scoreUrlCandidateStr(_resolved, "", idx) };
+    });
+    _iframeScores.sort(_bulletinDateSortFn);
+    const _sortedFrames = _iframeScores.map((i) => i.frame);
+
+    _sortedFrames.forEach((frame, idx) => {
       const src = frame.getAttribute("src") || "";
       const lowerSrc = src.toLowerCase();
       let resolvedUrl = src;
@@ -1206,8 +1237,19 @@
       const info = document.createElement("div");
       info.style.cssText = "flex:1;word-break:break-all;line-height:1.3;";
       const mainText = document.createElement("div");
-      mainText.textContent = `${isBulletin ? "✅ " : ""}${hostname} — ${preview}`;
-      info.appendChild(mainText);
+      if (isBulletin && resolvedUrl !== src) {
+        const filename = resolvedUrl.split('/').pop().split('?')[0];
+        const truncated = resolvedUrl.length > 55 ? resolvedUrl.slice(0, 55) + "…" : resolvedUrl;
+        mainText.textContent = `✅ ${filename}`;
+        info.appendChild(mainText);
+        const sub = document.createElement("span");
+        sub.style.cssText = "display:block;color:#9ca3af;font-size:9px;";
+        sub.textContent = truncated;
+        info.appendChild(sub);
+      } else {
+        mainText.textContent = `${isBulletin ? "✅ " : ""}${hostname} — ${preview}`;
+        info.appendChild(mainText);
+      }
       if (isWixViewer) {
         const wixNote = document.createElement("div");
         wixNote.style.cssText = "color:#93c5fd;font-size:9px;margin-top:2px;line-height:1.4;";
