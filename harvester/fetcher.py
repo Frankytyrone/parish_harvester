@@ -276,7 +276,8 @@ def load_manual_overrides(parishes_dir: Path | None = None) -> dict[str, dict[st
         return {}
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as exc:
+        print(f"  ⚠️  Warning: failed to parse {path}: {exc}")
         return {}
     if not isinstance(raw, dict):
         return {}

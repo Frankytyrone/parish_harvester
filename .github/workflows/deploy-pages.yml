@@ -180,4 +180,4 @@ jobs:
             git add -A mega_pdf Bulletins/current
           fi
           git diff --cached --quiet || git commit -m "chore: clean deployed PDFs [skip ci]"
-          git push origin HEAD:main || true
+          git diff --quiet HEAD origin/main || git push origin HEAD:main

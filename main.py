@@ -217,16 +217,17 @@ def main() -> int:
         print("⚠️  No results to report.", file=sys.stderr)
         return 1
 
-    update_consecutive_failures(all_results)
-    update_stale_bulletins(all_results)
+    target_parish_key = (args.target_parish or "").strip().lower()
+
+    if not target_parish_key:
+        update_consecutive_failures(all_results)
+        update_stale_bulletins(all_results)
 
     # Generate combined report (across all dioceses)
     print("\n── Report ──────────────────────────────────────────────────")
     # Use first diocese for contacts lookup when running a single diocese
     primary_diocese = dioceses[0]
     contacts_path = PARISHES_DIR / f"{primary_diocese}_contacts.json"
-
-    target_parish_key = (args.target_parish or "").strip().lower()
 
     if target_parish_key:
         # ── Instant single-parish rebuild ──────────────────────────────
