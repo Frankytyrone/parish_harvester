@@ -3771,7 +3771,7 @@
       if (cropSignature(payload) === lastCropSignature) return true;
       if (!window.ph_mark_crop) {
         console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
-        return true;
+        return false;
       }
       window.ph_mark_crop(payload);
       return true;

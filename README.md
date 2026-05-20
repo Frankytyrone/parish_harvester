@@ -10,8 +10,10 @@ then stitches them into one A–Z mega PDF.
 2. The harvester **reads the evidence file** and first uses date maths to predict
    this week's URL for each parish.
 3. If `parishes/recipes/{parish_key}.json` exists, Playwright replays those
-   recorded steps first (training recipe mode).
-4. If recipe replay fails (or no recipe exists), Playwright opens the parish page,
+   recorded steps first (training recipe mode). If replay fails, the parish is
+   marked as an error for that run — the harvester does **not** fall back to the
+   generic prediction/scraping flow when a recipe is present.
+4. If no recipe exists, Playwright opens the parish page,
    scans links/embeds/iframes, and downloads the best PDF/DOCX match.
 5. All PDFs are **stitched into one mega PDF** (A–Z). HTML-only parishes get a
    clickable link page instead.

@@ -294,7 +294,7 @@ https://www.antrimparish.com
         self.assertIn("done < <(find _harvest_artifacts -type f -name '*_mega_bulletin.pdf' -print0)", workflow)
         self.assertIn('pdfs=(mega_pdf/*_mega_bulletin.pdf)', workflow)
         self.assertIn('if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then', workflow)
-        self.assertIn("Check that the upstream Harvest Parish Bulletins run succeeded", workflow)
+        self.assertIn("Error: no mega PDF artifacts were downloaded from workflow run", workflow)
         self.assertIn("Error: mega PDF is missing or empty:", workflow)
         self.assertIn("Error: file does not look like a PDF:", workflow)
         self.assertIn('if [ ! -s "${pdf}" ]; then', workflow)
