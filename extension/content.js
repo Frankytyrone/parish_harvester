@@ -491,6 +491,45 @@
     return false;
   };
 
+  const IMAGE_CONTENT_AREA_SELECTOR = ".entry-content, article, main, [role=\"main\"]";
+  const IMAGE_CONTENT_CLASS_HINT_RE = /(entry-content|post-content|article|main)/i;
+
+  const getImageWidth = (img) => {
+    const widthAttr = Number(img.getAttribute("width") || 0);
+    if (Number.isFinite(widthAttr) && widthAttr > 0) return widthAttr;
+    const renderWidth = Number(img.width || 0);
+    if (Number.isFinite(renderWidth) && renderWidth > 0) return renderWidth;
+    const rectWidth = Number(img.getBoundingClientRect?.().width || 0);
+    return Number.isFinite(rectWidth) ? rectWidth : 0;
+  };
+
+  const isLargeImage = (img, threshold = 400) => {
+    const width = getImageWidth(img);
+    const naturalWidth = Number(img.naturalWidth || 0);
+    return width > threshold || naturalWidth > threshold;
+  };
+
+  const isInClassHintedContentArea = (img) => {
+    let node = img;
+    while (node && node instanceof Element) {
+      const className = node.getAttribute("class") || "";
+      if (IMAGE_CONTENT_CLASS_HINT_RE.test(className)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  };
+
+  const hasLargeImageInContentAreas = (minWidth = 200) =>
+    Array.from(
+      document.querySelectorAll(
+        `${IMAGE_CONTENT_AREA_SELECTOR} img, ${IMAGE_CONTENT_AREA_SELECTOR} picture img`
+      )
+    ).some((img) => {
+      const width = getImageWidth(img);
+      if (width > 0 && width < minWidth) return false;
+      return width >= minWidth || Number(img.naturalWidth || 0) >= minWidth;
+    });
+
   // Detect what kind of bulletin page we are on and give plain-language guidance.
   const detectPageType = () => {
     const url = window.location.href.toLowerCase();
@@ -696,18 +735,35 @@
       };
     }
 
+    // 6. Large images in content areas (common on WordPress bulletin pages)
+    if (hasLargeImageInContentAreas(200)) {
+      return {
+        emoji: "🖼️",
+        summary: "Found large content image(s) that may be the bulletin.",
+        advice: 'Use "Pick an image on this page" to select the bulletin image.',
+        type: "image",
+      };
+    }
+
     // 6. Image bulletins
     const bulletinImages = Array.from(document.querySelectorAll("img")).filter(
       (img) => {
-        const src = (
+        const srcAlt = (
           (img.getAttribute("src") || "") +
           " " +
           (img.getAttribute("alt") || "")
         ).toLowerCase();
+        const src = (img.getAttribute("src") || "").toLowerCase();
+        const inContentArea =
+          img.closest(IMAGE_CONTENT_AREA_SELECTOR) || isInClassHintedContentArea(img);
         return (
-          src.includes("bulletin") ||
-          src.includes("newsletter") ||
-          src.includes("notice")
+          srcAlt.includes("bulletin") ||
+          srcAlt.includes("newsletter") ||
+          srcAlt.includes("notice") ||
+          src.includes("/uploads/") ||
+          src.includes("/wp-content/") ||
+          isLargeImage(img, 400) ||
+          Boolean(inContentArea)
         );
       }
     );
@@ -1014,7 +1070,7 @@
     document.documentElement.appendChild(highlight);
     pickImageHighlightEl = highlight;
 
-    const IMAGE_SELECTOR = "img[src]";
+    const IMAGE_SELECTOR = "img";
 
     const onMouseMove = (e) => {
       if (!pickImageActive) return;
@@ -2293,11 +2349,35 @@
     const showPickImageConfirmation = (imgEl) => {
       const src = imgEl.getAttribute("src") || "";
       const alt = imgEl.getAttribute("alt") || "";
+      const isRealImageUrl = (value) => {
+        const v = String(value || "").trim();
+        return (
+          v.startsWith("http") &&
+          !v.includes("data:image") &&
+          v.length > 50
+        );
+      };
+      const imageSourceCandidates = [
+        isRealImageUrl(imgEl.src) ? imgEl.src : "",
+        imgEl.getAttribute("data-lazy-src") || "",
+        imgEl.getAttribute("data-src") || "",
+        imgEl.getAttribute("data-original") || "",
+        imgEl.getAttribute("data-full-url") || "",
+        imgEl.currentSrc || "",
+        src || "",
+      ];
+      const pickedSource =
+        imageSourceCandidates.find(
+          (candidate) =>
+            candidate &&
+            !String(candidate).toLowerCase().includes("data:image")
+        ) || "";
       const absUrl = (() => {
+        if (!pickedSource) return "";
         try {
-          return new URL(src, window.location.href).href;
+          return new URL(pickedSource, window.location.href).href;
         } catch (_e) {
-          return src;
+          return pickedSource || src;
         }
       })();
 
@@ -2355,6 +2435,11 @@
         pickedImages.length > 0 ? "✅ Yes — add this image" : "✅ Yes, use this image",
         "#16a34a",
         () => {
+          if (!absUrl) {
+            showStatus("❌ Could not read this image URL. Try a different image.", "error");
+            resetGuidedPanel();
+            return;
+          }
           pickedImages.push({ url: absUrl, el: imgEl });
           if (window.ph_mark_image) {
             try {
@@ -2365,6 +2450,7 @@
               showStatus("❌ Could not record image. Try refreshing.", "error");
             }
           } else {
+            standaloneAddStep({ action: "image", url: absUrl });
             addSessionStep("mark_image", `🖼️ Image: ${absUrl.slice(-50)}`);
             showStatus(`✅ Image noted: ${absUrl.slice(-40)}`);
           }
@@ -2378,6 +2464,11 @@
         "➕ Pick another image too",
         "#2563eb",
         () => {
+          if (!absUrl) {
+            showStatus("❌ Could not read this image URL. Try a different image.", "error");
+            resetGuidedPanel();
+            return;
+          }
           pickedImages.push({ url: absUrl, el: imgEl });
           showStatus(
             `✅ Image ${pickedImages.length} saved. Now pick the next one.`,
@@ -2622,10 +2713,17 @@
                 deepBtn.disabled = false;
                 deepBtn.style.opacity = "1";
                 if (urls.length === 0) {
-                  showStatus(
-                    "Deep Detect: no document URLs detected in 10 s.",
-                    "info"
-                  );
+                  if (hasLargeImageInContentAreas(200)) {
+                    showStatus(
+                      "Deep Detect: no PDFs found. This looks like an image bulletin — try 'Pick an image on this page' instead.",
+                      "info"
+                    );
+                  } else {
+                    showStatus(
+                      "Deep Detect: no document URLs detected in 10 s.",
+                      "info"
+                    );
+                  }
                   return;
                 }
                 identifyResult.innerHTML = "";
