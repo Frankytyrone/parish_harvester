@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "fahanparish",
+  "display_name": "Fahanparish",
+  "diocese": "",
+  "start_url": "http://www.fahanparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://www.fahanparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "div#newsContainer > div:nth-of-type(2) > a",
+      "href": "/pdf/170526.pdf",
+      "text": "Click to load Newsletter\n\nSunday, 17th May 2026\n\nAscension S"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
