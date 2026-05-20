@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "dmaparish",
+  "display_name": "Dmaparish",
+  "diocese": "",
+  "start_url": "https://dmaparish.com/parishnews.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://dmaparish.com/parishnews.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"View Newsletter\")",
+      "href": "pdf/170526.pdf",
+      "text": "View Newsletter"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
