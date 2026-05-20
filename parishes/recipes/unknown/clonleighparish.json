@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "parish_key": "clonleighparish",
+  "display_name": "Clonleighparish",
+  "diocese": "",
+  "start_url": "https://clonleighparish.com/category/newsletter/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://clonleighparish.com/category/newsletter/"
+    },
+    {
+      "action": "click",
+      "selector": "article#post-9417 > div > section > figure > figcaption > a",
+      "href": "https://clonleighparish.com/2026/05/15/9417/",
+      "text": ""
+    },
+    {
+      "action": "click",
+      "selector": "article#post-9417 > div > section > figure > figcaption > a"
+    },
+    {
+      "action": "html",
+      "url": "https://clonleighparish.com/category/newsletter/"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
