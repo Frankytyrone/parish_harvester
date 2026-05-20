@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "errigalparish",
+  "display_name": "Errigalparish",
+  "diocese": "",
+  "start_url": "https://www.errigalparish.com/news.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.errigalparish.com/news.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Latest Parish News\")",
+      "href": "pdf/170526.pdf",
+      "text": "Latest Parish News"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
