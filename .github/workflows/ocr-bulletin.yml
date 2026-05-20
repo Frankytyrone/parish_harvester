@@ -59,14 +59,14 @@ jobs:
           TODAY="$(date -u +%Y-%m-%d)"
           mkdir -p /tmp/ocr-bulletins
           for diocese in derry down_and_connor; do
+            pdf_path="/tmp/ocr-bulletins/${diocese}_mega_bulletin.pdf"
+            if [ ! -f "${pdf_path}" ]; then
+              echo "Warning: PDF not found for ${diocese}, skipping"
+              continue
+            fi
             workdir="/tmp/ocr-bulletins/${diocese}"
             mkdir -p "${workdir}"
-            pdf_path="$(find "${workdir}" /tmp/ocr-bulletins -type f -name "${diocese}_mega_bulletin.pdf" 2>/dev/null | head -n 1)"
             ocr_html="${workdir}/bulletin-${TODAY}.html"
-            if [ -z "${pdf_path}" ] || [ ! -s "${pdf_path}" ]; then
-              echo "Error: missing downloaded mega PDF artifact: ${pdf_path}"
-              exit 1
-            fi
             (
               cd "${workdir}"
               python "${GITHUB_WORKSPACE}/ocr/convert_bulletin.py" "${pdf_path}" "${TODAY}"
