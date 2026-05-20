@@ -1238,7 +1238,7 @@
       info.style.cssText = "flex:1;word-break:break-all;line-height:1.3;";
       const mainText = document.createElement("div");
       if (isBulletin && resolvedUrl !== src) {
-        const filename = resolvedUrl.split('/').pop().split('?')[0];
+        const filename = resolvedUrl.replace(/\/+$/, '').split('/').pop().split('?')[0];
         const truncated = resolvedUrl.length > 55 ? resolvedUrl.slice(0, 55) + "…" : resolvedUrl;
         mainText.textContent = `✅ ${filename}`;
         info.appendChild(mainText);

@@ -242,7 +242,8 @@ jobs:
           git add -f parishes/stale_bulletins.json || true
           if ! git diff --cached --quiet; then
             git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
-            git pull --rebase origin main && git push
+            git pull --rebase origin main
+            git push
           fi
 
 
@@ -358,5 +359,6 @@ jobs:
           fi
           if ! git diff --cached --quiet; then
             git commit -m "chore: clean transient bulletin PDFs [skip ci]"
-            git pull --rebase origin main && git push origin HEAD:main
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
