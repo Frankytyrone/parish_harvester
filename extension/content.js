@@ -491,8 +491,9 @@
     return false;
   };
 
-  const IMAGE_CONTENT_AREA_SELECTOR = ".entry-content, article, main, [role=\"main\"]";
+  const IMAGE_CONTENT_AREA_SELECTOR = ".entry-content, article, main, [role='main']";
   const IMAGE_CONTENT_CLASS_HINT_RE = /(entry-content|post-content|article|main)/i;
+  const MIN_CONTENT_IMAGE_WIDTH = 200;
 
   const getImageWidth = (img) => {
     const widthAttr = Number(img.getAttribute("width") || 0);
@@ -519,7 +520,7 @@
     return false;
   };
 
-  const hasLargeImageInContentAreas = (minWidth = 200) =>
+  const hasLargeImageInContentAreas = (minWidth = MIN_CONTENT_IMAGE_WIDTH) =>
     Array.from(
       document.querySelectorAll(
         `${IMAGE_CONTENT_AREA_SELECTOR} img, ${IMAGE_CONTENT_AREA_SELECTOR} picture img`
@@ -736,7 +737,7 @@
     }
 
     // 6. Large images in content areas (common on WordPress bulletin pages)
-    if (hasLargeImageInContentAreas(200)) {
+    if (hasLargeImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
       return {
         emoji: "🖼️",
         summary: "Found large content image(s) that may be the bulletin.",
@@ -748,12 +749,13 @@
     // 6. Image bulletins
     const bulletinImages = Array.from(document.querySelectorAll("img")).filter(
       (img) => {
+        const srcAttr = img.getAttribute("src") || "";
         const srcAlt = (
-          (img.getAttribute("src") || "") +
+          srcAttr +
           " " +
           (img.getAttribute("alt") || "")
         ).toLowerCase();
-        const src = (img.getAttribute("src") || "").toLowerCase();
+        const src = srcAttr.toLowerCase();
         const inContentArea =
           img.closest(IMAGE_CONTENT_AREA_SELECTOR) || isInClassHintedContentArea(img);
         return (
@@ -2349,13 +2351,28 @@
     const showPickImageConfirmation = (imgEl) => {
       const src = imgEl.getAttribute("src") || "";
       const alt = imgEl.getAttribute("alt") || "";
+      // Many lazy-load placeholders are tiny data/blob strings; require a longer http URL.
+      const MIN_REAL_IMAGE_URL_LENGTH = 50;
       const isRealImageUrl = (value) => {
         const v = String(value || "").trim();
         return (
           v.startsWith("http") &&
           !v.includes("data:image") &&
-          v.length > 50
+          v.length > MIN_REAL_IMAGE_URL_LENGTH
         );
+      };
+      const toSafeImageUrl = (value) => {
+        const raw = String(value || "").trim();
+        if (!raw || raw.toLowerCase().includes("data:image")) return "";
+        try {
+          const parsed = new URL(raw, window.location.href);
+          if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+            return parsed.href;
+          }
+        } catch (_e) {
+          return "";
+        }
+        return "";
       };
       const imageSourceCandidates = [
         isRealImageUrl(imgEl.src) ? imgEl.src : "",
@@ -2364,21 +2381,14 @@
         imgEl.getAttribute("data-original") || "",
         imgEl.getAttribute("data-full-url") || "",
         imgEl.currentSrc || "",
-        src || "",
       ];
       const pickedSource =
         imageSourceCandidates.find(
-          (candidate) =>
-            candidate &&
-            !String(candidate).toLowerCase().includes("data:image")
+          (candidate) => Boolean(toSafeImageUrl(candidate))
         ) || "";
       const absUrl = (() => {
-        if (!pickedSource) return "";
-        try {
-          return new URL(pickedSource, window.location.href).href;
-        } catch (_e) {
-          return pickedSource || src;
-        }
+        if (!pickedSource) return toSafeImageUrl(src);
+        return toSafeImageUrl(pickedSource);
       })();
 
       guidedPanel.innerHTML = "";
@@ -2713,7 +2723,7 @@
                 deepBtn.disabled = false;
                 deepBtn.style.opacity = "1";
                 if (urls.length === 0) {
-                  if (hasLargeImageInContentAreas(200)) {
+                  if (hasLargeImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
                     showStatus(
                       "Deep Detect: no PDFs found. This looks like an image bulletin — try 'Pick an image on this page' instead.",
                       "info"
