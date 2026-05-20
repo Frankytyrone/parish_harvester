@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-19T13:49:03",
+  "generated_at": "2026-05-20T08:48:02",
   "stale": [
     {
       "key": "iskaheenparish",
       "display_name": "Iskaheen",
       "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1",
       "extracted_date": "2026-04-01",
-      "days_old": 48,
+      "days_old": 49,
       "reason": "date_in_url"
     },
     {
@@ -14,7 +14,15 @@
       "display_name": "Saul and Ballee",
       "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf",
       "extracted_date": "2026-05-10",
-      "days_old": 9,
+      "days_old": 10,
+      "reason": "date_in_url"
+    },
+    {
+      "key": "st-colmcilles",
+      "display_name": "St Colmcilles",
+      "url": "https://st-colmcilles.net/wp-content/uploads/2026/05/Parish-Bulletin-10052026.pdf",
+      "extracted_date": "2026-05-10",
+      "days_old": 10,
       "reason": "date_in_url"
     },
     {
@@ -22,7 +30,7 @@
       "display_name": "St Oliver Plunkett",
       "url": "https://stoliverplunkettparish.ie/wp-content/uploads/2026/01/25-Jan-26.pdf",
       "extracted_date": "2026-01-25",
-      "days_old": 114,
+      "days_old": 115,
       "reason": "date_in_url"
     }
   ],
@@ -162,7 +170,7 @@
     {
       "key": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
+      "url": "https://www.dunsfordandardglassparish.com/?p=2912",
       "reason": "no_date_in_url"
     },
     {

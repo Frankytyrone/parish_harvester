@@ -1,9 +1,9 @@
 Parish Bulletin Harvest Report — 2026-05-17
 ==================================================
 Downloaded : 58
-HTML links : 3
+HTML links : 4
 Skipped    : 0
-Failed     : 35
+Failed     : 34
 
 Downloaded bulletins:
 
@@ -37,7 +37,6 @@ Downloaded bulletins:
   ✅ Camus — camusparish.pdf
   ✅ Drumragh — drumraghparish.pdf
   ✅ Granaghan — granaghanparish.pdf
-  ✅ Holy Family — holyfamily-parish.pdf
   ✅ Steelstown — steelstownparish.pdf
   ✅ Aghagallon and Ballinderry — aghagallonandballinderryparish.pdf
   ✅ Ballycastle — ballycastleparish.pdf
@@ -58,6 +57,7 @@ Downloaded bulletins:
   ✅ Saul and Ballee — saulandballeeparish.pdf
   ✅ St Bernadettes — stbernadettesparish.pdf
   ✅ St Brigids Belfast — stbrigidsparishbelfast.pdf
+  ✅ St Colmcilles — st-colmcilles.pdf
   ✅ St Michael the Archangel — saintmichaelthearchangel.pdf
   ✅ St Oliver Plunkett — stoliverplunkettparish.pdf
   ✅ Holy Family — holy-familyparish.pdf
@@ -70,6 +70,7 @@ HTML-only parishes (clickable links in mega PDF):
 
   🔗 Desertmartin — https://www.desertmartinparish.com/?page_id=6
   🔗 Greencastle — https://greencastleparish.com/
+  🔗 Holy Family — https://www.holyfamily-parish.com/
   🔗 Long Tower — https://longtowerchurch.org/
 
 Failed parishes:
@@ -97,15 +98,11 @@ Call log:
   ❌ Holy Rosary Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Kilmore and Killyleagh — Total timeout exceeded
   ❌ Maghera — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Portaferry — Recipe replay failed: Recipe download step did not find a matching document URL
+  ❌ Portaferry — Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf
   ❌ Portstewart — Total timeout exceeded
   ❌ St Agnes Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Saint Annes — Total timeout exceeded
+  ❌ Saint Annes — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Saint Anthony — Total timeout exceeded
-  ❌ St Colmcilles — Recipe replay failed: Page.goto: Timeout 15000ms exceeded.
-Call log:
-  - navigating to "https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/", waiting until "domcontentloaded"
-
   ❌ St Gerards — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
   ❌ St Patricks Belfast — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
   ❌ St Teresas — Recipe replay failed: Recipe download step did not find a matching document URL

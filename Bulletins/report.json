@@ -2,9 +2,9 @@
   "target_date": "2026-05-17",
   "summary": {
     "downloaded": 58,
-    "html_links": 3,
+    "html_links": 4,
     "skipped": 0,
-    "failed": 35
+    "failed": 34
   },
   "downloaded": [
     {
@@ -218,13 +218,6 @@
       "file_type": "pdf"
     },
     {
-      "parish": "holyfamily-parish",
-      "display_name": "Holy Family",
-      "url": "https://www.holyfamily-parish.com/pdf/170526.pdf",
-      "file": "holyfamily-parish.pdf",
-      "file_type": "pdf"
-    },
-    {
       "parish": "steelstownparish",
       "display_name": "Steelstown",
       "url": "http://steelstownparish.com/pdf/PrayingForOneAnother.pdf",
@@ -283,7 +276,7 @@
     {
       "parish": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
+      "url": "https://www.dunsfordandardglassparish.com/?p=2912",
       "file": "dunsfordandardglassparish.pdf",
       "file_type": "pdf"
     },
@@ -365,6 +358,13 @@
       "file_type": "pdf"
     },
     {
+      "parish": "st-colmcilles",
+      "display_name": "St Colmcilles",
+      "url": "https://st-colmcilles.net/wp-content/uploads/2026/05/Parish-Bulletin-10052026.pdf",
+      "file": "st-colmcilles.pdf",
+      "file_type": "pdf"
+    },
+    {
       "parish": "saintmichaelthearchangel",
       "display_name": "St Michael the Archangel",
       "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1778883138000",
@@ -424,6 +424,11 @@
       "parish": "greencastleparish",
       "display_name": "Greencastle",
       "url": "https://greencastleparish.com/"
+    },
+    {
+      "parish": "holyfamily-parish",
+      "display_name": "Holy Family",
+      "url": "https://www.holyfamily-parish.com/"
     },
     {
       "parish": "longtowerchurch",
@@ -539,7 +544,7 @@
       "parish": "portaferryparish",
       "display_name": "Portaferry",
       "url": "https://portaferryparish.com/bulletin",
-      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+      "error": "Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf"
     },
     {
       "parish": "portstewartparish",
@@ -557,19 +562,13 @@
       "parish": "saintannesparish",
       "display_name": "Saint Annes",
       "url": "https://www.saintannesparish.net",
-      "error": "Total timeout exceeded"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "saintanthony",
       "display_name": "Saint Anthony",
       "url": "http://www.saintanthony.co.uk",
       "error": "Total timeout exceeded"
-    },
-    {
-      "parish": "st-colmcilles",
-      "display_name": "St Colmcilles",
-      "url": "https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/",
-      "error": "Recipe replay failed: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://st-colmcilles.net/weekly-bulletins/past-weeks-bulletins/\", waiting until \"domcontentloaded\"\n"
     },
     {
       "parish": "stgerardsparish",
