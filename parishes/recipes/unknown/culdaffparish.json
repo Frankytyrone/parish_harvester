@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "culdaffparish",
+  "display_name": "Culdaffparish",
+  "diocese": "",
+  "start_url": "http://www.culdaffparish.com/news.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://www.culdaffparish.com/news.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Latest Parish News\")",
+      "href": "pdf/170526.pdf",
+      "text": "Latest Parish News"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
