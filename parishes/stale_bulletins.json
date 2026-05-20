@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-20T16:51:48",
+  "generated_at": "2026-05-20T18:28:08",
   "stale": [
     {
       "key": "iskaheenparish",
@@ -152,7 +152,7 @@
     {
       "key": "aghagallonandballinderryparish",
       "display_name": "Aghagallon and Ballinderry",
-      "url": "https://www.aghagallonandballinderryparish.ie/newsletter/",
+      "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-17th-May-2026.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -234,12 +234,6 @@
       "reason": "no_date_in_url"
     },
     {
-      "key": "saintannesparish",
-      "display_name": "Saint Annes",
-      "url": "https://www.saintannesparish.net/bulletins/",
-      "reason": "no_date_in_url"
-    },
-    {
       "key": "stbernadettesparish",
       "display_name": "St Bernadettes",
       "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 17th May 2026.pdf",
@@ -266,7 +260,7 @@
     {
       "key": "stmarysportglenone",
       "display_name": "Port Glenone",
-      "url": "https://stmarysportglenone.co.uk/wp-content/uploads/2020/03/Prayer-to-Virgin-Mary-for-Protection.pdf",
+      "url": "https://stmarysportglenone.co.uk/?page_id=40",
       "reason": "no_date_in_url"
     },
     {
