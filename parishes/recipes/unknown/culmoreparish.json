@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "culmoreparish",
+  "display_name": "Culmoreparish",
+  "diocese": "",
+  "start_url": "http://culmoreparish.com/news.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://culmoreparish.com/news.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Parish News\")",
+      "href": "pdf/170526.pdf",
+      "text": "Parish News"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
