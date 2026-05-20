@@ -103,7 +103,7 @@ https://clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-12.pdf
 https://clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-05.pdf
 
 # --- Culdaff ---
-# page: http://www.culdaffparish.com/
+# page: http://www.culdaffparish.com/news.html
 # Pattern A: DDMMYY
 http://www.culdaffparish.com/pdf/120426.pdf
 http://www.culdaffparish.com/pdf/050426.pdf
