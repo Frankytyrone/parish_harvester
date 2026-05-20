@@ -115,7 +115,7 @@ http://culmoreparish.com/pdf/120426.pdf
 http://culmoreparish.com/pdf/290326.pdf
 
 # --- DMA Parish (Claudy area) ---
-# page: https://dmaparish.com/
+# page: https://dmaparish.com/parishnews.html
 # Pattern A: DDMMYY
 https://dmaparish.com/pdf/120426.pdf
 https://dmaparish.com/pdf/220326.pdf
