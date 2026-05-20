@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-20T15:41:42",
+  "generated_at": "2026-05-20T16:51:48",
   "stale": [
     {
       "key": "iskaheenparish",
@@ -48,6 +48,18 @@
       "reason": "no_date_in_url"
     },
     {
+      "key": "carndonaghparish",
+      "display_name": "Carndonagh",
+      "url": "http://www.carndonaghparish.com/parishnews.html",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "castledergparish",
+      "display_name": "Castlederg",
+      "url": "https://www.castledergparish.com/parishnews.html",
+      "reason": "no_date_in_url"
+    },
+    {
       "key": "parishofclaudy",
       "display_name": "Claudy",
       "url": "http://parishofclaudy.com/onewebmedia/Diocese of Derry - GDPR Guide for Parishes v1 (Feb2019).pdf",
@@ -57,6 +69,18 @@
       "key": "culdaffparish",
       "display_name": "Culdaff",
       "url": "http://www.culdaffparish.com/news.html",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "culmoreparish",
+      "display_name": "Culmoe",
+      "url": "http://culmoreparish.com/news.html",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "parishofdungiven",
+      "display_name": "Dungiven",
+      "url": "https://parishofdungiven.com/parishnews.html",
       "reason": "no_date_in_url"
     },
     {
@@ -75,6 +99,12 @@
       "key": "limavadyparish",
       "display_name": "Limavady",
       "url": "https://www.limavadyparish.org/onewebmedia/17-5-26.pdf",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "malinparish",
+      "display_name": "Malin",
+      "url": "http://malinparish.ie/index.php/bulletin/",
       "reason": "no_date_in_url"
     },
     {
@@ -102,6 +132,12 @@
       "reason": "no_date_in_url"
     },
     {
+      "key": "watersideparish",
+      "display_name": "Waterside (& Strathfoyle amalgamated)",
+      "url": "https://watersideparish.net/parish-bulletin/",
+      "reason": "no_date_in_url"
+    },
+    {
       "key": "granaghanparish",
       "display_name": "Granaghan",
       "url": "https://granaghanparish.com/pdf/TheNetApril2019Granaghan.pdf",
@@ -116,7 +152,13 @@
     {
       "key": "aghagallonandballinderryparish",
       "display_name": "Aghagallon and Ballinderry",
-      "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-17th-May-2026.pdf",
+      "url": "https://www.aghagallonandballinderryparish.ie/newsletter/",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "ballycastleparish",
+      "display_name": "Ballycastle",
+      "url": "https://www.ballycastleparish.com/bulletins",
       "reason": "no_date_in_url"
     },
     {
@@ -168,9 +210,15 @@
       "reason": "no_date_in_url"
     },
     {
+      "key": "holycrossparishbelfast",
+      "display_name": "Holy Cross Belfast",
+      "url": "http://www.holycrossparishbelfast.com/pdf/GiftAidForm.pdf",
+      "reason": "no_date_in_url"
+    },
+    {
       "key": "ourladyqueenofpeacekilwee",
       "display_name": "Our Lady Queen of Peace",
-      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_7c95648bea124f62aea500a619c3dfe9.pdf",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/bulletins",
       "reason": "no_date_in_url"
     },
     {
@@ -183,6 +231,12 @@
       "key": "sacredheartparishbelfast",
       "display_name": "Sacred Heart Belfast",
       "url": "https://www.sacredheartparishbelfast.com/gallery/Parish%20Bulletin%2012th%20April%202026.pdf",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "saintannesparish",
+      "display_name": "Saint Annes",
+      "url": "https://www.saintannesparish.net/bulletins/",
       "reason": "no_date_in_url"
     },
     {
@@ -213,6 +267,12 @@
       "key": "stmarysportglenone",
       "display_name": "Port Glenone",
       "url": "https://stmarysportglenone.co.uk/wp-content/uploads/2020/03/Prayer-to-Virgin-Mary-for-Protection.pdf",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "saintmalachysparish",
+      "display_name": "Saint Malachy's",
+      "url": "https://www.saintmalachysparish.com/documents/bulletin.pdf",
       "reason": "no_date_in_url"
     },
     {
