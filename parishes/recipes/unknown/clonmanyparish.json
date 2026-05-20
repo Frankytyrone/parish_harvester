@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "clonmanyparish",
+  "display_name": "Clonmanyparish",
+  "diocese": "",
+  "start_url": "https://clonmanyparish.ie/newsletter/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://clonmanyparish.ie/newsletter/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Current Newsletter\")",
+      "href": "https://clonmanyparish.ie/current-newsletter/",
+      "text": "Current Newsletter"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
