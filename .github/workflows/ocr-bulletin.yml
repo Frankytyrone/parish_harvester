@@ -39,14 +39,20 @@ jobs:
           set -euo pipefail
           pip install -r requirements.txt -r requirements-ocr.txt
 
-      - name: Download mega PDF artifacts from harvest run
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ github.event.workflow_run.id }}
-          pattern: "*-mega-bulletin-pdf"
-          path: /tmp/ocr-bulletins/
-          merge-multiple: true
+      - name: Download mega PDFs from GitHub Pages
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ocr-bulletins/derry /tmp/ocr-bulletins/down_and_connor
+          curl -fL "https://frankytyrone.github.io/parish_harvester/mega_pdf/derry_mega_bulletin.pdf" \
+            -o /tmp/ocr-bulletins/derry/derry_mega_bulletin.pdf || {
+            echo "Error: failed to download Derry mega PDF from GitHub Pages"
+            exit 1
+          }
+          curl -fL "https://frankytyrone.github.io/parish_harvester/mega_pdf/down_and_connor_mega_bulletin.pdf" \
+            -o /tmp/ocr-bulletins/down_and_connor/down_and_connor_mega_bulletin.pdf || {
+            echo "Error: failed to download Down and Connor mega PDF from GitHub Pages"
+            exit 1
+          }
 
       - name: Generate OCR viewer pages
         env:
