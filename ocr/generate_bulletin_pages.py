@@ -156,6 +156,7 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       .pdf-controls {{ flex-wrap: wrap; }}
     }}
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
   <div class="page">
@@ -168,7 +169,9 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       <section>
         <h2 class="column-title">Bulletins original PDF version</h2>
         <div class="panel">
-          <iframe id="pdf-frame" class="pdf-frame" src="{pdf_href}#page=1" title="{html.escape(config.display_name)} mega bulletin PDF"></iframe>
+          <div id="pdf-container" style="width:100%;height:70vh;min-height:680px;border:1px solid #c7dcda;border-radius:12px;overflow:hidden;background:#525659;">
+            <canvas id="pdf-canvas" style="display:block;width:100%;height:100%;"></canvas>
+          </div>
           <div class="pdf-controls">
             <button id="prev-page" type="button">← Previous</button>
             <span id="page-indicator">Page 1 of {page_count}</span>
@@ -199,36 +202,37 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
 
   <script>
     (function () {{
+      const pdfjsLib = window['pdfjs-dist/build/pdf'];
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      let pdfDoc = null;
+      let currentPage = 1;
       const totalPages = {page_count};
-      const pdfHref = {pdf_href!r};
-      const frame = document.getElementById('pdf-frame');
+      const canvas = document.getElementById('pdf-canvas');
+      const ctx = canvas.getContext('2d');
       const indicator = document.getElementById('page-indicator');
       const prev = document.getElementById('prev-page');
       const next = document.getElementById('next-page');
-      let currentPage = 1;
 
-      function renderPage() {{
-        frame.src = `${{pdfHref}}#page=${{currentPage}}`;
-        indicator.textContent = `Page ${{currentPage}} of ${{totalPages}}`;
-        prev.disabled = currentPage <= 1;
-        next.disabled = currentPage >= totalPages;
+      async function renderPage(num) {{
+        const page = await pdfDoc.getPage(num);
+        const container = canvas.parentElement;
+        const viewport = page.getViewport({{ scale: container.clientWidth / page.getViewport({{ scale: 1 }}).width }});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({{ canvasContext: ctx, viewport }}).promise;
+        indicator.textContent = `Page ${{num}} of ${{totalPages}}`;
+        prev.disabled = num <= 1;
+        next.disabled = num >= totalPages;
       }}
 
-      prev.addEventListener('click', function () {{
-        if (currentPage > 1) {{
-          currentPage -= 1;
-          renderPage();
-        }}
+      pdfjsLib.getDocument('{pdf_href}').promise.then(pdf => {{
+        pdfDoc = pdf;
+        renderPage(currentPage);
       }});
 
-      next.addEventListener('click', function () {{
-        if (currentPage < totalPages) {{
-          currentPage += 1;
-          renderPage();
-        }}
-      }});
-
-      renderPage();
+      prev.addEventListener('click', () => {{ if (currentPage > 1) renderPage(--currentPage); }});
+      next.addEventListener('click', () => {{ if (currentPage < totalPages) renderPage(++currentPage); }});
     }})();
   </script>
 </body>

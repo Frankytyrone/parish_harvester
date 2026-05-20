@@ -63,6 +63,9 @@ MARKDOWN_FENCE_PATTERN = re.compile(r"^\s*```(?:[A-Za-z0-9_-]+)?\s*$")
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 URL_PATTERN = re.compile(r"(?<!@)\b(?:https?://|www\.)[^\s<>\"]+", re.IGNORECASE)
 DIGITS_ONLY_PATTERN = re.compile(r"\D")
+BOLD_PATTERN = re.compile(r'\*\*(.+?)\*\*')
+ITALIC_PATTERN = re.compile(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)')
+BOLD_UNDERSCORE_PATTERN = re.compile(r'__(.+?)__')
 PHONE_WITH_COUNTRY_OPTIONAL_TRUNK_PATTERN = r"\+353\s*\(0\)\s*\d{1,2}(?:[\s-]?\d{3,4}){1,2}"
 PHONE_WITH_COUNTRY_PATTERN = r"\+353[\s-]?\d{1,2}(?:[\s-]?\d{3,4}){1,2}"
 PHONE_LOCAL_PATTERN = r"0\d{1,2}(?:[\s-]?\d{3,4}){1,2}"
@@ -270,6 +273,23 @@ def linkify(text):
     return linked
 
 
+def markdown_line_to_html(line):
+    """Convert a single markdown line to an HTML string."""
+    for prefix, tag in (("#### ", "h4"), ("### ", "h3"), ("## ", "h2"), ("# ", "h1")):
+        if line.startswith(prefix):
+            text = line[len(prefix):]
+            escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            return f"<{tag}>{escaped}</{tag}>"
+    stripped = line.strip()
+    if stripped in ("---", "***", "___"):
+        return "<hr>"
+    escaped = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    escaped = BOLD_PATTERN.sub(r'<strong>\1</strong>', escaped)
+    escaped = ITALIC_PATTERN.sub(r'<em>\1</em>', escaped)
+    escaped = BOLD_UNDERSCORE_PATTERN.sub(r'<strong>\1</strong>', escaped)
+    return f"<p>{linkify(escaped)}</p>"
+
+
 def build_html_content(pages_text):
     parts = []
     for i, lines in enumerate(pages_text, start=1):
@@ -277,8 +297,7 @@ def build_html_content(pages_text):
             parts.append("<hr>")
         parts.append(f"<h2>Page {i}</h2>")
         for line in lines:
-            escaped = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            parts.append(f"<p>{linkify(escaped)}</p>")
+            parts.append(markdown_line_to_html(line))
     return "\n".join(parts)
 
 
