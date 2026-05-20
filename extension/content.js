@@ -520,16 +520,14 @@
     return false;
   };
 
-  const hasLargeImageInContentAreas = (minWidth = MIN_CONTENT_IMAGE_WIDTH) =>
-    Array.from(
-      document.querySelectorAll(
-        `${IMAGE_CONTENT_AREA_SELECTOR} img, ${IMAGE_CONTENT_AREA_SELECTOR} picture img`
-      )
-    ).some((img) => {
-      const width = getImageWidth(img);
-      if (width > 0 && width < minWidth) return false;
-      return width >= minWidth || Number(img.naturalWidth || 0) >= minWidth;
-    });
+  const hasPickableImageInContentAreas = (minWidth = MIN_CONTENT_IMAGE_WIDTH) =>
+    Array.from(document.querySelectorAll(`${IMAGE_CONTENT_AREA_SELECTOR} img`)).some(
+      (img) => {
+        const rawWidthAttr = (img.getAttribute("width") || "").trim();
+        if (/^\d+$/.test(rawWidthAttr) && Number(rawWidthAttr) < minWidth) return false;
+        return true;
+      }
+    );
 
   // Detect what kind of bulletin page we are on and give plain-language guidance.
   const detectPageType = () => {
@@ -736,8 +734,8 @@
       };
     }
 
-    // 6. Large images in content areas (common on WordPress bulletin pages)
-    if (hasLargeImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
+    // 6. Pickable images in content areas (common on WordPress bulletin pages)
+    if (hasPickableImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
       return {
         emoji: "🖼️",
         summary: "Found large content image(s) that may be the bulletin.",
@@ -2723,7 +2721,7 @@
                 deepBtn.disabled = false;
                 deepBtn.style.opacity = "1";
                 if (urls.length === 0) {
-                  if (hasLargeImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
+                  if (hasPickableImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
                     showStatus(
                       "Deep Detect: no PDFs found. This looks like an image bulletin — try 'Pick an image on this page' instead.",
                       "info"
