@@ -237,13 +237,23 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html || true
+          # Copy mega PDFs into docs/ so GitHub Pages can serve them
+          mkdir -p docs/mega_pdf
+          if [ -f mega_pdf/derry_mega_bulletin.pdf ]; then
+            cp mega_pdf/derry_mega_bulletin.pdf docs/mega_pdf/derry_mega_bulletin.pdf
+          fi
+          if [ -f mega_pdf/down_and_connor_mega_bulletin.pdf ]; then
+            cp mega_pdf/down_and_connor_mega_bulletin.pdf docs/mega_pdf/down_and_connor_mega_bulletin.pdf
+          fi
+          git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html docs/mega_pdf/ || true
           git add -f parishes/consecutive_failures.json || true
           git add -f parishes/stale_bulletins.json || true
           if ! git diff --cached --quiet; then
             git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
+            git stash || true
             git pull --rebase origin main
-            git push
+            git stash pop || true
+            git push origin HEAD:main
           fi
 
 
@@ -359,6 +369,8 @@ jobs:
           fi
           if ! git diff --cached --quiet; then
             git commit -m "chore: clean transient bulletin PDFs [skip ci]"
+            git stash || true
             git pull --rebase origin main
+            git stash pop || true
             git push origin HEAD:main
           fi
