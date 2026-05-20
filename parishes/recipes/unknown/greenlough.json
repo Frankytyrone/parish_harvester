@@ -11,8 +11,8 @@
     },
     {
       "action": "click",
-      "selector": "section:nth-of-type(1) > table:nth-of-type(1) > tbody > tr > td:nth-of-type(2) > a",
-      "href": "http://www.greenlough.com/publications/newsletter/Fourth_Sunday_of_Easter_-_Good_Shepherd_Sunday[2026-4-26].pdf",
+      "selector": "div:nth-of-type(1) > table:nth-of-type(1) > tbody > tr > td:nth-of-type(2) > a",
+      "href": "http://www.greenlough.com/publications/newsletter/Ascension_of_the_Lord[2026-5-17].pdf",
       "text": ""
     }
   ],
