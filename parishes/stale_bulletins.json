@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-20T08:48:02",
+  "generated_at": "2026-05-20T15:41:42",
   "stale": [
     {
       "key": "iskaheenparish",
@@ -48,21 +48,21 @@
       "reason": "no_date_in_url"
     },
     {
-      "key": "carndonaghparish",
-      "display_name": "Carndonagh",
-      "url": "http://www.carndonaghparish.com/parishnews.html",
-      "reason": "no_date_in_url"
-    },
-    {
-      "key": "castledergparish",
-      "display_name": "Castlederg",
-      "url": "https://www.castledergparish.com/parishnews.html",
-      "reason": "no_date_in_url"
-    },
-    {
       "key": "parishofclaudy",
       "display_name": "Claudy",
       "url": "http://parishofclaudy.com/onewebmedia/Diocese of Derry - GDPR Guide for Parishes v1 (Feb2019).pdf",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "culdaffparish",
+      "display_name": "Culdaff",
+      "url": "http://www.culdaffparish.com/news.html",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "errigalparish",
+      "display_name": "Errigal",
+      "url": "https://www.errigalparish.com/news.html",
       "reason": "no_date_in_url"
     },
     {
@@ -75,12 +75,6 @@
       "key": "limavadyparish",
       "display_name": "Limavady",
       "url": "https://www.limavadyparish.org/onewebmedia/17-5-26.pdf",
-      "reason": "no_date_in_url"
-    },
-    {
-      "key": "malinparish",
-      "display_name": "Malin",
-      "url": "http://malinparish.ie/index.php/bulletin/",
       "reason": "no_date_in_url"
     },
     {
@@ -108,18 +102,6 @@
       "reason": "no_date_in_url"
     },
     {
-      "key": "watersideparish",
-      "display_name": "Waterside (& Strathfoyle amalgamated)",
-      "url": "https://watersideparish.net/parish-bulletin/",
-      "reason": "no_date_in_url"
-    },
-    {
-      "key": "camusparish",
-      "display_name": "Camus",
-      "url": "https://camusparish.com/news/",
-      "reason": "no_date_in_url"
-    },
-    {
       "key": "granaghanparish",
       "display_name": "Granaghan",
       "url": "https://granaghanparish.com/pdf/TheNetApril2019Granaghan.pdf",
@@ -135,12 +117,6 @@
       "key": "aghagallonandballinderryparish",
       "display_name": "Aghagallon and Ballinderry",
       "url": "https://www.aghagallonandballinderryparish.ie/wp-content/uploads/2026/05/Bulletin-17th-May-2026.pdf",
-      "reason": "no_date_in_url"
-    },
-    {
-      "key": "ballycastleparish",
-      "display_name": "Ballycastle",
-      "url": "https://www.ballycastleparish.com/bulletins",
       "reason": "no_date_in_url"
     },
     {
@@ -170,7 +146,7 @@
     {
       "key": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/?p=2912",
+      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -189,12 +165,6 @@
       "key": "loughshoreparishes",
       "display_name": "Loughshore",
       "url": "https://www.loughshoreparishes.org/sunday-bulletin/",
-      "reason": "no_date_in_url"
-    },
-    {
-      "key": "holycrossparishbelfast",
-      "display_name": "Holy Cross Belfast",
-      "url": "http://www.holycrossparishbelfast.com/pdf/GiftAidForm.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -243,12 +213,6 @@
       "key": "stmarysportglenone",
       "display_name": "Port Glenone",
       "url": "https://stmarysportglenone.co.uk/wp-content/uploads/2020/03/Prayer-to-Virgin-Mary-for-Protection.pdf",
-      "reason": "no_date_in_url"
-    },
-    {
-      "key": "saintmalachysparish",
-      "display_name": "Saint Malachy's",
-      "url": "https://www.saintmalachysparish.com/documents/bulletin.pdf",
       "reason": "no_date_in_url"
     },
     {
