@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "parish_key": "drumquinparish",
+  "display_name": "Drumquinparish",
+  "diocese": "",
+  "start_url": "https://drumquinparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://drumquinparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Sunday, 17th May 2026\")",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(1) > div > a"
+      ]
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Sunday, 17th May 2026\")",
+      "href": "pdf/170526.pdf",
+      "text": "Sunday, 17th May 2026"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
