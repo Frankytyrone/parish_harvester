@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "parishofdungiven",
+  "display_name": "Parishofdungiven",
+  "diocese": "",
+  "start_url": "https://parishofdungiven.com/parishnews.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://parishofdungiven.com/parishnews.html"
+    },
+    {
+      "action": "click",
+      "selector": "div#newsContainer > div:nth-of-type(1) > a",
+      "href": "/pdf/170526.pdf",
+      "text": "Click To Load Newsletter\n\nSunday, 17th May 2026\n\nAscension S"
+    }
+  ],
+  "recorded_date": "2026-05-20"
+}
