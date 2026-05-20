@@ -12,9 +12,9 @@
     {
       "action": "click",
       "selector": "a:has-text(\"CLICK HERE to load Current Newsletter\")",
-      "href": "pdf/100526.pdf",
+      "href": "pdf/170526.pdf",
       "text": "CLICK HERE to load Current Newsletter"
     }
   ],
-  "recorded_date": "2026-05-12"
+  "recorded_date": "2026-05-20"
 }
