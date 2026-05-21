@@ -1,10 +1,10 @@
 {
   "target_date": "2026-05-17",
   "summary": {
-    "downloaded": 55,
-    "html_links": 4,
+    "downloaded": 52,
+    "html_links": 3,
     "skipped": 0,
-    "failed": 37
+    "failed": 41
   },
   "downloaded": [
     {
@@ -73,28 +73,14 @@
     {
       "parish": "iskaheenparish",
       "display_name": "Iskaheen",
-      "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1",
+      "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/05/2.jpg?fit=1024%2C708&ssl=1",
       "file": "iskaheenparish.pdf",
       "file_type": "image_to_pdf"
     },
     {
-      "parish": "parishofkilrea",
-      "display_name": "Kilrea",
-      "url": "https://www.parishofkilrea.com/pdf/170526.pdf",
-      "file": "parishofkilrea.pdf",
-      "file_type": "pdf"
-    },
-    {
-      "parish": "laveyparish",
-      "display_name": "Lavey",
-      "url": "https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf",
-      "file": "laveyparish.pdf",
-      "file_type": "pdf"
-    },
-    {
       "parish": "leckpatrickparish",
       "display_name": "Leckpatrick",
-      "url": "https://www.leckpatrickparish.com/pdf/170526.pdf",
+      "url": "https://www.leckpatrickparish.com/news.html",
       "file": "leckpatrickparish.pdf",
       "file_type": "pdf"
     },
@@ -108,7 +94,7 @@
     {
       "parish": "magheraparishderry",
       "display_name": "Maghera (Derry)",
-      "url": "http://www.magheraparishderry.com/pdf/170526.pdf",
+      "url": "http://www.magheraparishderry.com/parishnews.php",
       "file": "magheraparishderry.pdf",
       "file_type": "pdf"
     },
@@ -169,6 +155,13 @@
       "file_type": "pdf"
     },
     {
+      "parish": "camusparish",
+      "display_name": "Camus",
+      "url": "https://camusparish.com/news/",
+      "file": "camusparish.pdf",
+      "file_type": "pdf"
+    },
+    {
       "parish": "drumraghparish",
       "display_name": "Drumragh",
       "url": "https://www.drumraghparish.com/pdf/170526.pdf",
@@ -192,7 +185,7 @@
     {
       "parish": "steelstownparish",
       "display_name": "Steelstown",
-      "url": "http://steelstownparish.com/pdf/PrayingForOneAnother.pdf",
+      "url": "http://steelstownparish.com/news.html",
       "file": "steelstownparish.pdf",
       "file_type": "pdf"
     },
@@ -316,16 +309,9 @@
       "file_type": "pdf"
     },
     {
-      "parish": "saintannesparish",
-      "display_name": "Saint Annes",
-      "url": "https://www.saintannesparish.net/wp-content/uploads/2026/05/170526_Bulletin-Update-The-Ascension.pdf",
-      "file": "saintannesparish.pdf",
-      "file_type": "pdf"
-    },
-    {
       "parish": "stbernadettesparish",
       "display_name": "St Bernadettes",
-      "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 17th May 2026.pdf",
+      "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 24th May 2026.pdf",
       "file": "stbernadettesparish.pdf",
       "file_type": "pdf"
     },
@@ -346,7 +332,7 @@
     {
       "parish": "saintmichaelthearchangel",
       "display_name": "St Michael the Archangel",
-      "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1778883138000",
+      "url": "https://saintmichaelthearchangel.godaddysites.com/",
       "file": "saintmichaelthearchangel.pdf",
       "file_type": "pdf"
     },
@@ -367,15 +353,8 @@
     {
       "parish": "stmarysportglenone",
       "display_name": "Port Glenone",
-      "url": "https://stmarysportglenone.co.uk/?page_id=40",
+      "url": "https://stmarysportglenone.co.uk/wp-content/uploads/2020/03/Prayer-to-Virgin-Mary-for-Protection.pdf",
       "file": "stmarysportglenone.pdf",
-      "file_type": "pdf"
-    },
-    {
-      "parish": "saintmalachysparish",
-      "display_name": "Saint Malachy's",
-      "url": "https://www.saintmalachysparish.com/documents/bulletin.pdf",
-      "file": "saintmalachysparish.pdf",
       "file_type": "pdf"
     },
     {
@@ -394,11 +373,6 @@
     }
   ],
   "html_links": [
-    {
-      "parish": "camusparish",
-      "display_name": "Camus",
-      "url": "https://camusparish.com/"
-    },
     {
       "parish": "desertmartinparish",
       "display_name": "Desertmartin",
@@ -472,6 +446,18 @@
       "error": "Recipe replay failed: Recipe finished without downloading a document"
     },
     {
+      "parish": "parishofkilrea",
+      "display_name": "Kilrea",
+      "url": "https://www.parishofkilrea.com/pdf/170526.pdf",
+      "error": "Recipe replay failed: Recipe finished without downloading a document"
+    },
+    {
+      "parish": "laveyparish",
+      "display_name": "Lavey",
+      "url": "https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf",
+      "error": "Recipe replay failed: Recipe finished without downloading a document"
+    },
+    {
       "parish": "threepatrons",
       "display_name": "Three Patrons",
       "url": "https://www.threepatrons.org/files/10/Weekly-Bulletins/96/",
@@ -523,7 +509,7 @@
       "parish": "parishofhannahstown",
       "display_name": "Hannahstown",
       "url": "https://www.parishofhannahstown.com/weekly-bulletins",
-      "error": "Recipe replay produced no valid PDF"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "holyrosaryparishbelfast",
@@ -547,7 +533,7 @@
       "parish": "portaferryparish",
       "display_name": "Portaferry",
       "url": "https://portaferryparish.com/bulletin",
-      "error": "Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "portstewartparish",
@@ -560,6 +546,12 @@
       "display_name": "St Agnes Belfast",
       "url": "https://www.stagnesbelfast.com/",
       "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+    },
+    {
+      "parish": "saintannesparish",
+      "display_name": "Saint Annes",
+      "url": "https://www.saintannesparish.net",
+      "error": "Total timeout exceeded"
     },
     {
       "parish": "saintanthony",
@@ -626,6 +618,12 @@
       "display_name": "St Luke's Belfast",
       "url": "https://www.stlukesparishbelfast.com/news",
       "error": "Website DNS no longer resolves (stlukesparishbelfast.com)."
+    },
+    {
+      "parish": "saintmalachysparish",
+      "display_name": "Saint Malachy's",
+      "url": "https://www.saintmalachysparish.com/",
+      "error": "Recipe replay failed: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://www.saintmalachysparish.com/\", waiting until \"domcontentloaded\"\n"
     },
     {
       "parish": "stmatthewsparish",

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-20T18:28:08",
+  "generated_at": "2026-05-21T11:24:00",
   "stale": [
     {
       "key": "iskaheenparish",
       "display_name": "Iskaheen",
-      "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&ssl=1",
-      "extracted_date": "2026-04-01",
-      "days_old": 49,
+      "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/05/2.jpg?fit=1024%2C708&ssl=1",
+      "extracted_date": "2026-05-02",
+      "days_old": 19,
       "reason": "date_in_url"
     },
     {
@@ -14,7 +14,7 @@
       "display_name": "Saul and Ballee",
       "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf",
       "extracted_date": "2026-05-10",
-      "days_old": 10,
+      "days_old": 11,
       "reason": "date_in_url"
     },
     {
@@ -22,7 +22,7 @@
       "display_name": "St Colmcilles",
       "url": "https://st-colmcilles.net/wp-content/uploads/2026/05/Parish-Bulletin-10052026.pdf",
       "extracted_date": "2026-05-10",
-      "days_old": 10,
+      "days_old": 11,
       "reason": "date_in_url"
     },
     {
@@ -30,7 +30,7 @@
       "display_name": "St Oliver Plunkett",
       "url": "https://stoliverplunkettparish.ie/wp-content/uploads/2026/01/25-Jan-26.pdf",
       "extracted_date": "2026-01-25",
-      "days_old": 115,
+      "days_old": 116,
       "reason": "date_in_url"
     }
   ],
@@ -90,15 +90,21 @@
       "reason": "no_date_in_url"
     },
     {
-      "key": "laveyparish",
-      "display_name": "Lavey",
-      "url": "https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf",
+      "key": "leckpatrickparish",
+      "display_name": "Leckpatrick",
+      "url": "https://www.leckpatrickparish.com/news.html",
       "reason": "no_date_in_url"
     },
     {
       "key": "limavadyparish",
       "display_name": "Limavady",
       "url": "https://www.limavadyparish.org/onewebmedia/17-5-26.pdf",
+      "reason": "no_date_in_url"
+    },
+    {
+      "key": "magheraparishderry",
+      "display_name": "Maghera (Derry)",
+      "url": "http://www.magheraparishderry.com/parishnews.php",
       "reason": "no_date_in_url"
     },
     {
@@ -138,6 +144,12 @@
       "reason": "no_date_in_url"
     },
     {
+      "key": "camusparish",
+      "display_name": "Camus",
+      "url": "https://camusparish.com/news/",
+      "reason": "no_date_in_url"
+    },
+    {
       "key": "granaghanparish",
       "display_name": "Granaghan",
       "url": "https://granaghanparish.com/pdf/TheNetApril2019Granaghan.pdf",
@@ -146,7 +158,7 @@
     {
       "key": "steelstownparish",
       "display_name": "Steelstown",
-      "url": "http://steelstownparish.com/pdf/PrayingForOneAnother.pdf",
+      "url": "http://steelstownparish.com/news.html",
       "reason": "no_date_in_url"
     },
     {
@@ -236,7 +248,7 @@
     {
       "key": "stbernadettesparish",
       "display_name": "St Bernadettes",
-      "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 17th May 2026.pdf",
+      "url": "https://www.stbernadettesparish.org/bulletin/uploaded/Parish Bulletin 24th May 2026.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -248,7 +260,7 @@
     {
       "key": "saintmichaelthearchangel",
       "display_name": "St Michael the Archangel",
-      "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1778883138000",
+      "url": "https://saintmichaelthearchangel.godaddysites.com/",
       "reason": "no_date_in_url"
     },
     {
@@ -260,13 +272,7 @@
     {
       "key": "stmarysportglenone",
       "display_name": "Port Glenone",
-      "url": "https://stmarysportglenone.co.uk/?page_id=40",
-      "reason": "no_date_in_url"
-    },
-    {
-      "key": "saintmalachysparish",
-      "display_name": "Saint Malachy's",
-      "url": "https://www.saintmalachysparish.com/documents/bulletin.pdf",
+      "url": "https://stmarysportglenone.co.uk/wp-content/uploads/2020/03/Prayer-to-Virgin-Mary-for-Protection.pdf",
       "reason": "no_date_in_url"
     },
     {
