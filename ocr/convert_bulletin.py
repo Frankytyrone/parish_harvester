@@ -5,6 +5,7 @@ import os
 import base64
 import io
 import re
+import html as html_utils
 from openai import OpenAI
 # mistralai package layouts differ across versions; support both import paths.
 try:
@@ -68,10 +69,11 @@ MARKDOWN_FENCE_PATTERN = re.compile(r"^\s*```(?:[A-Za-z0-9_-]+)?\s*$")
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 URL_PATTERN = re.compile(r"(?<!@)\b(?:https?://|www\.)[^\s<>\"]+", re.IGNORECASE)
 DIGITS_ONLY_PATTERN = re.compile(r"\D")
-PHONE_074_PATTERN = r"074\s+\d{3}\s+\d{4}"
-PHONE_087_PATTERN = r"087\s+\d{3}\s+\d{4}"
-PHONE_353_PATTERN = r"\+353\s+\d{2}\s+\d{3}\s+\d{4}"
-PHONE_028_PATTERN = r"028\s+\d{3}\s+\d{4,5}"
+# 074 Donegal-format landline, 087 Irish mobile prefix, +353 international Irish, 028 NI-format landline.
+PHONE_074_PATTERN = r"074[\s-]*\d{3}[\s-]*\d{4}"
+PHONE_087_PATTERN = r"087[\s-]*\d{3}[\s-]*\d{4}"
+PHONE_353_PATTERN = r"\+353[\s-]*\d{2}[\s-]*\d{3}[\s-]*\d{4}"
+PHONE_028_PATTERN = r"028[\s-]*\d{3}[\s-]*\d{4,5}"
 PHONE_PATTERN = re.compile(
     rf"(?<!\w)(?:{PHONE_074_PATTERN}|{PHONE_087_PATTERN}|{PHONE_353_PATTERN}|{PHONE_028_PATTERN})(?!\w)"
 )
@@ -238,15 +240,18 @@ def linkify(text):
 
     def replace_email(match):
         email = match.group(0)
-        return stash(f'<a href="mailto:{email}" style="color:#1a6b6b;">{email}</a>')
+        escaped_email = html_utils.escape(email, quote=True)
+        return stash(f'<a href="mailto:{escaped_email}" style="color:#1a6b6b;">{escaped_email}</a>')
 
     def replace_url(match):
         url = match.group(0)
         trimmed_url, trailing = split_trailing_punctuation(url)
         href = trimmed_url if trimmed_url.startswith(("http://", "https://")) else f"https://{trimmed_url}"
+        escaped_href = html_utils.escape(href, quote=True)
+        escaped_text = html_utils.escape(trimmed_url)
         link = (
-            f'<a href="{href}" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">'
-            f"{trimmed_url}</a>"
+            f'<a href="{escaped_href}" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">'
+            f"{escaped_text}</a>"
         )
         return f"{stash(link)}{trailing}"
 
@@ -267,7 +272,9 @@ def linkify(text):
         href = to_tel_href(phone)
         if not href:
             return phone
-        return stash(f'<a href="tel:{href}" style="color:#1a6b6b;">{phone}</a>')
+        escaped_phone = html_utils.escape(phone)
+        escaped_href = html_utils.escape(href, quote=True)
+        return stash(f'<a href="tel:{escaped_href}" style="color:#1a6b6b;">{escaped_phone}</a>')
 
     linked = EMAIL_PATTERN.sub(replace_email, text)
     linked = URL_PATTERN.sub(replace_url, linked)
@@ -290,7 +297,8 @@ def _render_table(lines: list[str]) -> str:
     for line in lines:
         cells = [cell.strip() for cell in line.strip()[1:-1].split("|")]
         cell_html = "".join(
-            f"<td style=\"border:1px solid #d6ecea; padding:6px;\">{linkify(apply_inline_markdown(cell))}</td>"
+            f"<td style=\"border:1px solid #d6ecea; padding:6px;\">"
+            f"{linkify(apply_inline_markdown(html_utils.escape(cell)))}</td>"
             for cell in cells
         )
         rows.append(f"<tr>{cell_html}</tr>")
@@ -310,7 +318,7 @@ def render_markdown_lines(lines: list[str]) -> str:
         if TABLE_ROW_PATTERN.match(raw_line):
             table_lines = [raw_line]
             i += 1
-            while i < len(lines) and TABLE_ROW_PATTERN.match(lines[i]) and lines[i].strip() not in HR_MARKERS:
+            while i < len(lines) and TABLE_ROW_PATTERN.match(lines[i]):
                 table_lines.append(lines[i])
                 i += 1
             parts.append(_render_table(table_lines))
@@ -324,12 +332,13 @@ def render_markdown_lines(lines: list[str]) -> str:
         heading_match = HEADING_PATTERN.match(stripped)
         if heading_match:
             marker, heading_text = heading_match.groups()
-            level = {1: "h1", 2: "h2", 3: "h3", 4: "h4"}[len(marker)]
-            parts.append(f"<{level}>{linkify(apply_inline_markdown(heading_text.strip()))}</{level}>")
+            level = {1: "h1", 2: "h2", 3: "h3", 4: "h4"}.get(len(marker), "h4")
+            heading_html = linkify(apply_inline_markdown(html_utils.escape(heading_text.strip())))
+            parts.append(f"<{level}>{heading_html}</{level}>")
             i += 1
             continue
 
-        paragraph = linkify(apply_inline_markdown(stripped))
+        paragraph = linkify(apply_inline_markdown(html_utils.escape(stripped)))
         parts.append(f"<p>{paragraph}</p>")
         i += 1
 
@@ -339,8 +348,7 @@ def render_markdown_lines(lines: list[str]) -> str:
 def build_html_content(pages_text):
     parts = []
     for i, lines in enumerate(pages_text, start=1):
-        escaped_lines = [line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;") for line in lines]
-        section_content = render_markdown_lines(escaped_lines)
+        section_content = render_markdown_lines(lines)
         parts.append(
             f"<section id=\"ocr-page-{i}\">\n"
             f"<h3 id=\"ocr-page-heading-{i}\" class=\"ocr-page-heading\">PAGE {i}</h3>\n"

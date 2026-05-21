@@ -393,7 +393,8 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
       function escapeRegExp(text) {{
-        return text.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
+        const specials = new Set(['\\\\', '^', '$', '.', '|', '?', '*', '+', '(', ')', '[', ']', '{{', '}}']);
+        return Array.from(text).map((ch) => specials.has(ch) ? `\\\\${{ch}}` : ch).join('');
       }}
 
       function updateControls() {{
