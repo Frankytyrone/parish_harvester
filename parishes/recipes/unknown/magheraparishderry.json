@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "magheraparishderry",
+  "display_name": "Magheraparishderry",
+  "diocese": "",
+  "start_url": "http://www.magheraparishderry.com/parishnews.php",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://www.magheraparishderry.com/parishnews.php"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Current Newsletter - Click to view\")",
+      "href": "pdf/170526.pdf",
+      "text": "Current Newsletter - Click to view"
+    }
+  ],
+  "recorded_date": "2026-05-21"
+}
