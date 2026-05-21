@@ -1,9 +1,9 @@
 Parish Bulletin Harvest Report — 2026-05-17
 ==================================================
 Downloaded : 52
-HTML links : 3
+HTML links : 4
 Skipped    : 0
-Failed     : 41
+Failed     : 40
 
 Downloaded bulletins:
 
@@ -28,7 +28,6 @@ Downloaded bulletins:
   ✅ St Eugene's Cathedral (Templemore) — steugenescathedral.pdf
   ✅ St Mary's Parish Creggan — stmarysparishcreggan.pdf
   ✅ Waterside (& Strathfoyle amalgamated) — watersideparish.pdf
-  ✅ Camus — camusparish.pdf
   ✅ Drumragh — drumraghparish.pdf
   ✅ Granaghan — granaghanparish.pdf
   ✅ Holy Family — holyfamily-parish.pdf
@@ -50,6 +49,7 @@ Downloaded bulletins:
   ✅ St MacNissi Randalstown — stmacnissirandalstown.pdf
   ✅ Sacred Heart Belfast — sacredheartparishbelfast.pdf
   ✅ Saul and Ballee — saulandballeeparish.pdf
+  ✅ Saint Annes — saintannesparish.pdf
   ✅ St Bernadettes — stbernadettesparish.pdf
   ✅ St Brigids Belfast — stbrigidsparishbelfast.pdf
   ✅ St Colmcilles — st-colmcilles.pdf
@@ -62,6 +62,7 @@ Downloaded bulletins:
 
 HTML-only parishes (clickable links in mega PDF):
 
+  🔗 Camus — https://camusparish.com/
   🔗 Desertmartin — https://www.desertmartinparish.com/?page_id=6
   🔗 Greencastle — https://greencastleparish.com/
   🔗 Long Tower — https://longtowerchurch.org/
@@ -90,14 +91,13 @@ Call log:
   ❌ Antrim — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Ballyclare and Ballygowan — Total timeout exceeded
   ❌ Derriaghy — Total timeout exceeded
-  ❌ Hannahstown — Recipe replay failed: Recipe download step did not find a matching document URL
+  ❌ Hannahstown — Recipe replay produced no valid PDF
   ❌ Holy Rosary Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Kilmore and Killyleagh — Total timeout exceeded
   ❌ Maghera — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Portaferry — Recipe replay failed: Recipe download step did not find a matching document URL
+  ❌ Portaferry — Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf
   ❌ Portstewart — Total timeout exceeded
   ❌ St Agnes Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
-  ❌ Saint Annes — Total timeout exceeded
   ❌ Saint Anthony — Total timeout exceeded
   ❌ St Gerards — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
   ❌ St Patricks Belfast — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation

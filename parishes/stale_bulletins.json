@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-21T11:24:00",
+  "generated_at": "2026-05-21T15:38:15",
   "stale": [
     {
       "key": "iskaheenparish",
@@ -144,12 +144,6 @@
       "reason": "no_date_in_url"
     },
     {
-      "key": "camusparish",
-      "display_name": "Camus",
-      "url": "https://camusparish.com/news/",
-      "reason": "no_date_in_url"
-    },
-    {
       "key": "granaghanparish",
       "display_name": "Granaghan",
       "url": "https://granaghanparish.com/pdf/TheNetApril2019Granaghan.pdf",
@@ -200,7 +194,7 @@
     {
       "key": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
+      "url": "https://www.dunsfordandardglassparish.com/?p=2912",
       "reason": "no_date_in_url"
     },
     {
@@ -230,7 +224,7 @@
     {
       "key": "ourladyqueenofpeacekilwee",
       "display_name": "Our Lady Queen of Peace",
-      "url": "https://www.ourladyqueenofpeacekilwee.com/bulletins",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_7c95648bea124f62aea500a619c3dfe9.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -260,7 +254,7 @@
     {
       "key": "saintmichaelthearchangel",
       "display_name": "St Michael the Archangel",
-      "url": "https://saintmichaelthearchangel.godaddysites.com/",
+      "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1778883138000",
       "reason": "no_date_in_url"
     },
     {

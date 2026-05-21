@@ -2,9 +2,9 @@
   "target_date": "2026-05-17",
   "summary": {
     "downloaded": 52,
-    "html_links": 3,
+    "html_links": 4,
     "skipped": 0,
-    "failed": 41
+    "failed": 40
   },
   "downloaded": [
     {
@@ -155,13 +155,6 @@
       "file_type": "pdf"
     },
     {
-      "parish": "camusparish",
-      "display_name": "Camus",
-      "url": "https://camusparish.com/news/",
-      "file": "camusparish.pdf",
-      "file_type": "pdf"
-    },
-    {
       "parish": "drumraghparish",
       "display_name": "Drumragh",
       "url": "https://www.drumraghparish.com/pdf/170526.pdf",
@@ -241,7 +234,7 @@
     {
       "parish": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
+      "url": "https://www.dunsfordandardglassparish.com/?p=2912",
       "file": "dunsfordandardglassparish.pdf",
       "file_type": "pdf"
     },
@@ -283,7 +276,7 @@
     {
       "parish": "ourladyqueenofpeacekilwee",
       "display_name": "Our Lady Queen of Peace",
-      "url": "https://www.ourladyqueenofpeacekilwee.com/bulletins",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_7c95648bea124f62aea500a619c3dfe9.pdf",
       "file": "ourladyqueenofpeacekilwee.pdf",
       "file_type": "pdf"
     },
@@ -306,6 +299,13 @@
       "display_name": "Saul and Ballee",
       "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf",
       "file": "saulandballeeparish.pdf",
+      "file_type": "pdf"
+    },
+    {
+      "parish": "saintannesparish",
+      "display_name": "Saint Annes",
+      "url": "https://www.saintannesparish.net/wp-content/uploads/2026/05/170526_Bulletin-Update-The-Ascension.pdf",
+      "file": "saintannesparish.pdf",
       "file_type": "pdf"
     },
     {
@@ -332,7 +332,7 @@
     {
       "parish": "saintmichaelthearchangel",
       "display_name": "St Michael the Archangel",
-      "url": "https://saintmichaelthearchangel.godaddysites.com/",
+      "url": "https://img1.wsimg.com/blobby/go/e73a69df-356f-43e2-b8ea-e6260e39aad7/downloads/c37ec5d0-a532-4141-b201-91bdc87cccab/Parish%20Bulletin%201st%20March%202026.pdf?ver=1778883138000",
       "file": "saintmichaelthearchangel.pdf",
       "file_type": "pdf"
     },
@@ -373,6 +373,11 @@
     }
   ],
   "html_links": [
+    {
+      "parish": "camusparish",
+      "display_name": "Camus",
+      "url": "https://camusparish.com/"
+    },
     {
       "parish": "desertmartinparish",
       "display_name": "Desertmartin",
@@ -509,7 +514,7 @@
       "parish": "parishofhannahstown",
       "display_name": "Hannahstown",
       "url": "https://www.parishofhannahstown.com/weekly-bulletins",
-      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+      "error": "Recipe replay produced no valid PDF"
     },
     {
       "parish": "holyrosaryparishbelfast",
@@ -533,7 +538,7 @@
       "parish": "portaferryparish",
       "display_name": "Portaferry",
       "url": "https://portaferryparish.com/bulletin",
-      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
+      "error": "Recipe replay failed: Server returned HTML instead of document for https://portaferryparish.com/plugins/content/pdf_embed/assets/viewer/pdfjs/web/viewer.html?file=https%3A%2F%2Fportaferryparish.com%2Fimages%2Fdownloads%2FBulletin2019A.pdf"
     },
     {
       "parish": "portstewartparish",
@@ -546,12 +551,6 @@
       "display_name": "St Agnes Belfast",
       "url": "https://www.stagnesbelfast.com/",
       "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
-    },
-    {
-      "parish": "saintannesparish",
-      "display_name": "Saint Annes",
-      "url": "https://www.saintannesparish.net",
-      "error": "Total timeout exceeded"
     },
     {
       "parish": "saintanthony",
