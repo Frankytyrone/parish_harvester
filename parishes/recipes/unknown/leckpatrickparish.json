@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "leckpatrickparish",
+  "display_name": "Leckpatrickparish",
+  "diocese": "",
+  "start_url": "https://www.leckpatrickparish.com/news.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.leckpatrickparish.com/news.html"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Sunday, 17th May 2026 - Click Here to View\")",
+      "href": "pdf/170526.pdf",
+      "text": "Sunday, 17th May 2026 - Click Here to View"
+    }
+  ],
+  "recorded_date": "2026-05-21"
+}
