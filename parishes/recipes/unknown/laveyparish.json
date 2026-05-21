@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "laveyparish",
+  "display_name": "Laveyparish",
+  "diocese": "",
+  "start_url": "https://www.laveyparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.laveyparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "table > tbody > tr > td:nth-of-type(8) > p > a",
+      "href": "parishsecretary/laveyparishbulletin.pdf",
+      "text": ""
+    }
+  ],
+  "recorded_date": "2026-05-21"
+}
