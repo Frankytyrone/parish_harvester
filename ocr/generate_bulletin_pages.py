@@ -16,8 +16,9 @@ HEADER_PATTERN = re.compile(r"^#\s*---\s*(.*?)\s*---\s*$")
 OCR_BODY_PATTERN = re.compile(r'<div class="scrollable-viewer">\s*(.*?)\s*</div>\s*</body>', re.DOTALL | re.IGNORECASE)
 OCR_PAGE_HEADING_PATTERN = re.compile(r"<h2>\s*Page\s+(\d+)\s*</h2>", re.IGNORECASE)
 VIEWER_FILE_PATTERN = re.compile(r"^(derry|down_and_connor)-(\d{4}-\d{2}-\d{2})\.html$")
-TEAL = "#1a7a7a"
-TEXT = "#163030"
+TEAL = "#1a6b6b"
+TEXT = "#1a1a2e"
+ORANGE = "#c0392b"
 
 
 @dataclass(frozen=True)
@@ -76,7 +77,10 @@ def extract_ocr_fragment(path: Path) -> str:
     match = OCR_BODY_PATTERN.search(raw_html)
     if not match:
         raise ValueError(f"Could not find OCR content wrapper in {path}")
-    fragment = OCR_PAGE_HEADING_PATTERN.sub(r"<h3>PAGE \1</h3>", match.group(1).strip())
+    fragment = OCR_PAGE_HEADING_PATTERN.sub(
+        r'<hr class="ocr-page-divider"><h3>PAGE \1</h3>',
+        match.group(1).strip(),
+    )
     return fragment
 
 
@@ -88,11 +92,12 @@ def _render_parish_links(parish_links: list[tuple[str, str]]) -> str:
     if not parish_links:
         return '<p class="empty-state">No parish bulletin links were found for this diocese yet.</p>'
     items = []
-    for name, url in parish_links:
+    for name, url in sorted(parish_links, key=lambda parish: parish[0].lower()):
         items.append(
-            "<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{name}</a></li>".format(
+            "<li class=\"parish-item\" data-parish-name=\"{search_name}\"><a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">⛪ {name}</a></li>".format(
                 url=html.escape(url, quote=True),
                 name=html.escape(name),
+                search_name=html.escape(name.lower(), quote=True),
             )
         )
     return "<ul class=\"parish-grid\">{items}</ul>".format(items="".join(items))
@@ -101,134 +106,555 @@ def _render_parish_links(parish_links: list[tuple[str, str]]) -> str:
 def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: int, ocr_fragment: str, parish_links: list[tuple[str, str]]) -> str:
     pdf_href = f"../mega_pdf/{config.pdf_filename}"
     archive_href = "index.html"
+    diocese_label = config.display_name.replace(" Diocese", "").upper()
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{html.escape(config.display_name)} Bulletin Viewer — {html.escape(bulletin_date)}</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f7faf9;
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+      background: #f8f9fa;
       color: {TEXT};
-      line-height: 1.5;
+      font-size: 17px;
+      line-height: 1.8;
     }}
     a {{ color: {TEAL}; }}
-    .page {{ max-width: 1500px; margin: 0 auto; padding: 28px 20px 48px; }}
-    .back-link {{ display: inline-block; margin-bottom: 18px; font-weight: 700; text-decoration: none; }}
-    h1 {{ margin: 0 0 6px; color: {TEAL}; font-size: clamp(2rem, 3vw, 2.8rem); letter-spacing: 0.02em; }}
-    .meta {{ color: #4b5563; margin-bottom: 22px; }}
-    .download-link {{ display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; font-weight: 700; text-decoration: none; }}
-    .viewer-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }}
-    .column-title {{ margin: 0 0 12px; color: {TEXT}; font-size: 0.98rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }}
-    .panel {{ background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(26, 122, 122, 0.08); }}
-    .pdf-frame {{ width: 100%; height: 70vh; min-height: 680px; border: 1px solid #c7dcda; border-radius: 12px; background: #f2f5f5; }}
-    .pdf-controls {{ display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; font-weight: 700; color: #345; }}
-    .pdf-controls button {{ border: 0; border-radius: 999px; background: {TEAL}; color: #fff; font-weight: 700; padding: 10px 18px; cursor: pointer; }}
-    .pdf-controls button:disabled {{ background: #9bbfbd; cursor: not-allowed; }}
-    details.pro-tip {{ margin-top: 16px; border: 1px solid #d6ecea; border-radius: 14px; background: #eef7f6; overflow: hidden; }}
-    details.pro-tip summary {{ list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-weight: 800; color: {TEXT}; }}
-    details.pro-tip summary::-webkit-details-marker {{ display: none; }}
-    .pro-tip-body {{ padding: 0 16px 16px; color: #36505a; }}
-    .ocr-panel {{ max-height: 70vh; overflow-y: auto; border: 1px solid #d9e4e3; border-radius: 12px; padding: 22px; background: #fff; }}
-    .ocr-panel h3 {{ color: {TEAL}; margin-top: 0; margin-bottom: 10px; font-size: 1rem; letter-spacing: 0.06em; }}
-    .ocr-panel hr {{ border: 0; border-top: 1px solid #d4dfde; margin: 22px 0; }}
-    .ocr-panel p {{ margin: 0 0 8px; white-space: pre-wrap; }}
-    .note-box {{ margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: #fff4df; border: 1px solid #f5d08d; color: #704d0f; font-weight: 600; }}
-    .note-small {{ margin-top: 10px; color: #6b7280; font-size: 0.92rem; }}
-    .parish-section {{ margin-top: 28px; background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 22px; box-shadow: 0 12px 30px rgba(26, 122, 122, 0.06); }}
-    .parish-section h2 {{ margin: 0 0 16px; color: {TEXT}; font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }}
-    ul.parish-grid {{ list-style: disc; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 28px; padding-left: 24px; margin: 0; }}
-    ul.parish-grid li {{ break-inside: avoid; }}
-    ul.parish-grid a {{ text-decoration: none; font-weight: 600; }}
-    ul.parish-grid a:hover {{ text-decoration: underline; }}
-    .empty-state {{ margin: 0; color: #6b7280; }}
-    @media (max-width: 1100px) {{
-      .viewer-grid {{ grid-template-columns: 1fr; }}
-      .pdf-frame {{ min-height: 520px; }}
+    a, button, input {{
+      outline-offset: 2px;
     }}
-    @media (max-width: 720px) {{
-      .page {{ padding: 20px 14px 36px; }}
+    a:focus-visible, button:focus-visible, input:focus-visible {{
+      outline: 3px solid #0f4e4e;
+    }}
+    .page {{ max-width: 1540px; margin: 0 auto; padding: 24px 20px 40px; }}
+    .back-link {{ display: inline-block; margin-bottom: 10px; font-weight: 700; text-decoration: none; color: {TEAL}; }}
+    .header {{ text-align: center; margin-bottom: 22px; }}
+    .diocese-label {{
+      margin: 0;
+      color: {ORANGE};
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-variant: small-caps;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }}
+    h1 {{ margin: 6px 0 4px; color: {TEAL}; font-size: clamp(2rem, 3.5vw, 3.1rem); line-height: 1.25; }}
+    .meta {{ margin: 0 0 14px; color: #5f6772; font-size: 0.96rem; }}
+    .search-row {{
+      position: relative;
+      max-width: 980px;
+      margin: 0 auto 12px;
+    }}
+    #ocr-search {{
+      width: 100%;
+      height: 52px;
+      padding: 0 52px 0 16px;
+      border-radius: 999px;
+      border: 1px solid #bad5d5;
+      font-size: 1.03rem;
+      background: #fff;
+      color: {TEXT};
+    }}
+    #clear-search {{
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 0;
+      background: transparent;
+      color: #3c4c5d;
+      font-size: 1.3rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: none;
+    }}
+    .action-row {{
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }}
+    .pill-button {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid {TEAL};
+      text-decoration: none;
+      font-weight: 700;
+      color: {TEAL};
+      background: #fff;
+    }}
+    .pill-button.primary {{
+      background: {TEAL};
+      color: #fff;
+    }}
+    .viewer-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }}
+    .panel {{
+      background: #fff;
+      border: 1px solid #d3e7e7;
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(17, 75, 75, 0.08);
+      padding: 16px;
+    }}
+    .column-title {{
+      margin: 0 0 10px;
+      color: {TEAL};
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 1rem;
+      font-weight: 800;
+    }}
+    .pdf-shell {{
+      height: 75vh;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }}
+    .pdf-controls {{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: #28414d;
+      font-weight: 700;
+      font-size: 0.98rem;
+      min-height: 44px;
+    }}
+    .pdf-controls button {{
+      min-height: 44px;
+      min-width: 118px;
+      border: 0;
+      border-radius: 999px;
+      background: {TEAL};
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 16px;
+      cursor: pointer;
+    }}
+    .pdf-controls button:disabled {{ background: #97b9b9; cursor: not-allowed; }}
+    .pdf-canvas-wrap {{
+      flex: 1;
+      overflow: auto;
+      border: 1px solid #c9dddd;
+      border-radius: 12px;
+      background: #f3f6f7;
+      padding: 8px;
+    }}
+    #pdf-canvas {{
+      display: block;
+      margin: 0 auto;
+      background: #fff;
+      max-width: 100%;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }}
+    .ocr-panel {{
+      height: 75vh;
+      overflow-y: auto;
+      border: 1px solid #dbe5e7;
+      border-radius: 12px;
+      padding: 20px;
+      background: #fff;
+      font-size: 18px;
+      line-height: 1.9;
+      color: {TEXT};
+    }}
+    .ocr-panel h2 {{
+      color: {TEAL};
+      margin: 0 0 10px;
+      font-size: 1.55rem;
+      line-height: 1.35;
+    }}
+    .ocr-panel h3 {{
+      color: #0f5a5a;
+      margin: 12px 0 10px;
+      font-size: 1.28rem;
+      line-height: 1.4;
+    }}
+    .ocr-panel h4 {{ margin: 10px 0 8px; font-size: 1.16rem; line-height: 1.45; }}
+    .ocr-panel p {{ margin: 0 0 12px; white-space: pre-wrap; }}
+    .ocr-panel a {{ color: {TEAL}; font-weight: 600; }}
+    .ocr-page-divider {{ border: 0; border-top: 1px solid rgba(26, 107, 107, 0.45); margin: 24px 0 12px; }}
+    .ocr-page-label {{
+      margin: 0 0 12px;
+      color: {TEAL};
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }}
+    .ocr-panel table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 14px;
+      font-size: 1rem;
+    }}
+    .ocr-panel th, .ocr-panel td {{
+      border: 1px solid #cddddd;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }}
+    .ocr-panel mark {{ background: #ffef88; color: #1f1f1f; padding: 0 2px; border-radius: 2px; }}
+    .note-box {{
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: #fff4df;
+      border: 1px solid #f0d196;
+      color: #704d0f;
+      font-weight: 700;
+      line-height: 1.6;
+    }}
+    .parish-section {{
+      margin-top: 26px;
+      background: #fff;
+      border: 1px solid #d3e7e7;
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(17, 75, 75, 0.08);
+      padding: 20px;
+    }}
+    .parish-section h2 {{
+      margin: 0 0 12px;
+      color: {TEAL};
+      text-align: center;
+      font-size: clamp(1.25rem, 2.2vw, 1.8rem);
+      line-height: 1.4;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+    }}
+    #parish-filter {{
+      width: 100%;
+      max-width: 440px;
+      height: 46px;
+      border-radius: 10px;
+      border: 1px solid #bfd4d6;
+      padding: 0 12px;
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }}
+    ul.parish-grid {{
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px 18px;
+    }}
+    .parish-item a {{
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      color: {TEAL};
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+      line-height: 1.4;
+    }}
+    .parish-item a:hover {{ text-decoration: underline; }}
+    .empty-state {{ margin: 0; color: #6b7280; }}
+    .footer {{
+      margin-top: 28px;
+      background: #114b4b;
+      color: #fff;
+      padding: 14px 20px;
+    }}
+    .footer-inner {{
+      max-width: 1540px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.95rem;
+    }}
+    .footer a {{ color: #fff; display: inline-flex; align-items: center; }}
+    @media (max-width: 1100px) {{
+      ul.parish-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+    }}
+    @media (max-width: 768px) {{
+      .viewer-grid {{ grid-template-columns: 1fr; }}
+      .pdf-shell, .ocr-panel {{ height: auto; min-height: 60vh; }}
+      .page {{ padding: 18px 12px 28px; }}
       ul.parish-grid {{ grid-template-columns: 1fr; }}
-      .pdf-controls {{ flex-wrap: wrap; }}
+      .footer-inner {{ flex-direction: column; align-items: flex-start; }}
     }}
   </style>
 </head>
 <body>
   <div class="page">
     <a class="back-link" href="{archive_href}">← Back to bulletin archive</a>
-    <h1>{html.escape(config.headline)}</h1>
-    <p class="meta">Generated for {html.escape(bulletin_date)}.</p>
-    <a class="download-link" href="{pdf_href}" download>⬇ Download PDF</a>
+    <header class="header">
+      <p class="diocese-label">{html.escape(diocese_label)}</p>
+      <h1>{html.escape(config.headline)}</h1>
+      <p class="meta">Generated for {html.escape(bulletin_date)}</p>
+    </header>
+    <div class="search-row">
+      <input id="ocr-search" type="search" placeholder="🔍 Search OCR text..." aria-label="Search OCR text" />
+      <button id="clear-search" type="button" aria-label="Clear OCR search">×</button>
+    </div>
+    <div class="action-row">
+      <a class="pill-button primary" href="{pdf_href}" target="_blank" rel="noopener noreferrer">⬇ Download PDF</a>
+      <a class="pill-button" href="#ocr-section">Jump to OCR text</a>
+    </div>
 
     <div class="viewer-grid">
       <section>
         <h2 class="column-title">Bulletins original PDF version</h2>
         <div class="panel">
-          <iframe id="pdf-frame" class="pdf-frame" src="{pdf_href}#page=1" title="{html.escape(config.display_name)} mega bulletin PDF"></iframe>
-          <div class="pdf-controls">
-            <button id="prev-page" type="button">← Previous</button>
-            <span id="page-indicator">Page 1 of {page_count}</span>
-            <button id="next-page" type="button">Next →</button>
+          <div class="pdf-shell">
+            <div class="pdf-controls">
+              <button class="prev-page" type="button">← Previous</button>
+              <span class="page-indicator">Page 1 of {page_count}</span>
+              <button class="next-page" type="button">Next →</button>
+            </div>
+            <div id="pdf-canvas-wrap" class="pdf-canvas-wrap">
+              <canvas id="pdf-canvas" aria-label="{html.escape(config.display_name)} mega bulletin PDF"></canvas>
+            </div>
+            <div class="pdf-controls">
+              <button class="prev-page" type="button">← Previous</button>
+              <span class="page-indicator">Page 1 of {page_count}</span>
+              <button class="next-page" type="button">Next →</button>
+            </div>
           </div>
-          <details class="pro-tip">
-            <summary><span>🔍 PRO TIP: FIND TEXT INSTANTLY</span><span>+</span></summary>
-            <div class="pro-tip-body">Press Ctrl+F (or Cmd+F on Mac) to search the OCR text on the right.</div>
-          </details>
         </div>
       </section>
 
-      <section>
+      <section id="ocr-section">
         <h2 class="column-title">Bulletins OCR extracted plain text</h2>
         <div class="panel">
-          <div class="ocr-panel">{ocr_fragment}</div>
-          <div class="note-box">Note: The plain-text OCR version is auto-generated and may contain errors so it is always best to double check with the original PDF.</div>
-          <p class="note-small">*OCR (Optical Character Recognition) is technology that turns images of text into editable, searchable digital text.</p>
+          <div id="ocr-panel" class="ocr-panel">{ocr_fragment}</div>
+          <div class="note-box">Note: OCR text is auto-generated and may contain errors. Always verify against the original PDF.</div>
         </div>
       </section>
     </div>
 
     <section class="parish-section">
-      <h2>Parishes with working bulletin links</h2>
+      <h2>{html.escape(diocese_label)} Parishes with working bulletin links</h2>
+      <input id="parish-filter" type="search" placeholder="Filter parishes..." aria-label="Filter parishes" />
       {_render_parish_links(parish_links)}
     </section>
   </div>
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>© 2026 Parish Bulletin Harvester</span>
+      <a href="https://github.com/Frankytyrone/parish_harvester" target="_blank" rel="noopener noreferrer" aria-label="Parish Bulletin Harvester GitHub repository">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.67 0 8.2c0 3.62 2.29 6.68 5.47 7.77.4.08.55-.18.55-.39 0-.19-.01-.83-.01-1.5-2.01.45-2.53-.51-2.69-.97-.09-.24-.48-.97-.82-1.17-.28-.16-.68-.56-.01-.57.63-.01 1.08.59 1.23.84.72 1.24 1.87.89 2.33.68.07-.54.28-.89.5-1.09-1.78-.21-3.64-.92-3.64-4.11 0-.91.32-1.65.84-2.24-.08-.21-.37-1.06.08-2.21 0 0 .69-.23 2.26.86a7.62 7.62 0 0 1 4.12 0c1.57-1.09 2.26-.86 2.26-.86.45 1.15.16 2 .08 2.21.52.59.84 1.33.84 2.24 0 3.2-1.87 3.89-3.65 4.1.29.26.54.75.54 1.52 0 1.1-.01 1.98-.01 2.25 0 .21.14.47.55.39A8.23 8.23 0 0 0 16 8.2C16 3.67 12.42 0 8 0Z"></path>
+        </svg>
+      </a>
+    </div>
+  </footer>
 
   <script>
     (function () {{
+      const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       const totalPages = {page_count};
       const pdfHref = {pdf_href!r};
-      const frame = document.getElementById('pdf-frame');
-      const indicator = document.getElementById('page-indicator');
-      const prev = document.getElementById('prev-page');
-      const next = document.getElementById('next-page');
-      let currentPage = 1;
+      const prevButtons = Array.from(document.querySelectorAll('.prev-page'));
+      const nextButtons = Array.from(document.querySelectorAll('.next-page'));
+      const indicators = Array.from(document.querySelectorAll('.page-indicator'));
+      const canvasWrap = document.getElementById('pdf-canvas-wrap');
+      const canvas = document.getElementById('pdf-canvas');
+      const context = canvas.getContext('2d');
+      const ocrPanel = document.getElementById('ocr-panel');
+      const originalOcrHtml = ocrPanel.innerHTML;
+      const searchInput = document.getElementById('ocr-search');
+      const clearSearchButton = document.getElementById('clear-search');
+      const parishFilterInput = document.getElementById('parish-filter');
+      const parishItems = Array.from(document.querySelectorAll('.parish-item'));
 
-      function renderPage() {{
-        frame.src = `${{pdfHref}}#page=${{currentPage}}`;
-        indicator.textContent = `Page ${{currentPage}} of ${{totalPages}}`;
-        prev.disabled = currentPage <= 1;
-        next.disabled = currentPage >= totalPages;
+      let pdfDoc = null;
+      let currentPage = 1;
+      let rendering = false;
+      let pendingPageRender = false;
+      let pageAnchors = new Map();
+
+      function refreshPageAnchors() {{
+        pageAnchors = new Map();
+        Array.from(ocrPanel.querySelectorAll('h3')).forEach(function (element) {{
+          const match = element.textContent ? element.textContent.match(/PAGE\\s+(\\d+)/i) : null;
+          if (match) {{
+            pageAnchors.set(Number(match[1]), element);
+          }}
+        }});
       }}
 
-      prev.addEventListener('click', function () {{
-        if (currentPage > 1) {{
-          currentPage -= 1;
-          renderPage();
+      function updateControls() {{
+        indicators.forEach((indicator) => {{
+          indicator.textContent = `Page ${{currentPage}} of ${{totalPages}}`;
+        }});
+        prevButtons.forEach((button) => {{
+          button.disabled = currentPage <= 1;
+        }});
+        nextButtons.forEach((button) => {{
+          button.disabled = currentPage >= totalPages;
+        }});
+      }}
+
+      function syncOcrScroll() {{
+        const target = pageAnchors.get(currentPage);
+        if (target) {{
+          target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
         }}
+      }}
+
+      async function renderPdfPage() {{
+        if (!pdfDoc) {{
+          return;
+        }}
+        rendering = true;
+        const page = await pdfDoc.getPage(currentPage);
+        const unscaledViewport = page.getViewport({{ scale: 1 }});
+        const availableWidth = Math.max(canvasWrap.clientWidth - 20, 320);
+        const scale = availableWidth / unscaledViewport.width;
+        const viewport = page.getViewport({{ scale }});
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.width = `${{Math.floor(viewport.width)}}px`;
+        canvas.style.height = `${{Math.floor(viewport.height)}}px`;
+        await page.render({{ canvasContext: context, viewport }}).promise;
+        rendering = false;
+        updateControls();
+        syncOcrScroll();
+        if (pendingPageRender) {{
+          pendingPageRender = false;
+          requestRender();
+        }}
+      }}
+
+      function requestRender() {{
+        if (rendering) {{
+          pendingPageRender = true;
+          return;
+        }}
+        renderPdfPage().catch(function (error) {{
+          console.error('Failed to render PDF page', error);
+        }});
+      }}
+
+      function escapeRegex(text) {{
+        return text.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
+      }}
+
+      function applyTextHighlights(term) {{
+        ocrPanel.innerHTML = originalOcrHtml;
+        if (!term) {{
+          refreshPageAnchors();
+          return;
+        }}
+        const regex = new RegExp(escapeRegex(term), 'gi');
+        const walker = document.createTreeWalker(ocrPanel, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        let node = walker.nextNode();
+        while (node) {{
+          if (node.nodeValue && node.nodeValue.trim()) {{
+            textNodes.push(node);
+          }}
+          node = walker.nextNode();
+        }}
+        textNodes.forEach(function (textNode) {{
+          const text = textNode.nodeValue;
+          if (!regex.test(text)) {{
+            regex.lastIndex = 0;
+            return;
+          }}
+          regex.lastIndex = 0;
+          const fragment = document.createDocumentFragment();
+          let lastIndex = 0;
+          let match = regex.exec(text);
+          while (match) {{
+            fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+            const mark = document.createElement('mark');
+            mark.textContent = match[0];
+            fragment.appendChild(mark);
+            lastIndex = match.index + match[0].length;
+            match = regex.exec(text);
+          }}
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+          textNode.parentNode.replaceChild(fragment, textNode);
+        }});
+        refreshPageAnchors();
+      }}
+
+      function ensureExternalLinkSafety() {{
+        document.querySelectorAll('a[href]').forEach(function (anchor) {{
+          const href = anchor.getAttribute('href') || '';
+          if (/^(https?:|mailto:|tel:)/i.test(href)) {{
+            anchor.setAttribute('target', '_blank');
+            anchor.setAttribute('rel', 'noopener noreferrer');
+          }}
+        }});
+      }}
+
+      function handleSearchInput() {{
+        const term = searchInput.value.trim();
+        clearSearchButton.style.display = term ? 'block' : 'none';
+        applyTextHighlights(term);
+      }}
+
+      function goToPage(nextPage) {{
+        if (nextPage < 1 || nextPage > totalPages || nextPage === currentPage) {{
+          return;
+        }}
+        currentPage = nextPage;
+        requestRender();
+      }}
+
+      prevButtons.forEach(function (button) {{
+        button.addEventListener('click', function () {{
+          goToPage(currentPage - 1);
+        }});
       }});
 
-      next.addEventListener('click', function () {{
-        if (currentPage < totalPages) {{
-          currentPage += 1;
-          renderPage();
-        }}
+      nextButtons.forEach(function (button) {{
+        button.addEventListener('click', function () {{
+          goToPage(currentPage + 1);
+        }});
       }});
 
-      renderPage();
+      searchInput.addEventListener('input', handleSearchInput);
+      clearSearchButton.addEventListener('click', function () {{
+        searchInput.value = '';
+        handleSearchInput();
+        searchInput.focus();
+      }});
+
+      parishFilterInput.addEventListener('input', function () {{
+        const term = parishFilterInput.value.trim().toLowerCase();
+        parishItems.forEach(function (item) {{
+          const name = item.getAttribute('data-parish-name') || '';
+          item.style.display = !term || name.includes(term) ? '' : 'none';
+        }});
+      }});
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+      pdfjsLib.getDocument(pdfHref).promise.then(function (documentRef) {{
+        pdfDoc = documentRef;
+        currentPage = Math.min(Math.max(1, currentPage), pdfDoc.numPages || totalPages);
+        requestRender();
+        new ResizeObserver(function () {{
+          requestRender();
+        }}).observe(canvasWrap);
+      }}).catch(function (error) {{
+        console.error('Failed to load PDF', error);
+      }});
+
+      refreshPageAnchors();
+      ensureExternalLinkSafety();
+      updateControls();
     }})();
   </script>
 </body>

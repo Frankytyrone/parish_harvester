@@ -5,6 +5,7 @@ import os
 import base64
 import io
 import re
+from html import escape
 from openai import OpenAI
 # mistralai package layouts differ across versions; support both import paths.
 try:
@@ -69,6 +70,8 @@ PHONE_LOCAL_PATTERN = r"0\d{1,2}(?:[\s-]?\d{3,4}){1,2}"
 PHONE_PATTERN = re.compile(
     rf"(?<!\w)(?:{PHONE_WITH_COUNTRY_OPTIONAL_TRUNK_PATTERN}|{PHONE_WITH_COUNTRY_PATTERN}|{PHONE_LOCAL_PATTERN})(?!\w)"
 )
+TABLE_LINE_PATTERN = re.compile(r"^\s*\|.*\|\s*$")
+TABLE_SEPARATOR_PATTERN = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$")
 
 
 def pdf_to_images(pdf_path):
@@ -226,7 +229,7 @@ def linkify(text):
 
     def replace_email(match):
         email = match.group(0)
-        return stash(f'<a href="mailto:{email}">{email}</a>')
+        return stash(f'<a href="mailto:{email}" target="_blank" rel="noopener noreferrer">{email}</a>')
 
     def replace_url(match):
         url = match.group(0)
@@ -259,7 +262,7 @@ def linkify(text):
         href = to_tel_href(phone)
         if not href:
             return phone
-        return stash(f'<a href="tel:{href}">{phone}</a>')
+        return stash(f'<a href="tel:{href}" target="_blank" rel="noopener noreferrer">{phone}</a>')
 
     linked = EMAIL_PATTERN.sub(replace_email, text)
     linked = URL_PATTERN.sub(replace_url, linked)
@@ -270,15 +273,96 @@ def linkify(text):
     return linked
 
 
+def _render_inline_markdown(text):
+    text = text or ""
+    chunks = []
+    idx = 0
+    length = len(text)
+    while idx < length:
+        if text.startswith("**", idx):
+            end = text.find("**", idx + 2)
+            if end != -1:
+                bold_text = text[idx + 2:end]
+                chunks.append(f"<strong>{linkify(escape(bold_text))}</strong>")
+                idx = end + 2
+                continue
+        if text[idx] == "*":
+            end = text.find("*", idx + 1)
+            if end != -1:
+                italic_text = text[idx + 1:end]
+                chunks.append(f"<em>{linkify(escape(italic_text))}</em>")
+                idx = end + 1
+                continue
+        next_idx = idx + 1
+        while next_idx < length and text[next_idx] != "*":
+            next_idx += 1
+        chunks.append(linkify(escape(text[idx:next_idx])))
+        idx = next_idx
+    return "".join(chunks)
+
+
+def _parse_table_rows(lines):
+    rows = []
+    for raw_line in lines:
+        cells = [cell.strip() for cell in raw_line.strip().strip("|").split("|")]
+        rows.append(cells)
+    return rows
+
+
+def _render_table(rows):
+    if not rows:
+        return ""
+    header = rows[0]
+    body_rows = rows[1:]
+    parts = ['<table class="ocr-table"><thead><tr>']
+    for cell in header:
+        parts.append(f"<th>{_render_inline_markdown(cell)}</th>")
+    parts.append("</tr></thead><tbody>")
+    for row in body_rows:
+        parts.append("<tr>")
+        for cell in row:
+            parts.append(f"<td>{_render_inline_markdown(cell)}</td>")
+        parts.append("</tr>")
+    parts.append("</tbody></table>")
+    return "".join(parts)
+
+
+def _render_markdown_line(line):
+    stripped = line.strip()
+    if not stripped:
+        return ""
+    if stripped == "---":
+        return "<hr>"
+    if stripped.startswith("### "):
+        return f"<h4>{_render_inline_markdown(stripped[4:].strip())}</h4>"
+    if stripped.startswith("## "):
+        return f"<h3>{_render_inline_markdown(stripped[3:].strip())}</h3>"
+    if stripped.startswith("# "):
+        return f"<h2>{_render_inline_markdown(stripped[2:].strip())}</h2>"
+    return f"<p>{_render_inline_markdown(line)}</p>"
+
+
 def build_html_content(pages_text):
     parts = []
     for i, lines in enumerate(pages_text, start=1):
         if i > 1:
             parts.append("<hr>")
         parts.append(f"<h2>Page {i}</h2>")
-        for line in lines:
-            escaped = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            parts.append(f"<p>{linkify(escaped)}</p>")
+        index = 0
+        while index < len(lines):
+            line = lines[index]
+            if TABLE_LINE_PATTERN.match(line):
+                table_lines = []
+                while index < len(lines) and TABLE_LINE_PATTERN.match(lines[index]):
+                    if not TABLE_SEPARATOR_PATTERN.match(lines[index]):
+                        table_lines.append(lines[index])
+                    index += 1
+                parts.append(_render_table(_parse_table_rows(table_lines)))
+                continue
+            rendered = _render_markdown_line(line)
+            if rendered:
+                parts.append(rendered)
+            index += 1
     return "\n".join(parts)
 
 
