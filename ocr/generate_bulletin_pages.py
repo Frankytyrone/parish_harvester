@@ -106,7 +106,7 @@ def _render_parish_links(parish_links: list[tuple[str, str]]) -> str:
 def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: int, ocr_fragment: str, parish_links: list[tuple[str, str]]) -> str:
     pdf_href = f"../mega_pdf/{config.pdf_filename}"
     archive_href = "index.html"
-    diocese_label = config.display_name.replace(" Diocese", "").upper()
+    diocese_label = re.sub(r"\s+Diocese$", "", config.display_name, flags=re.IGNORECASE).upper()
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -546,7 +546,7 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       }}
 
       function escapeRegex(text) {{
-        return text.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
+        return text.replace(/[|\\x7B\\x7D()[\\]^$+*?.]/g, '\\\\$&');
       }}
 
       function applyTextHighlights(term) {{
