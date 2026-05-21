@@ -32,6 +32,11 @@ CSS = """
   p {
     margin: 4px 0;
   }
+  .ocr-page-heading {
+    color: #1a6b6b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
 </style>
 """
 
@@ -63,12 +68,19 @@ MARKDOWN_FENCE_PATTERN = re.compile(r"^\s*```(?:[A-Za-z0-9_-]+)?\s*$")
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 URL_PATTERN = re.compile(r"(?<!@)\b(?:https?://|www\.)[^\s<>\"]+", re.IGNORECASE)
 DIGITS_ONLY_PATTERN = re.compile(r"\D")
-PHONE_WITH_COUNTRY_OPTIONAL_TRUNK_PATTERN = r"\+353\s*\(0\)\s*\d{1,2}(?:[\s-]?\d{3,4}){1,2}"
-PHONE_WITH_COUNTRY_PATTERN = r"\+353[\s-]?\d{1,2}(?:[\s-]?\d{3,4}){1,2}"
-PHONE_LOCAL_PATTERN = r"0\d{1,2}(?:[\s-]?\d{3,4}){1,2}"
+PHONE_074_PATTERN = r"074\s+\d{3}\s+\d{4}"
+PHONE_087_PATTERN = r"087\s+\d{3}\s+\d{4}"
+PHONE_353_PATTERN = r"\+353\s+\d{2}\s+\d{3}\s+\d{4}"
+PHONE_028_PATTERN = r"028\s+\d{3}\s+\d{4,5}"
 PHONE_PATTERN = re.compile(
-    rf"(?<!\w)(?:{PHONE_WITH_COUNTRY_OPTIONAL_TRUNK_PATTERN}|{PHONE_WITH_COUNTRY_PATTERN}|{PHONE_LOCAL_PATTERN})(?!\w)"
+    rf"(?<!\w)(?:{PHONE_074_PATTERN}|{PHONE_087_PATTERN}|{PHONE_353_PATTERN}|{PHONE_028_PATTERN})(?!\w)"
 )
+TABLE_ROW_PATTERN = re.compile(r"^\s*\|.*\|\s*$")
+HEADING_PATTERN = re.compile(r"^(#{1,4})\s+(.*)$")
+HR_MARKERS = {"---", "***"}
+STRONG_STAR_PATTERN = re.compile(r"\*\*(.+?)\*\*")
+STRONG_UNDERSCORE_PATTERN = re.compile(r"__(.+?)__")
+EM_PATTERN = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
 
 
 def pdf_to_images(pdf_path):
@@ -226,14 +238,14 @@ def linkify(text):
 
     def replace_email(match):
         email = match.group(0)
-        return stash(f'<a href="mailto:{email}">{email}</a>')
+        return stash(f'<a href="mailto:{email}" style="color:#1a6b6b;">{email}</a>')
 
     def replace_url(match):
         url = match.group(0)
         trimmed_url, trailing = split_trailing_punctuation(url)
         href = trimmed_url if trimmed_url.startswith(("http://", "https://")) else f"https://{trimmed_url}"
         link = (
-            f'<a href="{href}" target="_blank" rel="noopener noreferrer">'
+            f'<a href="{href}" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">'
             f"{trimmed_url}</a>"
         )
         return f"{stash(link)}{trailing}"
@@ -243,11 +255,7 @@ def linkify(text):
         digits = DIGITS_ONLY_PATTERN.sub("", display)
         if digits.startswith("353"):
             national = digits[3:]
-            if national.startswith("0"):
-                national = national[1:]
-            if national:
-                return f"+353{national}"
-            return None
+            return f"+353{national}" if national else None
         if digits.startswith("0"):
             national = digits[1:]
             if national:
@@ -259,7 +267,7 @@ def linkify(text):
         href = to_tel_href(phone)
         if not href:
             return phone
-        return stash(f'<a href="tel:{href}">{phone}</a>')
+        return stash(f'<a href="tel:{href}" style="color:#1a6b6b;">{phone}</a>')
 
     linked = EMAIL_PATTERN.sub(replace_email, text)
     linked = URL_PATTERN.sub(replace_url, linked)
@@ -270,15 +278,75 @@ def linkify(text):
     return linked
 
 
+def apply_inline_markdown(text: str) -> str:
+    rendered = STRONG_STAR_PATTERN.sub(r"<strong>\1</strong>", text)
+    rendered = STRONG_UNDERSCORE_PATTERN.sub(r"<strong>\1</strong>", rendered)
+    rendered = EM_PATTERN.sub(r"<em>\1</em>", rendered)
+    return rendered
+
+
+def _render_table(lines: list[str]) -> str:
+    rows = []
+    for line in lines:
+        cells = [cell.strip() for cell in line.strip()[1:-1].split("|")]
+        cell_html = "".join(
+            f"<td style=\"border:1px solid #d6ecea; padding:6px;\">{linkify(apply_inline_markdown(cell))}</td>"
+            for cell in cells
+        )
+        rows.append(f"<tr>{cell_html}</tr>")
+    return "<table style=\"border-collapse:collapse; margin:10px 0; width:100%;\">" + "".join(rows) + "</table>"
+
+
+def render_markdown_lines(lines: list[str]) -> str:
+    parts: list[str] = []
+    i = 0
+    while i < len(lines):
+        raw_line = lines[i]
+        stripped = raw_line.strip()
+        if not stripped:
+            i += 1
+            continue
+
+        if TABLE_ROW_PATTERN.match(raw_line):
+            table_lines = [raw_line]
+            i += 1
+            while i < len(lines) and TABLE_ROW_PATTERN.match(lines[i]) and lines[i].strip() not in HR_MARKERS:
+                table_lines.append(lines[i])
+                i += 1
+            parts.append(_render_table(table_lines))
+            continue
+
+        if stripped in HR_MARKERS:
+            parts.append("<hr>")
+            i += 1
+            continue
+
+        heading_match = HEADING_PATTERN.match(stripped)
+        if heading_match:
+            marker, heading_text = heading_match.groups()
+            level = {1: "h1", 2: "h2", 3: "h3", 4: "h4"}[len(marker)]
+            parts.append(f"<{level}>{linkify(apply_inline_markdown(heading_text.strip()))}</{level}>")
+            i += 1
+            continue
+
+        paragraph = linkify(apply_inline_markdown(stripped))
+        parts.append(f"<p>{paragraph}</p>")
+        i += 1
+
+    return "\n".join(parts)
+
+
 def build_html_content(pages_text):
     parts = []
     for i, lines in enumerate(pages_text, start=1):
-        if i > 1:
-            parts.append("<hr>")
-        parts.append(f"<h2>Page {i}</h2>")
-        for line in lines:
-            escaped = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            parts.append(f"<p>{linkify(escaped)}</p>")
+        escaped_lines = [line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;") for line in lines]
+        section_content = render_markdown_lines(escaped_lines)
+        parts.append(
+            f"<section id=\"ocr-page-{i}\">\n"
+            f"<h3 id=\"ocr-page-heading-{i}\" class=\"ocr-page-heading\">PAGE {i}</h3>\n"
+            f"{section_content}\n"
+            "</section>"
+        )
     return "\n".join(parts)
 
 
