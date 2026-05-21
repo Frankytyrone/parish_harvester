@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "parish_key": "iskaheenparish",
+  "display_name": "Iskaheenparish",
+  "diocese": "",
+  "start_url": "https://www.iskaheenparish.com/bulletin",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.iskaheenparish.com/bulletin"
+    },
+    {
+      "action": "image",
+      "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/05/2.jpg?fit=1024%2C708&ssl=1"
+    }
+  ],
+  "recorded_date": "2026-05-21"
+}
