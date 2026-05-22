@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Site Map — Parish Bulletin Harvester</title>
+  <link rel="stylesheet" href="assets/site.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: linear-gradient(180deg, #eff9f8 0%, #f8fbfb 100%); color: #1a1a2e; }
+    header { background: linear-gradient(135deg, #1a6b6b 0%, #2d9a9a 100%); color: #fff; padding: 28px 24px 18px; }
+    header h1 { margin: 0 0 6px; font-size: 1.6rem; }
+    header p { margin: 0; opacity: .88; font-size: .97rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 48px; }
+    .group-label { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #1a6b6b; margin: 32px 0 10px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .card { background: #fff; border: 1px solid #d6ecea; border-radius: 14px; padding: 18px 18px 14px; box-shadow: 0 8px 20px rgba(26,122,122,.07); display: flex; flex-direction: column; gap: 6px; }
+    .card .icon { font-size: 1.7rem; line-height: 1; }
+    .card .name { font-weight: 700; font-size: 1rem; color: #1a1a2e; }
+    .card .desc { font-size: .88rem; color: #444; flex: 1; }
+    .card .badge { font-size: .75rem; color: #1a6b6b; }
+    .card a.open-btn { display: inline-block; margin-top: 8px; padding: 5px 14px; background: #1a6b6b; color: #fff; border-radius: 8px; text-decoration: none; font-size: .85rem; font-weight: 700; align-self: flex-start; }
+    .card a.open-btn:hover { background: #2d9a9a; }
+    footer { text-align: center; padding: 20px; font-size: .82rem; color: #777; }
+    footer a { color: #1a6b6b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🗺️ Site Map</h1>
+    <p>Every public page on the Parish Bulletin Harvester website</p>
+  </header>
+  <main>
+
+    <div class="group-label">🔍 Discovery</div>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">🏠</div>
+        <div class="name">Dashboard</div>
+        <div class="desc">Home page — links to all bulletins, feeds, and tools.</div>
+        <div class="badge">✅ Auto-updated each harvest · Bundle D</div>
+        <a class="open-btn" href="index.html">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">🗺️</div>
+        <div class="name">Site Map</div>
+        <div class="desc">This page — a visual map of every public URL.</div>
+        <div class="badge">📝 Hand-maintained · Bundle I</div>
+        <a class="open-btn" href="sitemap.html">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📖</div>
+        <div class="name">What Is This?</div>
+        <div class="desc">Plain-English guide for non-technical readers. Start here if you're new.</div>
+        <div class="badge">📝 Static · Bundle I</div>
+        <a class="open-btn" href="https://github.com/Frankytyrone/parish_harvester/blob/main/WHAT_IS_THIS.md">Open →</a>
+      </div>
+    </div>
+
+    <div class="group-label">📄 Reading</div>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">📦</div>
+        <div class="name">Mega PDF — Derry</div>
+        <div class="desc">All Derry Diocese bulletins stitched into one PDF file.</div>
+        <div class="badge">✅ Updated weekly · Bundle A</div>
+        <a class="open-btn" href="mega_pdf/derry_mega_bulletin.pdf">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📦</div>
+        <div class="name">Mega PDF — Down &amp; Connor</div>
+        <div class="desc">All Down &amp; Connor bulletins stitched into one PDF file.</div>
+        <div class="badge">✅ Updated weekly · Bundle A</div>
+        <a class="open-btn" href="mega_pdf/down_and_connor_mega_bulletin.pdf">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">🔭</div>
+        <div class="name">Mega PDF Tab Viewer</div>
+        <div class="desc">Switch between all dioceses with one click. No downloading needed.</div>
+        <div class="badge">✅ Auto-updated · Bundle D</div>
+        <a class="open-btn" href="mega_pdf/index.html">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📚</div>
+        <div class="name">OCR Bulletin Archive</div>
+        <div class="desc">Browse every past OCR viewer page — text beside PDF, searchable.</div>
+        <div class="badge">✅ Auto-updated · Bundle D</div>
+        <a class="open-btn" href="bulletins/index.html">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">🔎</div>
+        <div class="name">Search</div>
+        <div class="desc">Full-text search across every bulletin ever harvested.</div>
+        <div class="badge">✅ Auto-updated · Bundle E</div>
+        <a class="open-btn" href="search/">Open →</a>
+      </div>
+    </div>
+
+    <div class="group-label">📡 Data</div>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">📰</div>
+        <div class="name">RSS — Derry</div>
+        <div class="desc">Subscribe in any news reader. New bulletin = new entry.</div>
+        <div class="badge">✅ Updated weekly · Bundle F</div>
+        <a class="open-btn" href="feeds/derry_diocese.xml">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📰</div>
+        <div class="name">RSS — Down &amp; Connor</div>
+        <div class="desc">RSS feed for Down &amp; Connor Diocese.</div>
+        <div class="badge">✅ Updated weekly · Bundle F</div>
+        <a class="open-btn" href="feeds/down_and_connor.xml">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📅</div>
+        <div class="name">Calendar — Derry (.ics)</div>
+        <div class="desc">Subscribe in Google Calendar, Apple Calendar, or Outlook. Parish events auto-appear.</div>
+        <div class="badge">✅ Updated weekly · Bundle I</div>
+        <a class="open-btn" href="calendars/derry.ics">Subscribe →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📅</div>
+        <div class="name">Calendar — Down &amp; Connor (.ics)</div>
+        <div class="desc">Down &amp; Connor Diocese events calendar.</div>
+        <div class="badge">✅ Updated weekly · Bundle I</div>
+        <a class="open-btn" href="calendars/down_and_connor.ics">Subscribe →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📅</div>
+        <div class="name">Calendar — All Parishes (.ics)</div>
+        <div class="desc">Combined calendar — every event from every diocese in one file.</div>
+        <div class="badge">✅ Updated weekly · Bundle I</div>
+        <a class="open-btn" href="calendars/all.ics">Subscribe →</a>
+      </div>
+      <div class="card">
+        <div class="icon">🏅</div>
+        <div class="name">Reliability Badges</div>
+        <div class="desc">Per-parish scores showing how often the harvest succeeds.</div>
+        <div class="badge">✅ Updated each harvest · Bundle E</div>
+        <a class="open-btn" href="badges/">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">💷</div>
+        <div class="name">Cost Dashboard</div>
+        <div class="desc">Traffic-light tracker: storage, AI usage, Actions minutes. See if anything is near a limit.</div>
+        <div class="badge">✅ Updated each harvest · Bundle I</div>
+        <a class="open-btn" href="COST_DASHBOARD.md">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📋</div>
+        <div class="name">Manifest JSON</div>
+        <div class="desc">Machine-readable list of all parishes, dates, and PDF URLs. For developers.</div>
+        <div class="badge">✅ Updated weekly · Bundle D</div>
+        <a class="open-btn" href="manifest.json">Open →</a>
+      </div>
+    </div>
+
+    <div class="group-label">🔧 Embed</div>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">📌</div>
+        <div class="name">Embedding Guide</div>
+        <div class="desc">How to embed bulletins, PDFs, or feeds on your own parish website.</div>
+        <div class="badge">📝 Static · Bundle E</div>
+        <a class="open-btn" href="EMBEDDING.md">Open →</a>
+      </div>
+      <div class="card">
+        <div class="icon">📋</div>
+        <div class="name">Embed Examples</div>
+        <div class="desc">Copy/paste HTML code for embedding — no technical knowledge needed.</div>
+        <div class="badge">📝 Static · Bundle E</div>
+        <a class="open-btn" href="embed-examples.html">Open →</a>
+      </div>
+    </div>
+
+  </main>
+  <footer>
+    <p><a href="index.html">← Back to dashboard</a> · <a href="https://github.com/Frankytyrone/parish_harvester/blob/main/SITE_MAP.md">Edit this list on GitHub</a></p>
+  </footer>
+</body>
+</html>

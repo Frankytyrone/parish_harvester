@@ -4,6 +4,7 @@ import json
 import os
 import re
 import tempfile
+import unicodedata
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
@@ -315,6 +316,134 @@ def _write_rss_feeds(
         ET.ElementTree(rss).write(feed_path, encoding="utf-8", xml_declaration=True)
 
 
+# ---------------------------------------------------------------------------
+# ICS calendar generation (RFC 5545)
+# ---------------------------------------------------------------------------
+
+def _ics_escape(value: str) -> str:
+    """Escape text values per RFC 5545 §3.3.11."""
+    return (
+        (value or "")
+        .replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\n", "\\n")
+        .replace("\r", "")
+    )
+
+
+def _slugify(value: str) -> str:
+    """Return a URL/UID-safe lowercase slug."""
+    nfkd = unicodedata.normalize("NFKD", value.lower())
+    ascii_str = nfkd.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", ascii_str).strip("-")[:40]
+
+
+def _event_to_vevent(event: dict, parish_key: str, dtstamp: str) -> list[str]:
+    """Convert an event dict to VEVENT lines."""
+    date_iso = event.get("date_iso", "")
+    try:
+        datetime.strptime(date_iso, "%Y-%m-%d")
+    except ValueError:
+        return []
+
+    title = str(event.get("title") or "")
+    uid = f"{parish_key}-{date_iso}-{_slugify(title)}@parish_harvester"
+    dtstart = date_iso.replace("-", "")  # YYYYMMDD
+
+    time_val = event.get("time_24h_or_null")
+    if time_val:
+        # Convert HH:MM to HHMMSS for DTSTART
+        hhmm = str(time_val).replace(":", "")[:4]
+        dtstart_str = f"DTSTART:{dtstart}T{hhmm}00"
+    else:
+        dtstart_str = f"DTSTART;VALUE=DATE:{dtstart}"
+
+    lines = [
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"DTSTAMP:{dtstamp}",
+        dtstart_str,
+        f"SUMMARY:{_ics_escape(title)}",
+    ]
+    loc = event.get("location_or_null")
+    if loc:
+        lines.append(f"LOCATION:{_ics_escape(str(loc))}")
+    desc = event.get("description")
+    if desc:
+        lines.append(f"DESCRIPTION:{_ics_escape(str(desc))}")
+    cat = event.get("category")
+    if cat:
+        lines.append(f"CATEGORIES:{_ics_escape(str(cat).upper())}")
+    lines.append("END:VEVENT")
+    return lines
+
+
+def _write_ics_calendars(docs_dir: Path, events_dir: Path, generated_at: datetime) -> None:
+    """Write per-diocese and combined .ics calendar files.
+
+    Parameters
+    ----------
+    docs_dir:
+        Destination: writes to ``docs_dir/calendars/<diocese>.ics`` and
+        ``docs_dir/calendars/all.ics``.
+    events_dir:
+        Source: ``events_dir/<diocese>/<parish_key>.json``.
+    generated_at:
+        UTC datetime used for DTSTAMP.
+    """
+    calendars_dir = docs_dir / "calendars"
+    calendars_dir.mkdir(parents=True, exist_ok=True)
+
+    dtstamp = generated_at.strftime("%Y%m%dT%H%M%SZ")
+    all_vevents: list[str] = []
+
+    if events_dir.is_dir():
+        diocese_dirs = sorted(d for d in events_dir.iterdir() if d.is_dir())
+    else:
+        diocese_dirs = []
+
+    for diocese_dir in diocese_dirs:
+        diocese_key = diocese_dir.name
+        vevents: list[str] = []
+        for json_file in sorted(diocese_dir.glob("*.json")):
+            try:
+                payload = json.loads(json_file.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                continue
+            parish_key = str(payload.get("parish_key") or json_file.stem)
+            for event in payload.get("events") or []:
+                lines = _event_to_vevent(event, parish_key, dtstamp)
+                if lines:
+                    vevents.extend(lines)
+
+        cal_lines = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            f"PRODID:-//parish_harvester//{diocese_key}//EN",
+            f"X-WR-CALNAME:{diocese_key.replace('_', ' ').title()} Parish Events",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+        ] + vevents + ["END:VCALENDAR"]
+
+        ics_path = calendars_dir / f"{diocese_key}.ics"
+        ics_path.write_text("\r\n".join(cal_lines) + "\r\n", encoding="utf-8")
+        all_vevents.extend(vevents)
+
+    all_cal_lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//parish_harvester//all//EN",
+        "X-WR-CALNAME:All Parishes Events",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+    ] + all_vevents + ["END:VCALENDAR"]
+
+    (calendars_dir / "all.ics").write_text(
+        "\r\n".join(all_cal_lines) + "\r\n", encoding="utf-8"
+    )
+
+
 def build_manifest(report_path: Path, dioceses_in_run: list[str], output_path: Path) -> None:
     report = json.loads(report_path.read_text(encoding="utf-8"))
     target_date = str(report.get("target_date") or "").strip()
@@ -377,3 +506,4 @@ def build_manifest(report_path: Path, dioceses_in_run: list[str], output_path: P
     _write_atomic_json(docs_dir / "reliability.json", _build_reliability(repo_root, generated_at))
     _write_rss_feeds(docs_dir, dioceses, target_date, generated_at_dt)
     _write_search_index(repo_root, docs_dir, generated_at)
+    _write_ics_calendars(docs_dir, repo_root / "Bulletins" / "events", generated_at_dt)

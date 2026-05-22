@@ -401,3 +401,14 @@ except Exception: print(v)")
           done
           echo "❌ Could not push cleanup commit after 5 attempts."
           exit 1
+
+      - name: Update cost dashboard
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python -c "
+          from pathlib import Path
+          from harvester.cost_tracker import update_dashboard
+          update_dashboard(Path('.'))
+          " || echo "⚠️  Cost dashboard update failed — harvest continues."

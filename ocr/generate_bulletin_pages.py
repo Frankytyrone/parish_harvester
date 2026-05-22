@@ -14,6 +14,7 @@ from pathlib import Path
 from PyPDF2 import PdfReader
 
 from harvester.ai_summaries import summarise_bulletin
+from harvester.events_extractor import extract_events, write_events_json
 from harvester.weekly_diff import diff_bulletins
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -256,6 +257,18 @@ def _write_parish_reader_outputs(
         _write_json(DIFFS_DIR / diocese / f"{parish_key}.json", diff_payload)
         _update_bulletins_index(DIFFS_DIR, diocese, parish_key, bulletin_date)
 
+        # Events extraction — same OCR text, one-pass alongside summary
+        events = extract_events(ocr_text, parish_name, parish_key, diocese)
+        write_events_json(
+            events=events,
+            parish_key=parish_key,
+            parish_name=parish_name,
+            diocese=diocese,
+            bulletin_date=bulletin_date,
+            ai_provider=None,
+            error=None,
+            repo_root=REPO_ROOT,
+        )
 
 def _render_parish_links(parish_links: list[tuple[str, str]]) -> str:
     if not parish_links:
