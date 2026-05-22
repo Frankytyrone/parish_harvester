@@ -37,6 +37,21 @@ class ExtensionMessagingTests(unittest.TestCase):
         block_end = content.index("showStatus(`✅ Image noted", block_start)
         self.assertNotIn("addSessionStep(\"mark_image\"", content[block_start:block_end])
 
+    def test_toolbar_core_controls_and_advanced_fold_exist(self) -> None:
+        content = CONTENT_JS.read_text(encoding="utf-8")
+        for label in (
+            "📄 Get a PDF (recommended)",
+            "🔗 I need to click something first",
+            "🖼️ Get an image (newsletter screenshot)",
+            "📐 It's in a frame / viewer",
+            "🔍 Help me identify this page",
+            "📋 Recipe Preview",
+            "⬆ Push Recipe to GitHub",
+        ):
+            self.assertIn(label, content)
+        self.assertIn('document.createElement("details")', content)
+        self.assertIn('advancedSummary.textContent = "▾ Advanced";', content)
+
 
 if __name__ == "__main__":
     unittest.main()
