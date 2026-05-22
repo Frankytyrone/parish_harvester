@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Derry Diocese Bulletin Viewer — 2026-05-22</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a2e;
+      line-height: 1.8;
+      font-size: 17px;
+    }
+    a { color: #1a6b6b; }
+    a:focus-visible, button:focus-visible, input:focus-visible {
+      outline: 3px solid #0f5e5e;
+      outline-offset: 2px;
+    }
+    .page { max-width: 1500px; margin: 0 auto; padding: 24px 20px 40px; }
+    .back-link { display: inline-block; margin-bottom: 12px; font-weight: 700; text-decoration: none; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .diocese-label { margin: 0; color: #c0392b; font-size: 1rem; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 800; }
+    h1 { margin: 8px 0 8px; color: #1a6b6b; font-size: clamp(2rem, 3.4vw, 2.9rem); letter-spacing: 0.03em; }
+    .meta { color: #616876; margin: 0 0 18px; }
+    .search-wrap { position: relative; margin: 0 auto 16px; max-width: 1100px; }
+    .search-input {
+      width: 100%;
+      border: 1px solid #bdd7d5;
+      border-radius: 999px;
+      min-height: 52px;
+      padding: 12px 48px 12px 18px;
+      font-size: 1rem;
+      line-height: 1.4;
+      background: #ffffff;
+      color: #1a1a2e;
+    }
+    .search-clear {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #5f6573;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .search-clear[hidden] { display: none; }
+    .header-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+    .pill-button {
+      min-height: 44px;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pill-button.primary { background: #1a6b6b; color: #fff; border: 1px solid #1a6b6b; }
+    .pill-button.secondary { background: #fff; color: #1a6b6b; border: 2px solid #1a6b6b; }
+    .viewer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+    .column-title { margin: 0 0 12px; color: #1a6b6b; font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; }
+    .panel { background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(26, 107, 107, 0.08); }
+    .pdf-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 8px 0;
+      font-weight: 700;
+      color: #2b3a4a;
+      text-align: center;
+      flex-wrap: wrap;
+    }
+    .pdf-controls button {
+      border: 0;
+      border-radius: 999px;
+      background: #1a6b6b;
+      color: #fff;
+      font-weight: 700;
+      min-height: 44px;
+      padding: 10px 18px;
+      cursor: pointer;
+    }
+    .pdf-controls button:disabled { background: #9bbfbd; cursor: not-allowed; }
+    .pdf-canvas-wrap {
+      height: 75vh;
+      min-height: 420px;
+      overflow: auto;
+      border: 1px solid #c7dcda;
+      border-radius: 12px;
+      background: #f2f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 8px;
+    }
+    #pdf-canvas { display: block; background: #fff; box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+    #ocr-panel {
+      height: 75vh;
+      min-height: 420px;
+      overflow-y: auto;
+      border: 1px solid #d9e4e3;
+      border-radius: 12px;
+      padding: 22px;
+      background: #fff;
+      font-size: 18px;
+      line-height: 1.9;
+      color: #1a1a2e;
+      scroll-behavior: smooth;
+    }
+    #ocr-panel h3, #ocr-panel .ocr-page-heading {
+      color: #1a6b6b;
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 1.05rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    #ocr-panel hr { border: 0; border-top: 1px solid #d4dfde; margin: 22px 0; }
+    #ocr-panel p { margin: 0 0 10px; white-space: pre-wrap; }
+    #ocr-panel mark { background: #fff59d; padding: 0 2px; }
+    .note-box { margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: #fff4df; border: 1px solid #f5d08d; color: #704d0f; font-weight: 600; }
+    .parish-section { margin-top: 28px; background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 22px; box-shadow: 0 12px 30px rgba(26, 107, 107, 0.06); }
+    .parish-section h2 { margin: 0 0 16px; color: #1a6b6b; font-size: 1.3rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; text-align: center; }
+    .parish-filter { width: 100%; border: 1px solid #bdd7d5; border-radius: 10px; min-height: 48px; font-size: 1rem; padding: 10px 12px; margin-bottom: 14px; }
+    ul.parish-grid { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; padding: 0; margin: 0; }
+    .parish-item { margin: 0; }
+    .parish-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: #1a6b6b;
+      font-size: 18px;
+      font-weight: 700;
+      background: #f9fcfc;
+      border: 1px solid #d9ecea;
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+    .parish-link:hover { text-decoration: underline; }
+    .empty-state { margin: 0 0 12px; color: #6b7280; }
+    footer {
+      margin-top: 26px;
+      background: #114b4b;
+      color: #fff;
+      padding: 14px 20px;
+    }
+    .footer-inner {
+      max-width: 1500px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+    }
+    .footer-inner a { color: #d8f0ee; text-decoration: none; font-weight: 700; }
+    .footer-inner a:hover { text-decoration: underline; }
+    @media (max-width: 1100px) {
+      .viewer-grid { grid-template-columns: 1fr; }
+      ul.parish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .page { padding: 20px 14px 36px; }
+      ul.parish-grid { grid-template-columns: 1fr; }
+      .pdf-controls { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← Back to bulletin archive</a>
+    <header class="header">
+      <p class="diocese-label">DERRY</p>
+      <h1>DERRY DIOCESE BIG BULLETIN</h1>
+      <p class="meta">Generated for 2026-05-22.</p>
+    </header>
+    <div class="search-wrap">
+      <input id="ocr-search" class="search-input" type="search" placeholder="🔍 Search OCR text..." aria-label="Search OCR text" />
+      <button id="clear-search" class="search-clear" type="button" aria-label="Clear OCR search" hidden>×</button>
+    </div>
+    <div class="header-actions">
+      <a class="pill-button primary" href="../mega_pdf/derry_mega_bulletin.pdf" target="_blank" rel="noopener noreferrer">⬇ Download PDF</a>
+      <a class="pill-button secondary" href="#ocr-panel">Jump to OCR Text</a>
+    </div>
+
+    <div class="viewer-grid">
+      <section>
+        <h2 class="column-title">Bulletins Original PDF Version</h2>
+        <div class="panel">
+          <div class="pdf-controls" data-controls="top">
+            <button data-action="prev" type="button">← Previous</button>
+            <span data-role="page-indicator">Page 1 of 28</span>
+            <button data-action="next" type="button">Next →</button>
+          </div>
+          <div id="pdf-canvas-wrap" class="pdf-canvas-wrap">
+            <canvas id="pdf-canvas" title="Derry Diocese mega bulletin PDF"></canvas>
+          </div>
+          <div class="pdf-controls" data-controls="bottom">
+            <button data-action="prev" type="button">← Previous</button>
+            <span data-role="page-indicator">Page 1 of 28</span>
+            <button data-action="next" type="button">Next →</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="column-title">Bulletins OCR Extracted Plain Text</h2>
+        <div class="panel">
+          <div id="ocr-panel"><section id="ocr-page-1">
+<h3 id="ocr-page-heading-1" class="ocr-page-heading">PAGE 1</h3>
+<p>Banagher</p>
+<p><a href="https://www.banagherparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.banagherparish.com</a></p>
+<h1>PARISH OF BANAGHER</h1>
+<h1>6th Sunday of Easter – 10th May 2026</h1>
+<h2>Mass Times</h2>
+<h3>Weekly Mass Times:</h3>
+<p>Monday: <em>St. Mary&#x27;s Church, Altinure: 10.00am</em></p>
+<p>Tuesday: St. Mary&#x27;s Church, Altinure: 10.00am</p>
+<p>Wednesday: St. Peter&#x27;s &amp;amp; St. Paul&#x27;s Church, Foreglen: 7.00pm</p>
+<p>Thursday: St. Mary&#x27;s Church, Altinure: 10.00am</p>
+<p>Friday: St. Joseph&#x27;s Church, Fincairn: 9.30am</p>
+<h3>Weekend Mass Times for Sunday 17th May 2026</h3>
+<p>St. Joseph&#x27;s Church, Fincairn: 7.00pm Vigil; 9.15am</p>
+<p>St. Mary&#x27;s Church, Altinure: 10.30am</p>
+<h3>Confessions</h3>
+<p>St. Mary&#x27;s Church, Altinure: Thursday 10.30am</p>
+<p>St. Joseph&#x27;s Church, Fincairn: Friday 10.00am</p>
+<p>St. Joseph&#x27;s Church, Fincairn: Saturday 6.30pm</p>
+<h3>Adoration of the Blessed Sacrament and Divine Mercy Chaplet</h3>
+<p>St. Mary&#x27;s Church, Altinure: Thursday 10.30am – 11.30am.</p>
+<p>St. Joseph&#x27;s Church, Fincairn: Friday 10.00am – 11.00am.</p>
+<p>The Forty Hours Devotions † Exposition of the Blessed Sacrament takes place this weekend, Sunday 10th to Monday 11th May in St. Mary&#x27;s, Altinure from 10.30am to 6.00pm on Sunday and Monday. Exposition will begin after the Sunday morning 10.30am Mass concluding with Devotions and Benediction at 6.00pm that evening. It will resume after 10.00am Mass on Monday morning with the 40 Hours ending at 6.00pm with Devotions and Benediction that evening. Everyone is welcome to visit the church or go online and spend a short while in prayer before the Blessed Sacrament.</p>
+<p>A Month&#x27;s Mind Mass for the happy repose of the soul of Anne O&#x27;Neill, RIP, will be celebrated on Saturday 16th May in St. Joseph&#x27;s Church, Fincairn at 7.00pm.</p>
+<p>Visitation of the Sick &amp;amp; Housebound will take place on the following days this week: Wednesday 13th May - Foreglen and Carnanbane. Thursday 14th May - Park. Friday 15th May - Feeny. Please let Fr. Dermot know if you would not like a visit by contacting the Parochial House on <a href="tel:+3532877781223" style="color:#1a6b6b;">028 777 81223</a>.</p>
+<p>The local All Ireland Rosary Rally will be held in Market Street, Limavady at 3.00pm on Saturday 16th May. All welcome. Volunteers needed to help with banners, and distributing materials. Thank you in advance. More details on 077 3033 0028.</p>
+<h2>Annual Parish Car Wash for HOPE Camp 2026</h2>
+<p>The Annual Parish Car wash will take place on Sunday 17th May from 8.30am to 1.30pm - Gate closes at 1.00pm.</p>
+<p>All proceeds from this year&#x27;s car wash will go towards activities planned for the children of the parish at this summer&#x27;s HOPE Camp.</p>
+<p><strong>Thank you in advance - Your support is greatly appreciated.</strong></p>
+<p><strong>Vocations Prayer:</strong> In our first reading this weekend we hear about the people of Samaria receiving the Holy Spirit. As we approach Pentecost, we pray for a fresh and powerful outpouring of the Holy Spirit on the Church, on the world, on our country, on our parish communities, and on each one of us. May the Spirit fill the hearts and minds of deacons, seminarians, and all those discerning a vocation to the diocesan priesthood, and may many more hear and follow the call to serve the Church as priests.</p>
+<p><strong>The Little Way Novena in St. Eugene&#x27;s Cathedral – 9th – 17th May:</strong> The theme is &#x27;My Peace Consists in Remaining Little&#x27;. The Novena begins at the 7.30pm Mass on Saturday 9th May with the Sacrament of the Sick. Devotions and talk on Sunday 10th May at 6.00pm. Monday to Friday (11th – 15th May) Novena Masses at 6.30am and 10.00am each morning and an evening service with a guest speaker at 7.30 pm. Saturday 16th May 10.00am Mass for those who have died. The Novena closes with blessing of the roses on Sunday 17th May at 3.00pm. Everyone is welcome at St. Eugene&#x27;s Cathedral for this time of prayer and petition.</p>
+<p><strong>Knock Pilgrimage to Pray for Peace in the Holy Land:</strong> People from all over Ireland are invited to Knock Shrine on Saturday 16th May for a special pilgrimage to pray for peace in the Holy Land. The pilgrimage, organised by the papal charity Aid to the Church in Need, will be led by Bishop William Shomali from Bethlehem. Bishop Shomali will offer a message of hope at 11.00am and celebrate Mass at 3.00pm. All are welcome. More information at <a href="https://www.acnireland.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.acnireland.org</a>.</p>
+<p><strong>The Sisters from the Apostles of the Sacred Heart of Jesus</strong> based in Waterford will lead a ladies weekend retreat in the Carmelite Retreat Centre, Termonbacca, Derry, entitled &#x27;In the Upper Room with Mary&#x27;, from Friday 22nd – Sunday 24th May, Pentecost weekend. The cost of the weekend including accommodation is £90. For booking and queries call Aoife on 028 7126 2512 or email <a href="mailto:termonbaccaderry@ocd.ie" style="color:#1a6b6b;">termonbaccaderry@ocd.ie</a>.</p>
+<h2>FIRST HOLY COMMUNION 2026</h2>
+<p>Congratulations to the Primary 4 children of St. Mary&#x27;s P.S., Altinure who made their First Holy Communion on Saturday 9th May. Congratulations also to their parents, families, relatives and friends on this special day for them too.</p>
+<p>The children of St. Canice&#x27;s P.S., Fincairn will celebrate their First Holy Communion on Saturday 30th May at 11.00am in St. Joseph&#x27;s Church, Fincairn. Please keep the First Holy Communion children and their families in your prayers.</p>
+</section>
+<section id="ocr-page-2">
+<h3 id="ocr-page-heading-2" class="ocr-page-heading">PAGE 2</h3>
+<p>Blessing of the Graves 2026</p>
+<p>St Joseph&#x27;s Church, Fincairn: Sunday 14th June after 11.30am Mass</p>
+<p>St Peter &amp;amp; St Paul&#x27;s Foreglen: Sunday 16th August after 12.00pm noon Mass</p>
+<p>St Mary&#x27;s Church, Altinure: Sunday 6th September after 10.30am Mass</p>
+<p>Derry Diocesan Pilgrimage to Knock Shrine will take place on Saturday 6th June. In conjunction with the All-Ireland Rosary Rally, we will join those gathered to celebrate at our National Eucharistic and Marian Shrine. For those for whom it is convenient, buses will leave St. Eugene&#x27;s Cathedral, Derry, at 8.00am, cost £50, which includes dinner in Knock House Hotel following the conclusion of the Mass in the Basilica. For further information, please contact Karen in the parish office at St. Eugene&#x27;s on 028 7126 2894 or by email at <a href="mailto:cathedral@derrydiocese.org" style="color:#1a6b6b;">cathedral@derrydiocese.org</a>. Full schedule to follow.</p>
+<p>Walk in the footsteps of our Patron Saint on Saint Patrick&#x27;s Way Pilgrim Walk in Downpatrick with guides Martina Purdy and Elaine Kelly on Saturdays 6th June and 8th August, and Mairead Sweeney on Saturday 4th July. Begin at Saint Patrick&#x27;s Centre with the fabulous 180° IMAX film of St. Patrick. Price includes entrance fees, internal bus transfers, pilgrimage lunch at the famous Saul Barn, plus a stamped Camino passport and a 6-mile pilgrimage walk, finishing at Saint Patrick&#x27;s grave. Come and Be Amazed! (Duration 9am-approx 3pm, all for just £55) To book, ring 028 4461 9000 or visit <a href="https://www.saintpatrickcentre.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.saintpatrickcentre.com</a>.</p>
+<p>Diocese of Derry Lough Derg Pilgrimage 2026: The Diocese of Derry Three-Day Pilgrimage to Lough Derg will take place from Friday 24th July to Sunday 26th July 2026. Lough Derg continues to welcome people seeking prayer, peace, reflection and renewal in the midst of busy lives. A bus will travel from St. Eugene&#x27;s Cathedral, via Strabane and Lifford. Cost: £95 / €110 including bus transport. You are welcome, of course, to use your own means of transport. Full details available at: derrydiocese/lough-derg.</p>
+<p>Our Lady of Lourdes Pilgrimage Society: 7 Night Annual Pilgrimage to Lourdes, 8th to 15th July, from Belfast International Airport staying at Hotel Agena - £949 based on 2 people sharing. Contact Kathleen McCann on 028 7963 2205 or 077 1970 1925.</p>
+<p>Fatima Pilgrimage: Flying direct from Belfast International to Fatima. Pilgrimage 7 Nights F/B, Avenida Hotel, 14th – 21st August. Spiritual Director Fr. Andrew McMahon PP. Convenient flight times. £845pps. Full Religious Programme. For further details, contact Joe on 077 7642 5631 or J. Walsh Tours 00353 1 241 0800.</p>
+<p>OFFERTORY COLLECTION</p>
+<p>3rd &amp;amp; 4th May 2026</p>
+<p>St. Joseph&#x27;s Church, Fincairn: £850 St. Mary&#x27;s Church, Altinure: £560</p>
+<p>Please consider online contributions and Gift Aid. Online Contributions to:</p>
+<p>Parish of Banagher Sort Code: 950306 A/c 51052659</p>
+<p>Thank you for your continued generosity.</p>
+<p>COMMUNITY NEWS</p>
+<p>Learmount Community Development Group: Week commencing Monday 11th May 2026: Monday 11th: Time For Me Ladies (10.30 am - 12.30 pm), Dementia Social Group (11 am - 1 pm), Ladies&#x27; Yoga (7 - 7.45 pm), Men&#x27;s Yoga (8 - 8.45 pm); Tuesday 12th: Craft &amp;amp; Crochet Club (10.30 am - 12.30 pm), Men&#x27;s Hobby Work Shed (10.30 am - 12.30 pm), Advice North West (2 pm - 4 pm), Slow Sewing (7 pm - 9 pm); Wednesday 13th: Gardening Club: (11 am); CITB History and Heritage workshop on Orla histories with Dr. Liam Campbell and Sebastian Graham (2 pm - 5 pm); Thursday 14th: Post Office (9 am - 12 pm), Park 60+ Club (12 pm - 2 pm), Deed&#x27;s Dementia awareness training for families and those caring for loved ones with a diagnosis of dementia (7 - 9 pm) Resource Centre; Learmount Book Club (8 pm) Community Centre; Friday 15th: Learmount Walking Group (10.30 am). For further information on groups, classes, events or workshops, contact Karen on 028 7778 1881 / 077 5111 8656 / DM / email: <a href="mailto:admin@learmountgroup.org" style="color:#1a6b6b;">admin@learmountgroup.org</a>.</p>
+<p>Dungiven and Feeny Local Committee for Cancer Research UK is once again holding its Dungiven Walk of Hope 2026 on Friday 19th June at 9.00pm around the town, starting at the Church of Ireland hall. Last year we organised this walk for the first time and it was a great success, raising almost £9,000. Save the date and join us. Sponsor forms are now available from any committee member.</p>
+<p>Grave Wreaths: Orders now taken for Blessing of Grave wreaths. Sprays, Posies and Rings all available. Contact Pauline on 078 4928 1050.</p>
+<p>The Parish Webcams are now available to view on the Firestick. If you search for the iTech Media App and download it to your Firestick, you can then search for the Church.</p>
+<p>Privacy Notice: The Diocese of Derry complies with GDPR regulations. A privacy notice is available on the Parish Website or by contacting the Parish Office. Live stream and recordings of Mass and Services in St. Joseph&#x27;s Church, Fincairn, St. Mary&#x27;s Church, Altinure and St. Peter&#x27;s &amp;amp; St. Paul&#x27;s Church, Foreglen are available online. Please note that the first three rows of seats are visible online in St. Joseph&#x27;s Church, Fincairn and St. Peter&#x27;s &amp;amp; St. Paul&#x27;s Church, Foreglen, and the first six rows of seats in St. Mary&#x27;s Church, Altinure.</p>
+<p>PARISH CLERGY</p>
+<p>Fr. Dermot McGirr, P.P.</p>
+<p>42 Glenedra Road, Feeny, BT47 4TW</p>
+<p>Tel: 028 7778 1223 Email: <a href="mailto:banagherparish@derrydiocese.org" style="color:#1a6b6b;">banagherparish@derrydiocese.org</a></p>
+<p>CONTACT US</p>
+<p>To arrange a Baptism, Wedding or Anniversary Mass, please call Fr. Dermot or the secretaries on 028 7778 1223 or email <a href="mailto:banagherparish@derrydiocese.org" style="color:#1a6b6b;">banagherparish@derrydiocese.org</a>.</p>
+<p>Parish Office opening hours next week: Monday - Friday: 9.30am - 12.30pm.</p>
+<p>Mass is Live on the Webcam at <a href="https://www.banagherparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.banagherparish.com</a></p>
+<p>SVP Confidential Helpline: 075 9395 4973</p>
+</section>
+<section id="ocr-page-3">
+<h3 id="ocr-page-heading-3" class="ocr-page-heading">PAGE 3</h3>
+<p>Culdaff</p>
+<p>Fr John McDevitt P.P. 9376273 / 0858237119</p>
+<p>Fr. Karl Haan C.C. 9379107</p>
+<p><a href="https://www.culdaffparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.culdaffparish.com</a></p>
+<p>email: <a href="mailto:culdaffnotes@gmail.com" style="color:#1a6b6b;">culdaffnotes@gmail.com</a></p>
+<p><a href="http://www.culdaffparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://www.culdaffparish.com</a></p>
+<h1>Daily Mass</h1>
+<p>Monday, 7.30 pm; Tuesday &amp;amp; Wednesday 10 am [Exposition of the Blessed Sacrament after 10am Mass until 2pm] [Susanna McDaid, Leeds]; Thursday 7.30pm; Friday, 10 am; Saturday Vigil 8 pm Sunday 10 am.</p>
+<p>Weekly Offering €805</p>
+<p>Development Collection €260</p>
+<p>Diocesan Purposes Collection €45</p>
+<p>Envelopes can be left in McGuinness&#x27; shop.</p>
+<h1>Anniversary Masses this Weekend</h1>
+<p>Saturday Vigil 8 pm John McGonigle, Terrawee</p>
+<p>Sunday 10 am Annie Mulhem, Aghaglasson</p>
+<p>Next weekend</p>
+<p>Saturday Vigil 8 pm Hugh, Celia &amp;amp; John Joe McLaughlin, Dunross</p>
+<p>Sunday 10 am Joseph &amp;amp; Ann Davenport, Gleneely</p>
+<h1>First Reading</h1>
+<p>Acts of the Apostles 1:1-11</p>
+<p>Jesus is taken up to heaven in the presence of the apostles.</p>
+<h1>Responsorial Psalm</h1>
+<p>Psalm 47:2-5,6-9</p>
+<p>Sing praise to God as he mounts his throne.</p>
+<h1>Second Reading</h1>
+<p>Ephesians 1:17-23</p>
+<p>God raised Jesus from the dead and seated him at his right hand.</p>
+<h1>Gospel Reading</h1>
+<p>Matthew 28:16-20</p>
+<p>Jesus charges his disciples to make disciples of all nations and promises to be with them forever.</p>
+<p>VOCATIONS On Ascension Sunday we celebrate World Communications Day. We pray for those who will be called as priests to preach the Gospel, to communicate the Good News of God&#x27;s love as God reveals it to us in His Word and in the person of Jesus Christ.</p>
+<p>2026 Confirmation children are asked to attend the 10 Mass next Sunday 24th May to make a commitment to abstain from alcohol, cigarettes, vapes or drugs.</p>
+<p>We are entering Exam Season, and to this end, Prayer Cards will be available at the back of the church, also you can put their name in the book provided and they will be included in all Masses during this time.</p>
+<p>SAFEGLUBBING NOTICE: If you have any concerns with regards to Safeguarding Children or adults in need of protection within the Church please contact Marie O&#x27;Kane, the Diocesan Designated Liaison Person (DLP) at 0044 7596500793, or at <a href="mailto:dlp@dlerydisease.org" style="color:#1a6b6b;">dlp@dlerydisease.org</a> or Garda Sisshina, Buntraoa <a href="tel:+353749320540" style="color:#1a6b6b;">074 9320540</a>, Lettenkamp 082 <a href="tel:+353749167100" style="color:#1a6b6b;">074 9167100</a> or TUSLA Family &amp;amp; Child Agency 00353 749102233 B1B Vetting Office: 074 93 63108</p>
+<h1>Sympathy</h1>
+<p>It was with deep sadness that we learned of the death of Charlie McDaid, 17 St Boden&#x27;s Tce, Culdaff.</p>
+<p>Charlie had been unwell for quite a while but his passing still came as a shock to his family. We offer our deepest sympathy to his beloved wife, Kathleen; his children, Margo and Patrick; their partners, Harry and Linda; his grandchildren, Caitlin, Cahir, Behibin, Daithi, Aleesha., Rio, Chloe and Rory; his sisters, and brothers, nephews and nieces and the wider family circle. We pray that Charlie is welcomed to his eternal reward and be reunited with his beloved son, Cathal.</p>
+<p>We also remember in our prayers the sorrowing family of Lewis Kelly, 27 Dunallain, Culdaff, who tragically passed last week. Our deepest sympathy to his mother and father, Michelle &amp;amp; Hugh; his sister Zeveagh, brothers Quinn and Regan; girlfriends, Darczy; grandparents, Breeze and Mary, and the wider family circle. We pray that God walks with them all in the difficult days ahead and assure them of our prayers.</p>
+<p>Whist - 1st Gerard Doherty; 2nd Mary B McLaughlin; 3rd Carmel McLaughlin</p>
+<p>Tickets - John McLaughlin, Gerard Doherty, Margaret McGilloway, Mary Quigley.</p>
+<p>Other Winners - Gerard Doherty, John Doherty, Eileen Gormley, John Doherty, Eileen Gormley, Dolores O&#x27;Donnell, Eamon Donaghy.</p>
+<p>Greencastle Centre - Pickleball morning sessions every Thursday 11am €5. - Completed pottery items can be collected in the centre, just ask at reception. - Gwyneth &amp;amp; Sarahs Summer Camps Wednesday 8th &amp;amp; 15th July 10am - 1pm to book: 0834627073. - D:Light Kids Dance &amp;amp; Acrobatics Wednesdays 5:15pm to book: <a href="tel:+353873827854" style="color:#1a6b6b;">0873827854</a></p>
+<p>Lough Derg will host their Day of Friendship and Prayer this Wednesday, 20 May. This special annual event promotes Christian unity. Archbishop Eamon Martin and Archbishop John McDowell will join Fr La Flynn, Prior of Lough Derg, for a day of spirituality, friendship and reflection. The day begins at 10am, finishing at 3pm on Station Island, an oasis of calm &amp;amp; peace with over 15,000 years of history. Admission fee of €25 includes boat fare, refreshments and lunch. Advance booking is</p>
+<p>essential: <a href="https://www.loughderg.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.loughderg.org</a> <a href="mailto:info@loughderg.org" style="color:#1a6b6b;">info@loughderg.org</a> tel. 0(0353) 71 9861518</p>
+<p>Parish Youth Ministry Evening: Derry Diocesan Youth will host an evening for Parish Youth Ministry leaders and volunteers on Wednesday 20 May in Claude Parish Centre at 7.00pm. The evening will provide an opportunity for parishes to reflect on their current ministries for young people and share practice. The focus of the evening will be on the GIFT Programme. This is a post-confirmation programme aimed at Year 8 initially and delivered through parish. If you would like more information or would like to attend, please contact <a href="mailto:yvonne.cromey@derrydisease.org" style="color:#1a6b6b;">yvonne.cromey@derrydisease.org</a> <a href="tel:+3532871264087" style="color:#1a6b6b;">02871264087</a>.</p>
+<p>Part to Net Parow - A fan paddle/tow will take place from Banagne pier to Portaleen pier on Sunday 7th June starting at 2.30pm in aid of The Friends of Irishswon Hospice. No motorised vessels allowed, life jackets required. To book kayaks and lifepackets and for more information please contact John H on 0868744415 or John D on 0862247285. Barbecue and entertainment on Portaleen pier afterwards with Shanie. Ruffle with lots of valuable prizes. Shirtle bus available.</p>
+<p>17 May 2026 - World Communications Day - Leonardo da Vinci had started to work on a large canvas in his studio. Then suddenly he stopped working on it. Summoning one of his talented students, the master invited him to complete the work. The student protested that he was unworthy and unable to complete the great painting which his master had begun.</p>
+<p>But da Vinci silenced him. &#x27;Will not what I have done inspire you to do your best?&#x27; Jesus our Master began to spread the Good News two thousand years ago by what he said and did, and supremely by what he suffered. Jesus illustrated his message and left us to finish the picture.</p>
+<p>Will Jesus&#x27; life not inspire us to finish the picture? This is the message of the Ascension.</p>
+<p>Fr Antony Kaderil</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">Income</td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Expenditure</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Weekly Envelope/Priests Collection [Includes Covid Settlement from Allianz of €16,648.00]</td><td style="border:1px solid #d6ecea; padding:6px;">€65,190.73</td><td style="border:1px solid #d6ecea; padding:6px;">Priests Salary</td><td style="border:1px solid #d6ecea; padding:6px;">€20.631.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Profit from Candies</td><td style="border:1px solid #d6ecea; padding:6px;">€ 2,156.00</td><td style="border:1px solid #d6ecea; padding:6px;">Diocesan Assessment</td><td style="border:1px solid #d6ecea; padding:6px;">€ 6,795.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Purchase of Graves</td><td style="border:1px solid #d6ecea; padding:6px;">€ 1,200.00</td><td style="border:1px solid #d6ecea; padding:6px;">Employee Wages [inc PRSI and Tax]</td><td style="border:1px solid #d6ecea; padding:6px;">€29,100.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Rent from Property</td><td style="border:1px solid #d6ecea; padding:6px;">€ 1,160.00</td><td style="border:1px solid #d6ecea; padding:6px;">Catechetical and other Pastoral Expenses</td><td style="border:1px solid #d6ecea; padding:6px;">€ 244.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Development Collection</td><td style="border:1px solid #d6ecea; padding:6px;">€15,099.00</td><td style="border:1px solid #d6ecea; padding:6px;">Parish Supplies &amp; Consumables</td><td style="border:1px solid #d6ecea; padding:6px;">€ 5,295.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Interest</td><td style="border:1px solid #d6ecea; padding:6px;">€0</td><td style="border:1px solid #d6ecea; padding:6px;">Insurance</td><td style="border:1px solid #d6ecea; padding:6px;">€ 5,930.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Donations to the Parish</td><td style="border:1px solid #d6ecea; padding:6px;">€4,000.00</td><td style="border:1px solid #d6ecea; padding:6px;">Rates</td><td style="border:1px solid #d6ecea; padding:6px;">€ 575.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Total Income</td><td style="border:1px solid #d6ecea; padding:6px;">€88,805.73</td><td style="border:1px solid #d6ecea; padding:6px;">Heating/Lighting</td><td style="border:1px solid #d6ecea; padding:6px;">€11,937.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Office</td><td style="border:1px solid #d6ecea; padding:6px;">€ 5,642.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Accountancy Fees</td><td style="border:1px solid #d6ecea; padding:6px;">€ 664.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Graveyard Lighting</td><td style="border:1px solid #d6ecea; padding:6px;">€ 2,769.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Repairs Maintenance of all Parish Properties</td><td style="border:1px solid #d6ecea; padding:6px;">€ 3,484.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Bank Charges</td><td style="border:1px solid #d6ecea; padding:6px;">€ 443.00</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Total Expenditure</td><td style="border:1px solid #d6ecea; padding:6px;">€93,509.00</td></tr></table>
+<p>Thank you most sincerely for your financial generosity in 2025. Our total income was €88.8K, consisting mainly of contributions from weekly collections and a one-off payment of €16.6K, a settlement for Covid losses. Therefore we had a deficit of €4.7K. Given the one-off payment for covid losses this might be seen as a real deficit of €21.3K.</p>
+<p>In 2025 due to the fund raising and hard work of a parish committee we were able to redecorate the church. We greatly appreciate their work and support. Thanks also for the work and support of our Parish Finance Committee.</p>
+<p>With this deficit in 2025 and increasing costs and bills for us all in 2026 we do need to consider other ways of fundraising to support our ongoing life as a parish community. Thank you for your ongoing support.</p>
+<p>Fr John &amp;amp; Fr Karl</p>
+<h1>A THOUGHT... My wallet is like an onion - opening it makes me cry!</h1>
+<h1>Scoil Mhuire, Gleneely</h1>
+<p>Cian Donaghy McGonigle</p>
+<p>Liam Humphries</p>
+<p>Harry McCauley</p>
+<p>Sean McDermott</p>
+<p>Oscar Doherty</p>
+<p>Jack Borden</p>
+<p>Corey Cunningham</p>
+<p>Aibhin Boyle</p>
+<p>Anna McLaughlin</p>
+<p>Mieliek Arkhipova</p>
+<p>Clara McDermott</p>
+<p>Phia Porter</p>
+<p>Elly McFeeley</p>
+<p>Cheylah Loftus</p>
+<p>Annalaina Duffy</p>
+<p>![img-0.jpeg](img-0.jpeg)</p>
+<p>FIRST HOLY COMMUNION CLASS 2026</p>
+<p>May God Bless all the Children making Their First Communion.</p>
+<h1>St Boden&#x27;s N.S. School</h1>
+<p>Saoirse Callaghan</p>
+<p>Harper Devine</p>
+<p>Alanah Gordon</p>
+<p>Amelia Kelly</p>
+<p>Maddison Kelly</p>
+<p>Seamus Knox</p>
+<p>Labhaoise Lafferty</p>
+<p>Claragh McGrenaghan</p>
+<p>Archer McDaid</p>
+<p>Ava McGrenaghan</p>
+<p>Lyla Rose McGrenaghan</p>
+<p>Mila McGuinness</p>
+<p>Kara McLaughlin</p>
+<p>Sean McLaughlin</p>
+<p>Lucy Scott</p>
+<p>MEDJUGORJE PILGRIMAGES 2026 (45th Anniversary): 7 nights June 24th - July 1st. Depart Dublin - Mostar. Return Split - Dub lin. €855 pp sharing. Single room supple ment €170. For more information please contact Ursula O Fasdhagain, Castlefin <a href="tel:+353872960562" style="color:#1a6b6b;">0872960562</a></p>
+</section>
+<section id="ocr-page-4">
+<h3 id="ocr-page-heading-4" class="ocr-page-heading">PAGE 4</h3>
+<p>Drumragh</p>
+<p><a href="https://www.drumraghparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.drumraghparish.com</a></p>
+<h1>The Ascension of the Lord</h1>
+<p>World Communications Day</p>
+<p>17th May 2026</p>
+<p>![img-1.jpeg](img-1.jpeg)</p>
+<h1>Parish of Drumragh</h1>
+<p>Sacred Heart Church, Omagh</p>
+<p>St Mary&#x27;s Church, Drumragh</p>
+<p><a href="tel:+3532882242092" style="color:#1a6b6b;">028 82242092</a></p>
+<h2>Weekend Mass Schedule</h2>
+<p>|  Sacred Heart Church, Omagh</p>
+<p>Vigil: 5.30pm</p>
+<p>Sunday Mass: 10am &amp; 12.30pm | <strong>Weekday Mass Times this week</strong></p>
+<p>10.00am Monday, Tuesday &amp; Wednesday in St. Mary&#x27;s, Killyclogher</p>
+<p>10.00am Wed, Thurs, Fri &amp; Sat.</p>
+<p>in Sacred Heart Church</p>
+<p>7.30pm Wednesday Sacred Heart</p>
+<p><strong>Eucharistic Adoration on Wednesday</strong></p>
+<p>from 10am until 7pm.  |</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr></table>
+<p>|  St. Mary&#x27;s Church, Drumragh</p>
+<p>Sunday Mass: 10.30am  |   |</p>
+<p>|  Confessions:</p>
+<p>Sacred Heart Church: After 10 am Sat. morning Mass unless there is a funeral. | Christ the King, Strathroy:</p>
+<p>Saturday 6.15pm-6.45pm  |</p>
+<p>|  <strong>METANOIA Faith Formation Series</strong></p>
+<p>Tuesday evenings at 8.00pm in Christ the King Church, Strathroy (after 7.30pm Mass)</p>
+<p>Wednesday evenings at 8.00pm in St Joseph’s Hall, Omagh (after 7.30pm Mass)  |   |</p>
+<p>|  <strong>Invitation to Adoration</strong></p>
+<p>All parishioners are invited to spend a short time in Adoration every <strong>Wednesday after 10am Mass</strong> until 7pm in the church. Whether you can stay for a few moments or a little longer, your presence is most welcome. Please join us in quiet prayer before the Blessed Sacrament and take this opportunity to deepen your faith in the peaceful atmosphere of our church.</p>
+<p><em>The time you spend with Jesus in the Blessed Sacrament is the best time you will spend on earth.” – St. Teresa of Calcutta</em>  |   |</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;"><strong>“I have no other plan — it must work.”</strong> A beautiful old story tells of how Jesus, after his Ascension into Heaven, was surrounded by the Holy Angels who began to enquire about his work on earth. Jesus told them about his birth, life, preaching, death, and Resurrection, and how he had accomplished the salvation of the world. The Archangel Gabriel asked, “Well, now that you are back in Heaven, who will continue your work on earth?” Jesus said, “While I was on earth, I gathered a group of people around me who believed in me and loved me. They will continue to spread the Gospel and carry on the work of the Church.” Gabriel was perplexed. “You mean Peter, who denied you thrice and all the rest who ran away when you were crucified? You mean to tell us that you left them to carry on your work? And what will you do if this plan doesn’t work? What’s your Plan B?” Jesus said, “I have no other plan — it must work.” — Truly, Jesus has no other plan than to depend on the efforts of his followers – us!</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr></table>
+<p>Fr Kevin McElhennon P.P: 028 8225 8108 / <a href="mailto:k.mcelhennon@derrydiocese.org" style="color:#1a6b6b;">k.mcelhennon@derrydiocese.org</a></p>
+<p>Fr Malachy Gallagher C.C: 028 8225 1055 / <a href="mailto:malachy.gallagher@derrydiocese.org" style="color:#1a6b6b;">malachy.gallagher@derrydiocese.org</a></p>
+<p>Parish Office, Omagh 028 8224 2092 / <a href="mailto:info@drumraghparish.com" style="color:#1a6b6b;">info@drumraghparish.com</a></p>
+</section>
+<section id="ocr-page-5">
+<h3 id="ocr-page-heading-5" class="ocr-page-heading">PAGE 5</h3>
+<p>Parish Office Open Tues/Thursday 9-2pm <a href="tel:+3532882242092" style="color:#1a6b6b;">02882242092</a></p>
+<p>Parish email: <a href="mailto:info@drumraghparish.com" style="color:#1a6b6b;">info@drumraghparish.com</a></p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">Sacred Heart Church Mass Intentions</td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Saturday</td><td style="border:1px solid #d6ecea; padding:6px;">16th May</td><td style="border:1px solid #d6ecea; padding:6px;">5.30pm</td><td style="border:1px solid #d6ecea; padding:6px;">John Taggart - 1st Anniversary</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Sunday</td><td style="border:1px solid #d6ecea; padding:6px;">17th May</td><td style="border:1px solid #d6ecea; padding:6px;">12.30pm</td><td style="border:1px solid #d6ecea; padding:6px;">Brendan McCabe - 20th Anniversary</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Wednesday</td><td style="border:1px solid #d6ecea; padding:6px;">20th May</td><td style="border:1px solid #d6ecea; padding:6px;">7.30pm</td><td style="border:1px solid #d6ecea; padding:6px;">Susan Muldoon - 20th Anniversary</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Brian Devlin - Month Mind</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Brigid Hamilton - 1st Anniversary</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Dympna Devine - 3rd Anniversary</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Michael McDonagh - 3rd Anniversary</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Sunday</td><td style="border:1px solid #d6ecea; padding:6px;">24th May</td><td style="border:1px solid #d6ecea; padding:6px;">10.00pm</td><td style="border:1px solid #d6ecea; padding:6px;">Gary Turbett - 1st Anniversary</td></tr></table>
+<p>DDS Mass for deceased members of Derry Diocesan Society will take place on Thursday 21st May at 10am.</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">Recently Deceased</td><td style="border:1px solid #d6ecea; padding:6px;">Recent Weddings</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr></table>
+<p>|  Sr Ena Devlin</p>
+<p>Seamus McGlone</p>
+<p>James Corey</p>
+<p>Kevin McCaskie</p>
+<p>Jacqueline Conaty | We congratulate the following couple who were married here recently</p>
+<p><strong>Aisling Taggart &amp; Eoin O’Neill</strong></p>
+<p>May the grace of the sacrament remain with them all their lives.  |</p>
+<p>|  VOCATIONS On Ascension Sunday we celebrate World Communications Day. We pray for those who will be called as priests to preach the Gospel, to communicate the Good News of God&#x27;s love as God reveals it to us in His Word and in the person of Jesus Christ. | Sacrament of First Holy Communion</p>
+<p>We congratulate the pupils, parents/guardians and teachers from St Conor’s, Holy Family,</p>
+<p>All Saints’ &amp; Sacred Heart Primary Schools who made their Sacrament of First Holy Communion over the last three weeks.  |</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr></table>
+<p>|  Pope Leo’s Message for World Communications Day 2026</p>
+<p>In his message for the 60th World Day of Social Communications, Pope Leo XIV highlights the importance of ensuring that technological innovation, particularly artificial intelligence, serves the human person rather than replacing or diminishing human dignity. | A Petition book is available at the front of the Sanctuary for examination students and their families who are preparing for exams.  |</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr></table>
+<h2>Derry Diocesan Society</h2>
+<p>The following names have been added to the list of Deceased Members of the Derry Diocesan Society</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">Maureen Broderick</td><td style="border:1px solid #d6ecea; padding:6px;">Dermot Montague</td><td style="border:1px solid #d6ecea; padding:6px;">Eileen Gray</td><td style="border:1px solid #d6ecea; padding:6px;">Ellie Quinn</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Patricia Nugent</td><td style="border:1px solid #d6ecea; padding:6px;">Michael Mullan</td><td style="border:1px solid #d6ecea; padding:6px;">Helen McGuigan</td><td style="border:1px solid #d6ecea; padding:6px;">Peter McCaffrey</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Goretti Gallagher</td><td style="border:1px solid #d6ecea; padding:6px;">Rose Breen</td><td style="border:1px solid #d6ecea; padding:6px;">Dr. Pat O’Neill</td><td style="border:1px solid #d6ecea; padding:6px;">Claire Bresnahan</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">George Johnson</td><td style="border:1px solid #d6ecea; padding:6px;">Eamon Devlin</td><td style="border:1px solid #d6ecea; padding:6px;">Kathleen (Manna) McGuigan</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Rose Quinn</td><td style="border:1px solid #d6ecea; padding:6px;">Patsy Conway</td><td style="border:1px solid #d6ecea; padding:6px;">Bridget Susan Maguire</td><td style="border:1px solid #d6ecea; padding:6px;">Philomena O’Neill</td></tr></table>
+<p>We pray that all who sleep in Christ find in your presence, light, happiness and peace.</p>
+</section>
+<section id="ocr-page-6">
+<h3 id="ocr-page-heading-6" class="ocr-page-heading">PAGE 6</h3>
+<h1>BINGO in St. Joseph&#x27;s Hall on Tuesday 19th May</h1>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">Walk in the footsteps of our Patron Saint on Saint Patrick&#x27;s Way Pilgrim Walk in Downpatrick with guides Martina Purdy and Elaine Kelly on Sat 6th June and 8th August, and Mairead Sweeney on Sat 4th July. Begin at Saint Patrick&#x27;s Centre with the fabulous 180° IMAX film of St Patrick. Price includes entrance fees, internal bus transfers, pilgrimage lunch at the famous Saul Barn, plus a stamped Camino passport and a 6-mile pilgrimage walk, finishing at Saint Patrick&#x27;s grave. Come and Be Amazed! (Duration 9am-approx 3pm, all for just £55) To book ring 02844 619000 or go to website <a href="https://www.saintpatrickcentre.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.saintpatrickcentre.com</a></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Lough Derg will host their <em>Day of Friendship and Prayer</em> this Wednesday, 20thMay. This special annual event promotes Christian unity. Archbishop Eamon Martin and Archbishop John McDowell will join Fr La Flynn, Prior of Lough Derg, for a day of spirituality, friendship and reflection. The day begins at 10am, finishing at 3pm on Station Island, an oasis of calm &amp; peace with over 15,000 years of history. Admission fee of €25 includes boat fare, refreshments and lunch. Advance booking is essential. <a href="https://www.loughderg.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.loughderg.org</a> <a href="mailto:info@loughderg.org" style="color:#1a6b6b;">info@loughderg.org</a> tel. 0(0353) 71 9861518.</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">DIOCESE OF DERRY LOUGH DERG PILGRIMAGE 2026: The Diocese of Derry Three-Day Pilgrimage to Lough Derg will take place from Friday 24th July to Sunday 26th July 2026. Lough Derg continues to welcome people seeking prayer, peace, reflection and renewal in the midst of busy lives. A bus will travel from St Eugene&#x27;s Cathedral, via Strabane and Lifford. Cost: £95 / €110 including bus transport. You are welcome, of course, to use your own means of transport. Booking form and full details available at: derrydiocese/lough-derg</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">JOB OPPORTUNITY - Derry Diocesan Trust: Caretaker, St Joseph&#x27;s Hall 20 Hours Per Week. One-year fixed term contract (with possibility of extension). Days and times in agreement with Parish Priest and to facilitate operational needs of the parish and may include evening and weekend work. For job description and application pack please telephone (028) 7126 2302 or email: <a href="mailto:recruitment@derrydiocese.org" style="color:#1a6b6b;">recruitment@derrydiocese.org</a>. Completed applications must be returned to: Personnel, Bishop&#x27;s House, St Eugene&#x27;s Cathedral, Francis Street, Derry, BT48 9AP or via email to <a href="mailto:recruitment@derrydiocese.org" style="color:#1a6b6b;">recruitment@derrydiocese.org</a> no later than 12.00 noon on Friday 29 May 2026. Derry Diocesan Trust is an Equal Opportunities Employer. We welcome applications from all men and women and from members of all communities.</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">41^{st} ALL IRELAND ROSARY RALLY Saturday 6^{th} June TO KNOCK SHRINE. Speakers include Bishop Oliver Doeme, Fr Chris Alar (USA) Sr Angela De Fatima Coelho (Fatima), Nikki Kingsley Conversion talk. Archbishop Eamon Martin will do Renewal of the Consecration of Ireland to Immaculate Heart of Mary: BUS LEAVING FROM CREVENAGH PARK AND RIDE OMAGH @ 8am. Contact: Anne 07734 562102 BUS fare Return : £20.00 (paid in advance non-refundable ) Evening Meal :25 Euro</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Book now for your local community Blood donation session Technology Education Centre, Omagh Monday 18th May 1pm - 8pm &amp; Tuesday 19th May 12.30 – 7.30pm Northern Ireland needs 1200 blood donations per week. That&#x27;s 1 every 8 minutes To book:<a href="https://nibts.hscni.net/online-booking-for-blood-donation-appointments/" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://nibts.hscni.net/online-booking-for-blood-donation-appointments/</a></td></tr></table>
+</section>
+<section id="ocr-page-7">
+<h3 id="ocr-page-heading-7" class="ocr-page-heading">PAGE 7</h3>
+<p>Parish email: <a href="mailto:info@drumraghparish.com" style="color:#1a6b6b;">info@drumraghparish.com</a></p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">St Joseph’s Hall Mon 4.30 pm - Groogan O&#x27; Doherty School of Dancing Monday 7:05pm - St Joseph’s Ceili Club for retired Irish dancers. Tues 2.30 - 4.30pm - Colmcille Club Tues 8.30pm - Bingo Wed 5.45 pm - Baxter School of Dancing Thurs 8 pm - Bowls Sat 2 pm - Groogan O&#x27;Doherty School of Dancing Booking forms and hall rates are available to download at <a href="https://www.drumraghparish.com/st.joseph&amp;#x27;s" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.drumraghparish.com/st.joseph&amp;#x27;s</a> hall</td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Al-Anon Family Group</td><td style="border:1px solid #d6ecea; padding:6px;">028 9068 2368</td><td style="border:1px solid #d6ecea; padding:6px;">DERRY DIOCESAN PILGRIMAGE TO KNOCK SHRINE will take place on Saturday 6th June 2026. In conjunction with the All Ireland Rosary Rally, we will join those gathered to celebrate at our National Eucharistic and Marian Shrine. For those for whom it is convenient, buses will leave St Eugene&#x27;s Cathedral, Derry, at 8:00am: cost £50, which includes dinner in Knock House Hotel following the conclusion of the Mass in the Basilica. For further information, please contact Karen in the parish office at St Eugene&#x27;s on 027 7126 2894 or by email at <a href="mailto:cathedral@derrydiocese.org" style="color:#1a6b6b;">cathedral@derrydiocese.org</a>. Full schedule to follow.</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Alcoholic Anonymous</td><td style="border:1px solid #d6ecea; padding:6px;">028 9035 1222</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Aware</td><td style="border:1px solid #d6ecea; padding:6px;">028 7126 0602</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Care for Cancer</td><td style="border:1px solid #d6ecea; padding:6px;">028 8224 6599</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Gamblers Anonymous</td><td style="border:1px solid #d6ecea; padding:6px;">028 7135 1329</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Drug Awareness</td><td style="border:1px solid #d6ecea; padding:6px;">0800 7766 00</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Legion of Mary</td><td style="border:1px solid #d6ecea; padding:6px;">07733551846/07864926719</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Pioneers</td><td style="border:1px solid #d6ecea; padding:6px;">07775 810297</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Safeguarding Team</td><td style="border:1px solid #d6ecea; padding:6px;">07596 500793</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Samaritans</td><td style="border:1px solid #d6ecea; padding:6px;">028 8224 4944</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">SVDP Thrift Shop</td><td style="border:1px solid #d6ecea; padding:6px;">028 8225 2000</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">SVDP Helpline</td><td style="border:1px solid #d6ecea; padding:6px;">07738837991</td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">The Sisters from the Apostles of the Sacred Heart of Jesus based in Waterford will lead a ladies weekend retreat in the Carmelite Retreat Centre, Termonbacca, Derry, entitled ‘In the Upper Room with Mary’, from Friday 22nd- Sunday 24th May, Pentecost weekend. The cost of the weekend including accommodation is £90. For booking and queries call Aoife on <a href="tel:+3532871262512" style="color:#1a6b6b;">02871262512</a> or email <a href="mailto:termonbaccaderry@ocd.ie" style="color:#1a6b6b;">termonbaccaderry@ocd.ie</a></td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">Lourdes Pilgrimage 3rd - 8th July Flight from &amp; Return to Derry. Cost all inclusive £935, staying at Hotel Solitude. Spiritual Director Mgr. Joseph Donnelly. A few seats still available. For info &amp; Booking contact Siobhan at 07871656780/07732468511</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">GAMBLERS ANONYMOUS: Is gambling affecting your life? We would like to help. Pick up the phone and ring 028 7135 1329.</td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">ENCOUNTER WEEKEND DONEGAL, Radisson Blu Hotel, Letterkenny. 6.00pm - 10.30pm Friday 5th June. 9.00am - 10.30pm. Saturday 6th June. Expect to experience the presence of God through the celebration of the Sacraments, Spirit-led worship, inspiring talks, healing service, and fellowship. Come and be refreshed and empowered by the Holy Spirit and learn from the Saints how to live the lifestyle God intended you to live. Keynote Speakers: Patrick Reis: co-founder and Executive Director of Encounter Ministries USA &amp; Fr. Patrick Gonyeau who serves with the U.S. Province of the Missionaries of the Precious Blood in Ohio. Bookings at https:// encounterschoolofministrydoneg.regfox.com/encounter-conference-donegal For more info, email <a href="mailto:donegal@encounterschool.org" style="color:#1a6b6b;">donegal@encounterschool.org</a>.</td><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;"></td></tr></table>
+</section>
+<section id="ocr-page-8">
+<h3 id="ocr-page-heading-8" class="ocr-page-heading">PAGE 8</h3>
+<p>Granaghan</p>
+<p><a href="https://granaghanparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://granaghanparish.com</a></p>
+<p>THE NET | APRIL 2019</p>
+<h1>Granaghan Parish retreat a blessed time for all</h1>
+<p>by Rosemary O&#x27;Kane, Photographs by Seamus Lagan.</p>
+<p>THE Granaghan Parish was greatly blessed by the presence of Sr Perpetua McNulty, Fr Paschal McDonnell and Geraldine Brolly, from Thornhill Ministries, who had been asked by the parish priest, Fr Charles Keaney, to lead a retreat from Sunday, February 24 until Wednesday, February 27.</p>
+<p>It was made clear from the start that this was to be a retreat not a Mission, in the old sense of the word, so parishioners were a bit unsure what to expect at the beginning. The theme of the retreat was &#x27;Threads of Healing and Hope&#x27; and this was developed into threads of belonging, meaning, forgiveness and serenity.</p>
+<p>Morning Mass was followed by a short period of prayer and on the Tuesday there was the Morning Prayer of the Church, with participation from various parishioners. There was also an opportunity one morning for the Sacrament of Reconciliation with Fr Paschal.</p>
+<p>On the first night, a centrepiece was created by parishioners using symbols representing some of the threads binding them together as a faith community and this remained in place throughout the retreat.</p>
+<p>Fergiveness and acceptance were the themes for the second night and on the Tuesday there was a special prayer vigil of healing.</p>
+<p>At the start of the retreat, parishioners were encouraged to write their mothers&#x27; and fathers&#x27; surnames on an altar cloth. During the liturgy of healing, these names were read out and then the cloth was carried to the front and used to dress the altar before Mass at 10 pm. It was a very beautiful and moving experience listening to the names of those who came before - the names were threads connecting parishioners to their community, their family members and members of Granaghan faith community through the ages.</p>
+<p>The final session of the retreat was based around serenity and trust, and holding on to the threads which connect our parish to the Lord.</p>
+<p>Throughout the retreat, there was a palpable sense of faith and holiness, and a willingness to participate, from the children in the school who were joined by Sr Perpetua and Geraldine to explore expressing their faith through music, stories and meditation, to the congregation in the church, and it was obvious that the Holy Spirit was at work.</p>
+<p>Heartfelt thanks were extended to the team from Thornhill Ministries for leading us in this very special time of prayer, and everyone got a chance to express their appreciation and chat about the experience over a cuppa in the local primary school at the close of the retreat.</p>
+<p>![img-2.jpeg](img-2.jpeg)</p>
+<p>![img-3.jpeg](img-3.jpeg)</p>
+<p>![img-4.jpeg](img-4.jpeg)</p>
+<p>![img-5.jpeg](img-5.jpeg)</p>
+<p>![img-6.jpeg](img-6.jpeg)</p>
+<p>![img-7.jpeg](img-7.jpeg)</p>
+<p>![img-8.jpeg](img-8.jpeg)</p>
+<p>![img-9.jpeg](img-9.jpeg)</p>
+<p>![img-10.jpeg](img-10.jpeg)</p>
+<p>![img-11.jpeg](img-11.jpeg)</p>
+<p>![img-12.jpeg](img-12.jpeg)</p>
+</section>
+<section id="ocr-page-9">
+<h3 id="ocr-page-heading-9" class="ocr-page-heading">PAGE 9</h3>
+<p>THE NET | APRIL 2019</p>
+<p>Granaghan Parish reaping the rewards as...</p>
+<h1>Re-energised Fr Keaney reflects on priesthood and importance of sabbatical</h1>
+<p>DELIGHTED at the success of the Thornhill Ministries led retreat in Granaghan, parish priest, Fr Charlie Keaney described it as &quot;a time of healing and nourishment&quot;. Saying that there was time for Adoration, Anointing, Confession, and Contemplation, as well as the celebration of the Eucharist and Prayer of the Church at the start and end of each day, Fr Keaney added: &quot;It truly was a gift of the spirit time and, hopefully, we all now have more vision of each other and will have more involvement in day-to-day parish life. We have been restored!&quot;</p>
+<p>Having taken a much-needed sabbatical in 2016, after over 40 years in the priesthood - 13 of which were spent as parish priest of Dunboe, Macosquin and Aghadowey - Fr Keaney returned from that &quot;restored&quot; and able to bring a new energy to his role since as parish priest of Granaghan.</p>
+<p>Reflecting on his path to the priesthood, the only child of the late Charles and Kathleen Keaney, Coleraine, recalled growing up in a home where faith and prayer were important. In addition, he was taught in St John&#x27;s Primary School which was run by the Loreto nuns at the time, so faith was a big part of school life.</p>
+<p>&quot;I was an altar server from the age of nine in my parish church, and I loved it,&quot; said Fr Keaney, who went</p>
+<p>on to attend St Columbi College in Derry as a boarder.</p>
+<p>&quot;St Columbi,&quot; he pointed out, &quot;was known then as the minor seminary and prayer was a big part of life there. We had daily Mass and visits to the Blessed Sacrament, and night prayer.</p>
+<p>&quot;So, I grew up surrounded by prayer. Religion was a very strong part of my life and when I was considering the priesthood, it occurred to me that perhaps I should be a missionary priest, but I was told that the Diocese needed priests. I wasn&#x27;t sure, however, I decided to give it a go and it worked out.&quot;</p>
+<p>Fr Keaney was ordained on June 1, 1975, in St John&#x27;s Church, Coleraine, and went on to minister in St Eugene&#x27;s, Our Lady of Lourdes, Streintown; Sacred Heart, Omagh; St Fislooghis, Ballykelly; Buncrana; St John&#x27;s, Coleraine, and now St John the Baptist, Granaghan (Swatragh).</p>
+<p>Commenting on his sabbatical in 2016, when he retired as parish priest of Coleraine, Fr Keaney said: &quot;It wasn&#x27;t that I was living at some distance from my vocation, as I was busy, engaged and attentive, but somehow I was running on automatic; I was running on empty.</p>
+<p>&quot;I was doing what St Charles Borromeo had warned his priests against - I was so involved in the needs of others that I was</p>
+<p>neglecting my own well-being, spiritually and otherwise. So, I knew I was long overdue a sabbatical. Diocesan priests are very bad at taking time out because of the nature of the ministry and the decreasing number of priests, but it actually improves their ministry by giving time to reflect.&quot;</p>
+<p>Fr Keaney booked a sabbatical programme by the Oblates of Mary Immaculate in San Antonio, Texas, that had been recommended to him and it turned out to be one of the best experiences of his life to date.</p>
+<p>Advertised as a programme for the seasoned pastor, Fr Keaney said that it focused on the four key aspects of the biblical Sabbath - ceasing, resting, embracing and feasting!</p>
+<p>&quot;I knew the programme was</p>
+<p>going to be good,&quot; he recalled, &quot;when I looked at the schedule and the lecturers, but it far exceeded my expectations. There was a generosity of time and space to refocus, to achieve more balance and integration in life.</p>
+<p>&quot;I returned from my sabbatical with a new attitude, strong trust, a gentle confidence and a fresh approach.&quot;</p>
+<p>The programme included an eight-day guided retreat, a day of recollection every few weeks, and a faith sharing group once a week. They celebrated Mass as a group three times a week and joined the rest of the community on the campus for the Eucharist at other times.</p>
+<p>&quot;At weekends, we went around the parishes to attend Mass,&quot; recalled Fr Keaney, &quot;and with</p>
+<p>Mexican, African and American Masses amongst those to choose from, it was great to experience the various liturgies.&quot;</p>
+<p>Amongst the group of missionary and diocesan priests and religious on the programme with him were about five Irish people, including Fr Paddy O&#x27;Kane, PP Holy Family, Ballymagroarty, and others from Australia, Vietnam, Sri Lanka, South Africa, Canada and America.</p>
+<p>The classes covered such areas as theology, spirituality, the environment, health and well being, and scripture, and Fr Keaney was delighted that Fr Ron Rothman OMI, the president of the Oblate School of Theology there, was one of the lecturers on the programme.</p>
+<p>Highly recommending the very</p>
+<p>balanced programme and the taking of a sabbatical, the 69-year-old described his five months in Texas as one of the highlights of his life: &quot;It is good to meet new people and discover new ideas, and become energised, renewed and refreshed.&quot;</p>
+<p>He remarked: &quot;St Paul says always be happy in the Lord. We are redeemed and we should look redeemed.&quot;</p>
+<p>Looking back on his priesthood, Fr Keaney said: &quot;It has been challenging at times but it is worthwhile. I am glad that I made that decision all those years ago. I love the pastoral work, meeting people, visiting the sick, preaching and visiting the schools. I just live an ordinary life and I feel very blessed with my vocation and my family and friends.&quot;</p>
+<p>![img-13.jpeg](img-13.jpeg)</p>
+<p>![img-14.jpeg](img-14.jpeg)</p>
+<p>![img-15.jpeg](img-15.jpeg)</p>
+<p>![img-16.jpeg](img-16.jpeg)</p>
+<p>![img-17.jpeg](img-17.jpeg)</p>
+<p>![img-18.jpeg](img-18.jpeg)</p>
+</section>
+<section id="ocr-page-10">
+<h3 id="ocr-page-heading-10" class="ocr-page-heading">PAGE 10</h3>
+<p>Holy Family</p>
+<p><a href="https://www.holyfamily-parish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.holyfamily-parish.com</a></p>
+<h1>HOLY FAMILY CHURCH</h1>
+<p>OUR LADY OF MONTLIGEON PRAYER GROUP - praying for all the souls in Purgatory meets in Termonbacca, on the last Wednesday each month at 12:30pm. Also in St Joseph&#x27;s Church Galliagh every Monday after 11am Mass. All welcome</p>
+<p>PILGRIMAGE TO LOURDES flying from Derry 3rd July - 8th £935</p>
+<p>Contact Siobhan 07871656780</p>
+<p>RACHEL&#x27;S VINEYARD: Have you been hurt by abortion? Tel Michelle 07871765181.</p>
+<p>ENCOUNTER WEEKEND DONEGAL, Radisson Blu Hotel, Letterkenny. 6.00pm - 10.30pm Friday 5th June. 9.00am - 10.30pm. Saturday 6th June. Expect to experience the presence of God through the celebration of the Sacraments., . Keynote Speakers: Patrick Reis: co-founder and Executive Director of Encounter Ministries USA &amp;amp; Fr. Patrick Gonyeau who serves with the U.S. Province of the Missionaries of the Precious Blood in Ohio. Bookings at <a href="https://encounterschoolofministrydoneg.regfox.com/encounter-conference-donegal" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://encounterschoolofministrydoneg.regfox.com/encounter-conference-donegal</a> email <a href="mailto:donegal@encounterschool.org" style="color:#1a6b6b;">donegal@encounterschool.org</a>.</p>
+<p>GAMBLERS ANONYMOUS: Is gambling affecting your life? We would like to help. Pick up the phone and ring 028 7135 1329.</p>
+<p>ALANON IT&#x27;S EASY TO SEE WHAT ALCOHOL IS DOING TO THE DRINKER BUT CAN YOU SEE WHAT IT IS DOING TO YOU? Are you afraid to upset someone for fear that it will set off a drinking bout? · For further information contact the Al Anon confidential helpline on 0800 0086 811 or email <a href="mailto:helpline@al-anonuk.org.uk" style="color:#1a6b6b;">helpline@al-anonuk.org.uk</a> . Alternatively, tel 028 9068 2368.</p>
+<p>SAFEGUARDING Any concerns with regard to the Safeguarding of children and Vulnerable Adults within the Church please contact Marie O&#x27;Kane, the Diocesan Designated Liaison Person (DLP) on +447596500793 or email: <a href="mailto:dlp@derrydiocese.org" style="color:#1a6b6b;">dlp@derrydiocese.org</a></p>
+<p>Northern Ireland emergency services PSNI (Police Service of Northern Ireland) 101 Social Services: Gateway Services, Western HSC Trust, 028 7131 4090 (and ask for the Duty Social Worker) Gateway Services, Northern HSC Trust 028 9442 4459</p>
+<p>Regional Emergency Social Work Services 0800 1979 99</p>
+<p>PRIVACY NOTICE The Diocese of Derry complies with GDPR regulations. A privacy notice is available on the Parish Website Live stream and recordings of Mass and Services in Holy Family Church are available on line. Parishioners should note that the first 2 rows of seats are visible on line.</p>
+<p>Sun 17th May 2026</p>
+<p>![img-19.jpeg](img-19.jpeg)</p>
+<p>Vol. 44 No 20</p>
+<h1>MASSES</h1>
+<p>Saturday Vigil 6.00pm</p>
+<p>Sunday 9.30am, 11.00am, 12.30pm</p>
+<p>Mon, Wed, Fri, Sat 10.00am Tues and Thurs 7.15pm</p>
+<h1>CONFESSIONS</h1>
+<p>Saturdays from 10.30am-11.30am &amp;amp; 5.15pm-5.50pm</p>
+<p>Tues, Thurs 6.45pm - 7.10pm</p>
+<p>Divine Mercy 3pm Monday-Friday</p>
+<h1>BAPTISMS</h1>
+<p>Saturday at 4.30pm</p>
+<h1>MARRIAGES</h1>
+<p>Three months notice and marriage preparation necessary</p>
+<h1>PAROCHIAL HOUSE</h1>
+<p>71267070</p>
+<p>1 Aileach Road Ballymagroarty BT48 0AZ</p>
+<p>Email: <a href="mailto:office@holyfamily-parish.com" style="color:#1a6b6b;">office@holyfamily-parish.com</a></p>
+<p>Website: <a href="https://www.holyfamily-parish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.holyfamily-parish.com</a></p>
+<p>Webcam: Click on website and follow the links</p>
+<p>Parish Office 9.45am-1.45pm Mon-Fri</p>
+<p>Parish Priest: Fr Joseph Gormley</p>
+<p>Curate: Fr Kevin Mulhern</p>
+</section>
+<section id="ocr-page-11">
+<h3 id="ocr-page-heading-11" class="ocr-page-heading">PAGE 11</h3>
+<h1>FEAST OF THE ASCENSION</h1>
+<p>On Ascension Sunday, the Gospel of Gospel of Matthew reminds us that the Ascension is not about Jesus leaving His disciples behind, but about sending them forth with confidence and hope. On the mountain in Galilee, the risen Christ gives His disciples the great mission: “Go therefore and make disciples of all nations.” Significantly, Matthew tells us that even as they worshipped Him, “some doubted.” The Church’s mission begins not with perfect people, but with ordinary disciples learning to trust in the Lord. Jesus declares that “all authority in heaven and on earth” belongs to Him. The Ascension celebrates Christ not absent, but reigning — Lord of heaven and earth, guiding His Church through every age. And finally comes the promise that sustains every Christian life: “I am with you always, to the close of the age.” Though Christ ascends to the Father, He remains present to us — in Word and Sacrament, in prayer, and in one another. The Ascension calls us to lift our hearts toward heaven while continuing Christ’s work faithfully here on earth</p>
+<p>![img-20.jpeg](img-20.jpeg)</p>
+<p>SYMPATHY We offer our sympathy to the family of Jimmy Kivelehan, Sheelin Park, and Michael Cunningham, Killary Rd. who died during the week. May he rest in peace.</p>
+<p>ANNIVERSARIES We pray for those whose anniversaries occur at this time Michael Barr., Annie &amp;amp; Spike Nolan, Joe Donnelly,</p>
+<p>PRAYER FOR VOCATIONS TO THE DIOCESAN PRIESTHOOD On Ascension Sunday we celebrate World Communications Day. We pray for those who will be called as priests to preach the Gospel, to communicate the Good News of God’s love as God reveals it to us in His Word and in the person of Jesus Christ.</p>
+<p>LEGION OF MARY has started up again on Thursday evenings at 5.45pm just before evening Mass. Anyone willing to do Our Lady’s work is asked to call Patricia on <a href="tel:+3532871417867" style="color:#1a6b6b;">02871417867</a></p>
+<p>CONGRATULATIONS to all the children in Holy Family School who received their First Holy Communion this week.</p>
+<p>SUNDAY COLLECTION 10th May £2277.89 Standing Orders £400 and €195.41 Thank you for your generosity</p>
+<p>HOLY FAMILY SCRIPTURE GROUP on Thursday after 7.15pm Mass in the Upper Room This is a sacred time to come together to listen and reflect as Jesus speaks to each of us through His Word in scripture All welcome</p>
+<p>DERRY DIOCESAN PILGRIMAGE TO KNOCK SHRINE will take place on Saturday 6 June. In conjunction with the All Ireland Rosary Rally, we will join those gathered to celebrate at our National Eucharistic and Marian Shrine. For those for whom it is convenient, buses will leave St Eugene&#x27;s Cathedral, at 8:00am: cost £50, which includes dinner in Knock House Hotel following the conclusion of the Mass in the Basilica. For further information, please contact Karen in the parish office at St Eugene&#x27;s on 028 7126 2894 or by email at <a href="mailto:cathedral@derrydiocese.org" style="color:#1a6b6b;">cathedral@derrydiocese.org</a>.</p>
+<p>THE COLUMBAN YOUNG ADULTS is a new group for those aged 18 - 30 in the diocese, who are seeking a community of like-minded young adults who have Christ at the centre of their lives. The next event will be a talk and meditation on Marian Devotion on Thursday 21 May, 7:00pm at our Lady of Lourdes Church, Steelstown, delivered by Fr Declan McGeehan. Meditation will be followed by Solemn Benediction and finish with light refreshments.</p>
+<p>DIOCESE OF DERRY LOUGH DERG PILGRIMAGE: The Diocese of Derry Three-Day Pilgrimage to Lough Derg will take place from Friday 24 July to Sunday 26 July. A bus will travel from St Eugene&#x27;s Cathedral, via Strabane and Lifford. Cost: £95 / €110 including bus transport. . Booking form and full details available at: derrydiocese/lough-derg</p>
+<p>YOUNG WOMEN VOCATION WEEKEND The Sisters from the Apostles of the Sacred Heart of Jesus based in Waterford will lead a ladies weekend retreat in entitled ‘In the Upper Room with Mary’, from Friday 22nd- Sunday 24th May, . The cost of the weekend including accommodation is £90. For booking and queries call Aoife on <a href="tel:+3532871262512" style="color:#1a6b6b;">02871262512</a></p>
+<p>ROSARY ON THE COAST. Rosary on the Coast will be at 3pm today Sunday at Benone We will pray for unborn children. Tel 077303 30028</p>
+<p>JOB OPPORTUNITY: Derry Diocesan Trust - Temporary Administrative &amp;amp; Financial Officer (15 Hours per week for 6 months in Doneyloop Co. Donegal, based in the Parochial House Working Days &amp;amp; Times to be negotiated. For application packs tele 028 7126 2302 or email: <a href="mailto:recruitment@derrydiocese.org" style="color:#1a6b6b;">recruitment@derrydiocese.org</a>. Completed applications must be returned to Personnel, Bishop’s House, St Eugene’s Cathedral, or via email to <a href="mailto:recruitment@derrydiocese.org" style="color:#1a6b6b;">recruitment@derrydiocese.org</a> no later than 12noon Wednesday 27 May</p>
+</section>
+<section id="ocr-page-12">
+<h3 id="ocr-page-heading-12" class="ocr-page-heading">PAGE 12</h3>
+<p>Iskaheen</p>
+<p>PHOENIX - WAREHOUSE COLLECTION - 25TH ANNIVERSARY - <a href="https://www.iskaheenparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.iskaheenparish.com</a></p>
+<p>Entrance Antiphon: O sing a new song to the Lord, for he has worked wonders; in the sight of the nations he has shown his deliverance, alleluia (Cf. Ps 97:1-2).</p>
+<p>VOCATIONS: Our first reading tells the story of the selection of the first seven deacons. We pray for those recently, or soon to be, ordained to the Diaconate. Here in the Diocese of Derry we pray God&#x27;s blessing on Deacon Stephen Baxter who will be ordained to the priesthood on 14 June, that the Lord will bless him in his future ministry.</p>
+<p>![img-21.jpeg](img-21.jpeg)</p>
+<h2>SYMPATHY</h2>
+<p>We offer our sincere sympathy to the family of Joe McLaughlin, who was buried in Drung on Thursday. May he rest in peace...</p>
+<p>The Little Way Novena in St Eugene&#x27;s Cathedral – 9th May to 17th May: The theme is &#x27;My peace consists in remaining little&#x27;. The Novena will begin at the 7.30 pm Mass with the Sacrament of the Sick on Saturday, 9th May. Devotions and talk on Sunday, 10th May at 6.00 pm. Monday to Friday (11th to 15th May) Novena Masses at 6.30 am and 10.00 am each morning and an evening service with a guest speaker at 7.30 pm. Saturday, 16th May 10.00 am Mass for those who have died. The Novena will close on Sunday with blessing of the roses, 17th May at 3.00 pm. Everyone is welcome to St Eugene&#x27;s Cathedral for this time of prayer and petition.</p>
+<p>Special Offer: Pilgrimage to Lourdes from 3rd until 8th July 2026. Flights from Derry and full board £899. Contact Maria at <a href="tel:+3532881648357" style="color:#1a6b6b;">02881648357</a> or WhatsApp 07768 395038 for further details.</p>
+<p>Medjugorie Pilgrimages 2026 (45th Anniversary): 7 nights June 24th - July 1st. Depart Dublin - Mostar. Return Split - Dublin. €855 p.p. sharing. Single room supplement €170. For more information please contact Ursula O&#x27; Faodhagain, Castlefin <a href="tel:+353872960562" style="color:#1a6b6b;">0872960562</a>.</p>
+<p>Mgr. Barney McAleer, retired SMA priest, will give a Talk on &#x27;Our Lady, our Mother&#x27; on Thursday 7th May in the Pastoral centre, Brook Street, Omagh at 8.00pm. All are welcome.</p>
+<p>Collection for Drung: €1,123.55c &amp;amp; £108.97 stg.</p>
+<p>Collection for Iskaheen &amp;amp; Muff: €1,299.04c &amp;amp; £475.96 stg.</p>
+<p>Thank you to all who support the collections and for donations received.</p>
+<p>DATES TO REMEMBER IN 2026: Saturday 6th June @ 11.00 a.m. in Muff: First Holy Communion for Scoil Naomh Brid.</p>
+<p>BLESSING OF THE GRAVES 2026: Drung: Sunday, 26th July @ 1.30 p.m. Muff: Sunday, 9th August @ 3.00 p.m. Iskaheen: Sunday, 9th August @ 5.00 p.m.</p>
+<p>The Adult Faith Group is hosting a talk on the history of Iskaheen chapel, in the chapel on 19th May at 7.30pm. As part of the history, they are hoping to have an exhibition of old photographs. They are asking people to look and see if they have any old photos of the chapel inside or outside. All photos will be scanned and returned to the owner. Interesting stories/memories about the chapel in bygone days are most welcome. For more information contact anyone in the Adult Faith group, Helen Grant, Lynda Grant, Nuala Lafferty, Grainne McCool, Breda McFadden, Mark Sweeney, or Marie Lindsay or message the Parish Facebook page.</p>
+<p>EXAM MASS: The 10.15 a.m. Mass in St. Columba&#x27;s Church Drung on Sunday 10th May will be offered for all those doing exams.</p>
+<p>IMPORTANT NOTICE - WEDDINGS IN CO DONEGAL: GETTING MARRIED IN DRUNG/ISKAHEEN OR MUFF IN 2026/2027? YOU MUST INFORM THE REGISTRAR OF MARRIAGES AT LEAST 3 MONTHS BEFORE THE DATE OF YOUR WEDDING. The Civil Registration Office is in Letterkenny – Tel: <a href="tel:+353749123771" style="color:#1a6b6b;">074 9123771</a> / <a href="tel:+353749123772" style="color:#1a6b6b;">074 9123772</a> to make an appointment. To attend a pre-marriage course, you can book online at <a href="https://www.accord.ie" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.accord.ie</a> or telephone Carndonagh Pastoral Centre on <a href="tel:+353749374103" style="color:#1a6b6b;">074 9374103</a> or (Accord Derry on 048 71362475). As regards your church papers, please contact the Parochial House, Iskaheen on <a href="tel:+353749384037" style="color:#1a6b6b;">074 9384037</a>.</p>
+<p>Join us at The Men&#x27;s Shed (old Co-op Building, Moville Road, Carndonagh) next Tuesday 5th May from 10.00 a.m. to 12.30 pm for a talk on Pensions and Financial Support and Assistance in Retirement. To book email <a href="mailto:aine@inishowen.ie" style="color:#1a6b6b;">aine@inishowen.ie</a> or telephone 086 1028846.</p>
+</section>
+<section id="ocr-page-13">
+<h3 id="ocr-page-heading-13" class="ocr-page-heading">PAGE 13</h3>
+<p>Limavady</p>
+<p><a href="https://www.limavadyparish.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.limavadyparish.org</a></p>
+<p>DIOCESE OF DERRY LOUGH DERG PILGRIMAGE 2026: The Diocese of Derry Three-Day Pilgrimage to Lough Derg will take place from Friday 24 July to Sunday 26 July 2026. Lough Derg continues to welcome people seeking prayer, peace, reflection and renewal in the midst of busy lives. A bus will travel from St Eugene&#x27;s Cathedral, via Strabane and Lifford. Cost: £95 / £110 including bus transport. You are welcome, of course, to use your own means of transport. Booking form and full details available at: derrydiocese/lough-derg</p>
+<p>LCDI and ROE RUNNERS invite you to a 5km FUN RUN/WALK on SATURDAY 23 MAY, STARTING AT 1.00PM, FROM LCDI CAR PARK</p>
+<p>1km Children&#x27;s Superhero Run/Walk.</p>
+<p>Registration open from 12 noon.</p>
+<p>For more information telephone (028) 777 65438</p>
+<p>![img-22.jpeg](img-22.jpeg)</p>
+<p>Parish Youth Ministry Evening: Derry Diocesan Youth will host an evening for Parish Youth Ministry leaders and volunteers on Wednesday 20 May in Claudy Parish Centre at 7.00pm. The evening will provide an opportunity for parishes to reflect on their current ministries for young people and share practice. The focus of the evening will be on the GIFT Programme. This is a post-confirmation programme aimed at Year 8 initially and delivered through parish. If you would like more information or would like to attend, please contact <a href="mailto:yvonne.rooney@derrydiocese.org" style="color:#1a6b6b;">yvonne.rooney@derrydiocese.org</a> <a href="tel:+3532871264087" style="color:#1a6b6b;">02871264087</a>.</p>
+<p>![img-23.jpeg](img-23.jpeg)</p>
+<p>ACCORD NI: There are still a few places available on the June 19th/20th Course being held in the Everglades Hotel, Derry.</p>
+<p>Booking online now at <a href="https://www.accordni.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.accordni.com</a></p>
+<p>The Sisters from the Apostles of the Sacred Heart of Jesus based in Waterford will lead a ladies weekend retreat in the Carmelite Retreat Centre, Termonbacca, Derry, entitled &#x27;In the Upper Room with Mary&#x27;, from Friday 22nd- Sunday 24th May, Pentecost weekend. The cost of the weekend including accommodation is £90. For booking and queries call Aoife on <a href="tel:+3532871262512" style="color:#1a6b6b;">02871262512</a> or email <a href="mailto:termonbaccaderry@ocd.ie" style="color:#1a6b6b;">termonbaccaderry@ocd.ie</a></p>
+<p>JOB OPPORTUNITY: Derry Diocesan Trust - Parish of Coleraine: Grounds &amp;amp; Maintenance Person. Full Time - 37 ½ hours per week. To provide an effective grounds and maintenance service to the parish grounds and cemetery areas to ensure the grounds are maintained in a tidy, presentable and safe state at all times. To undertake maintenance work of the Church grounds and premises as designated by the Parish Priest. For application packs please telephone 028 7126 2302 or email: <a href="mailto:recruitment@derrydiocese.org" style="color:#1a6b6b;">recruitment@derrydiocese.org</a>.</p>
+<p>![img-24.jpeg](img-24.jpeg)</p>
+<h1>Limavady Parish</h1>
+<p>17 May 2026</p>
+<p>THE ASCENSION</p>
+<p>OF THE LORD</p>
+<p>LITURGICAL PROGRAMME FOR WEEK COMMENCING Monday 18 May 2026</p>
+<table style="border-collapse:collapse; margin:10px 0; width:100%;"><tr><td style="border:1px solid #d6ecea; padding:6px;">Monday 18 May - Friday 22 May</td><td style="border:1px solid #d6ecea; padding:6px;">10.00am</td><td style="border:1px solid #d6ecea; padding:6px;">Mass: Christ the King Church (streamed)</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td><td style="border:1px solid #d6ecea; padding:6px;">---</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Saturday 23 May</td><td style="border:1px solid #d6ecea; padding:6px;">4.30pm</td><td style="border:1px solid #d6ecea; padding:6px;">Vigil Mass: Christ the King Church (streamed)</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">6.00pm</td><td style="border:1px solid #d6ecea; padding:6px;">Vigil Mass: St Finlough&#x27;s Church (streamed)</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;">Sunday 24 May</td><td style="border:1px solid #d6ecea; padding:6px;">9.00am</td><td style="border:1px solid #d6ecea; padding:6px;">Mass: Christ the King Church</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">10.30am</td><td style="border:1px solid #d6ecea; padding:6px;">Mass: St Mary&#x27;s Church</td></tr><tr><td style="border:1px solid #d6ecea; padding:6px;"></td><td style="border:1px solid #d6ecea; padding:6px;">12.00 noon</td><td style="border:1px solid #d6ecea; padding:6px;">Mass: Christ the King Church</td></tr></table>
+<p>Readings for next Sunday: Acts 2:1-11. Ps 103:1, 24, 29-31, 34, R/ cf v 30. 1 Cor 12:3-7, 12-13. Jn 20:19-23.</p>
+<p>Baptisms</p>
+<p>To arrange a Baptism, you MUST complete a Baptism Card in the Parish Office. Tel: Parish Office - <a href="tel:+3532877762522" style="color:#1a6b6b;">028 777 62522</a> between 9.00 am - 1.00pm (Monday to Thursday)</p>
+<p>Month&#x27;s Mind Masses and Anniversary Masses</p>
+<p>To arrange Anniversaries, Month&#x27;s Mind Masses or First Anniversary Masses, please contact the Parish Office. Tel: <a href="tel:+3532877762522" style="color:#1a6b6b;">028 777 62522</a> between 9.00 am - 1.00 pm (Monday to Thursday)</p>
+<p>Parish Bulletin</p>
+<p>The bulletin is available online. Visit: <a href="https://www.limavadyparish.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.limavadyparish.org</a> All notices should be emailed to <a href="mailto:parishoflimavady@btinternet.com" style="color:#1a6b6b;">parishoflimavady@btinternet.com</a> or left in the post box outside the parish office before Wednesday at 1.00pm.</p>
+<p>Telephone Numbers</p>
+<p>Msgr. McCanny <a href="tel:+3532877729759" style="color:#1a6b6b;">028 777 29759</a></p>
+<p>Fr Harkin <a href="tel:+3532877763944" style="color:#1a6b6b;">028 777 63944</a></p>
+<p>Parish Office <a href="tel:+3532877762522" style="color:#1a6b6b;">028 777 62522</a> (Monday - Thursday:</p>
+<p>9.00 am - 1.00 pm)</p>
+<p>Email: <a href="mailto:parishoflimavady@btinternet.com" style="color:#1a6b6b;">parishoflimavady@btinternet.com</a></p>
+<p>Website: <a href="https://www.limavadyparish.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.limavadyparish.org</a></p>
+<p>In these difficult times please remember the SVP Red Box.</p>
+<p>Helpline 07512360388</p>
+</section>
+<section id="ocr-page-14">
+<h3 id="ocr-page-heading-14" class="ocr-page-heading">PAGE 14</h3>
+<p>#</p>
+<p>Deaths</p>
+<p>#</p>
+<p>CONGRATULATIONS TO ALL THE CHILDREN WHO MADE THEIR FIRST COMMUNION LAST WEEK.</p>
+<p>We extend our sympathy to the family and friends of:</p>
+<p>James Anthony Carten, 12 Carten&#x27;s Road, Limavady</p>
+<h1>Anniversaries</h1>
+<p>Anna McNickle, Oonagh McNickle, Edward Quinn, Mary Mesce, Bobby Carnie, John Herron, Lewis Johnston, Patricia, John and Margot Reed, Patrick Kealey, Marie McHugh, Willie Ferris, Joe and Mary Ferris, George McClarey, John Gallagher, Veronica Tracey, Desmond Tracey.</p>
+<h1>MAY THEY REST IN PEACE</h1>
+<h2>Month&#x27;s Mind Mass</h2>
+<p>The Month&#x27;s Mind Mass for Winifred Brolly and Winifred Canning will be celebrated on Saturday 23 May at 6.00pm in St. Finlough&#x27;s Church.</p>
+<h2>First Anniversary Mass</h2>
+<p>The First Anniversary Mass for David Butler will be celebrated on Saturday 23 May at 4.30 pm in Christ the King Church.</p>
+<p>![img-25.jpeg](img-25.jpeg)</p>
+<p>![img-26.jpeg](img-26.jpeg)</p>
+<p>The Parish of Limavady invites you to celebrate Msgr Bryan McCanny&#x27;s 40 years of Priesthood on Friday 22nd May 2026</p>
+<p>7.00pm Mass in Christ the King Church</p>
+<p>8.00pm Refreshments in Bethany Community Centre</p>
+<p>![img-27.jpeg](img-27.jpeg)</p>
+<p>![img-28.jpeg](img-28.jpeg)</p>
+<h2>Vocations Society of St. Joseph</h2>
+<p>The next meeting of the Society will take place on Tuesday 19 May 2026 after 10.00am Mass and rosary in Christ the King conference room. Please pray for vocations to the priesthood.</p>
+<h2>Weekly Envelope Collection</h2>
+<p>Weekly Collection: £4,130</p>
+<p>Thank you for your continued support.</p>
+<p>![img-29.jpeg](img-29.jpeg)</p>
+<p>Please pray for our parishioner Conan McGonagle who will be ordained to the Sacred Priesthood on the 28th May at the Cathedral of St. Cecilia in Omaha, Nebraska. Fr. Conan will offer his First Mass in St. Marys on the 1st June at 7.00pm. There will be a plenary indulgence for those who attend this Mass. Prayers for the intentions of the Holy Father. Refreshments will be served in Bethany after the Mass.</p>
+<h2>EUCHARISTIC ADORATION</h2>
+<p>will take place in St. Mary&#x27;s church on Thursdays from 1.00pm-6.00pm.</p>
+<p>The daily May rosaries continue at 7.00pm every day at the grottos at St. Mary&#x27;s and St. Finlough&#x27;s. Everybody welcome.</p>
+<h2>THE ALL IRELAND ROSARY RALLY TO KNOCK</h2>
+<p>Bus departing St Mary&#x27;s, Limavady on Saturday 6th June at 8am. Bring a packed lunch.</p>
+<p>Anyone interested please leave your name and number at the parish office or contact Mairead Peoples at <a href="tel:+3532877722121" style="color:#1a6b6b;">028 777 22121</a>.</p>
+<p>![img-30.jpeg](img-30.jpeg)</p>
+<h2>40TH ANNIVERSARY OF ST. FINLOUGH&#x27;S HALL</h2>
+<p>on Saturday 30th May after 6.00pm Mass</p>
+<p>Tea and refreshments will be served in the Hall Admission: free.</p>
+<p>All welcome to attend.</p>
+<p>![img-31.jpeg](img-31.jpeg)</p>
+<p>Rosary on Benone Beach at 3.00pm on Sunday 17 May. All welcome.</p>
+<h2>Limavady Parish</h2>
+<h2>CEMETERY SUNDAYS 2026</h2>
+<p>Roemill 6.00pm Sunday 31 May 2026</p>
+<p>Christ the King 6.00pm Sunday 7 June 2026</p>
+<p>St. Mary&#x27;s 6.00pm Sunday 21 June 2026</p>
+<p>St. Finlough&#x27;s 3.00pm Sunday 28 June 2026</p>
+<p>Please bring Holy Water to sprinkle on the graves of your loved ones.</p>
+</section>
+<section id="ocr-page-15">
+<h3 id="ocr-page-heading-15" class="ocr-page-heading">PAGE 15</h3>
+<p>Melmount (&amp;amp; Camus)</p>
+<p><a href="https://www.melmountparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.melmountparish.com</a></p>
+<h1>Charity Gift Aid Declaration — multiple donation</h1>
+<h2>Boost your donation by 25p of Gift Aid for every £1 you donate</h2>
+<p>Gift Aid is reclaimed by the charity from the tax you pay for the current tax year. Your address is needed to identify you as a current UK taxpayer.</p>
+<h2>In order to Gift Aid your donation you must tick the box below:</h2>
+<p>☐ I want to Gift Aid my donation of £<strong>_</strong>___ and any donations I make in the future or have made in the past 4 years to:</p>
+<p><strong>Name of Charity</strong> <strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong>__</p>
+<p>I am a UK taxpayer and understand that if I pay less Income Tax and/or Capital Gains Tax than the amount of Gift Aid claimed on all my donations in that tax year it is my responsibility to pay any difference.</p>
+<p><strong>My Details</strong></p>
+<p>Title <strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong> First name or initial(s) <strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong></p>
+<p>Surname <strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong>__</p>
+<p>Full Home address</p>
+<p><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong>____</p>
+<p><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong>____</p>
+<p><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong>____</p>
+<p>Postcode <strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong> Date <strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong><strong>_</strong></p>
+<h2>Please notify the charity if you:</h2>
+<p>- want to cancel this declaration</p>
+<p>- change your name or home address</p>
+<p>- no longer pay sufficient tax on your income and/or capital gains</p>
+<p>If you pay Income Tax at the higher or additional rate and want to receive the additional tax relief due to you, you must include all your Gift Aid donations on your Self-Assessment tax return or ask HM Revenue and Customs to adjust your tax code.</p>
+</section>
+<section id="ocr-page-16">
+<h3 id="ocr-page-heading-16" class="ocr-page-heading">PAGE 16</h3>
+<p>Moville</p>
+<p><a href="https://movilleparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://movilleparish.com</a></p>
+<h1>The Parish of Moville</h1>
+<p>St Pius X, Moville  St Mary&#x27;s, Ballybrack</p>
+<p>![img-32.jpeg](img-32.jpeg)</p>
+<p>St Columba&#x27;s, Ballinacrae  St Joseph&#x27;s Oratory, Shrove</p>
+<p>Parish Priest: Fr Colm O&#x27;Doherty (074) 9382057</p>
+<p>Parish Office: (074) 9382057/0899421375</p>
+<p>emails: <a href="mailto:movilleparish@derrydiocese.org" style="color:#1a6b6b;">movilleparish@derrydiocese.org</a></p>
+<p><a href="mailto:movilleparish@gmail.com" style="color:#1a6b6b;">movilleparish@gmail.com</a></p>
+<p>Bulletin email address: <a href="mailto:movillebulletin@gmail.com" style="color:#1a6b6b;">movillebulletin@gmail.com</a></p>
+<p>Parish website: <a href="https://www.movilleparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.movilleparish.com</a></p>
+<h1>CALENDAR FOR THE WEEK AHEAD</h1>
+<p>Sunday 17th World Communications Day. Forty days after his Resurrection, Christ ascends into glory, and where he, the head, has gone before us, we, his body, are called to follow in hope. In Christ our human nature has entered heaven, and so today&#x27;s feast gives us the promise and the secure hope of our salvation.</p>
+<p>Monday 18th St John I, pope and martyr. Elected pope in 523, he was the first bishop of Rome to visit Constantinople. He was caught up in the conflict generated by the Arian controversies and was imprisoned in Ravenna, where he died of starvation and thirst in 526.</p>
+<p>Wednesday 20th St Bernardine of Siena (1380-1444). A Franciscan preacher, who promoted devotion to the Holy Name and to St Joseph.</p>
+<p>Thursday 21st St Christopher Magallanes and companions, martyrs. Twenty-five lay people and priests executed in Mexico in 1927.</p>
+<p>As part of the Novena for Vocations being held in the diocese, there will be a Holy Hour this evening in St Pius X Church at 7.30pm. (See poster in the porch for the other venues.)</p>
+<p>Friday 22nd St Rita of Cascia (1381-1457). She was married for eighteen years. Sometime after the death of her husband, an ill-tempered and abusive man, she entered a convent and spent forty years in prayer and charity and in working for peace in the region.</p>
+<p>Saturday 23rd First Communion for pupils of Scoil Eoghain at 11am in St Pius X</p>
+<p>Sunday 24th 11.30am Mass will be celebrated in Ballinacrae.</p>
+<p>Mass this week in St Pius X: Monday to Friday 10am. Saturday 6.30pm; Sunday 10am.</p>
+<p>Confessions in St. Pius X Church: Saturday 5.45pm to 6.15pm.</p>
+<p>The Rosary and the Divine Mercy Chaplet will be recited in St. Pius X Church, Moville, at 7.30 pm every day, from Sunday – Friday (except Thursday). Adoration of the Blessed Sacrament on Monday, 2-9pm; Wednesday, 6-9pm.</p>
+<p>We offer our sympathy to the families and friends of Michael Joseph Breslin, Carndonagh who died recently. May he rest in peace.</p>
+<p>Baptism: We welcome into God&#x27;s Family Sadie Fiona McGinty, Derry and Thomas Michael Kelly, London who were baptised recently.</p>
+<p>Thank you for your generous financial support to the parish in the past week, which amounted to €3253 and for a donation €50.</p>
+</section>
+<section id="ocr-page-17">
+<h3 id="ocr-page-heading-17" class="ocr-page-heading">PAGE 17</h3>
+<p>Prayer for Vocations: On Ascension Sunday we celebrate World Communications Day. We pray for those who will be called as priests to preach the Gospel, to communicate the Good News of God&#x27;s love as God reveals it to us in His Word and in the person of Jesus Christ. We pray to the Lord.</p>
+<p>Greencastle Community Centre (9381054) <a href="mailto:info@greencastlecentre.ie" style="color:#1a6b6b;">info@greencastlecentre.ie</a> – Pickleball morning sessions every Thursday at 11am (€5). Completed pottery items can be collected in the Centre. Gwyneth &amp;amp; Sarah’s Summer Camps on Wednesday 8 and 15 July from 10am to 1pm. Call 0834627073 to book. D:Light Kids Dance &amp;amp; Acrobatics on Wednesdays at 5.15pm Call <a href="tel:+353873827854" style="color:#1a6b6b;">0873827854</a> to book</p>
+<p>The Diocese of Derry Three-Day Pilgrimage to Lough Derg takes place from Friday 24 July to Sunday 26 July. Lough Derg continues to welcome people seeking prayer, peace, reflection and renewal in the midst of busy lives. A bus will travel from St Eugene&#x27;s Cathedral, via Strabane and Lifford. Cost: £95/€110 including bus transport. You are welcome, of course, to use your own means of transport. Booking form and full details available at: derrydiocese/lough-derg</p>
+<p>Lough Derg will host their Day of Friendship and Prayer this Wednesday, 20 May. This special annual event promotes Christian unity. Archbishop Eamon Martin and Archbishop John McDowell will join Fr La Flynn, Prior of Lough Derg, for a day of spirituality, friendship and reflection. The day begins at 10am, finishing at 3pm on Station Island, an oasis of calm &amp;amp; peace with over 15,000 years of history. Admission fee of €25 includes boat fare, refreshments and lunch. Advance booking is essential. <a href="https://www.loughderg.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.loughderg.org</a> <a href="mailto:info@loughderg.org" style="color:#1a6b6b;">info@loughderg.org</a> tel. 0(0353) 71 9861518. See Lough Derg’s programme of events for 2026 in the porch of the church.</p>
+<p>Music continues on Thursday evenings at 8pm in Moville Men’s Shed. Love Music? Just Show Up! Singers, players, and socialisers alike are all welcome for a relaxing evening at one of the few Shed activities open to both men and women.</p>
+<p>The Sisters from the Apostles of the Sacred Heart of Jesus based in Waterford will lead a lady’s weekend retreat in the Carmelite Retreat Centre, Termonbacca, Derry, entitled ‘In the Upper Room with Mary’, from Friday 22 to Sunday 24 May, Pentecost weekend. The cost of the weekend including accommodation is £90. For booking and queries call Aoife on 04871262512 or email <a href="mailto:termonbaccaderry@ocd.ie" style="color:#1a6b6b;">termonbaccaderry@ocd.ie</a></p>
+<p>As part of Bealtaine Festival, Moville Library will have a ‘Branching Out - Discover Your Family Story’ on Wednesday 20 May. The Maritime Museum (9124613/<a href="mailto:museum@donegalcoco.ie" style="color:#1a6b6b;">museum@donegalcoco.ie</a>) will hold a Reminiscence Session on Friday 22 May at 11am. Just dop in to either event.</p>
+<p>An Ecumenical Evening of Prayer and Praise takes place in the Methodist Hall on Sunday 24 May at 7.30pm. All welcome.</p>
+<p>Fr O&#x27;Doherty hopes to attend the Sick and Housebound next week as follows</p>
+<p>Monday 18 May – Moville Town Area from 11am.</p>
+<p>Wednesday 20 May – Terryrone, Gulladuff and Ballinacrae Area from 11am.</p>
+<p>Thursday 21 May – Carnagarve, Ballybrack, Greencastle and Shrove from 11am.</p>
+<p>Safeguarding If you have any concerns with regards to Safeguarding children or adults, please contact Marie O&#x27;Kane, The Diocesan Designated Liaison Person at 00447596500793 or <a href="mailto:dlp@derrydiocese.org" style="color:#1a6b6b;">dlp@derrydiocese.org</a>. Local Safeguarding Representatives are Mary McGranaghan and Bridin Hannaway</p>
+<p>Congratulations to the children from Scoil Cholmcille NS and Gaelscoil Cóis Feabhail who celebrated their First Holy Communion on Saturday in St Mary&#x27;s, Ballybrack. Thank you to the teachers and to all who helped them prepare for this special moment on their faith journey, and we look forward to them becoming regular members of our Church family each week in the years ahead. May God bless them and protect them always.</p>
+</section>
+<section id="ocr-page-18">
+<h3 id="ocr-page-heading-18" class="ocr-page-heading">PAGE 18</h3>
+<p>Sion Mills</p>
+<p><a href="http://www.parishofsionmills.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://www.parishofsionmills.com</a></p>
+<h1>PRAYERS FOR PROTECTION AND BLESSING</h1>
+<p>Psalm 91</p>
+<p>1 Whoever dwells in the shelter of the Most High</p>
+<p>will rest in the shadow of the Almighty. [a]</p>
+<p>2 I will say of the LORD, &quot;He is my refuge and my fortress,</p>
+<p>my God, in whom I trust.&quot;</p>
+<p>3 Surely he will save you</p>
+<p>from the fowler&#x27;s snare</p>
+<p>and from the deadly pestilence.</p>
+<p>4 He will cover you with his feathers,</p>
+<p>and under his wings you will find refuge;</p>
+<p>his faithfulness will be your shield and rampart.</p>
+<p>5 You will not fear the terror of night,</p>
+<p>nor the arrow that flies by day,</p>
+<p>6 nor the pestilence that stalks in the darkness,</p>
+<p>nor the plague that destroys at midday.</p>
+<p>7 A thousand may fall at your side,</p>
+<p>ten thousand at your right hand,</p>
+<p>but it will not come near you.</p>
+<p>8 You will only observe with your eyes</p>
+<p>and see the punishment of the wicked.</p>
+<p>9 If you say, &quot;The LORD is my refuge,&quot;</p>
+<p>and you make the Most High your dwelling,</p>
+<p>10 no harm will overtake you,</p>
+<p>no disaster will come near your tent.</p>
+<p>11 For he will command his angels concerning you</p>
+<p>to guard you in all your ways;</p>
+<p>12 they will lift you up in their hands,</p>
+<p>so that you will not strike your foot against a stone.</p>
+<p>13 You will tread on the lion and the cobra;</p>
+<p>you will trample the great lion and the serpent.</p>
+<p>14 &quot;Because he [b] loves me,&quot; says the LORD, &quot;I will rescue him;</p>
+<p>I will protect him, for he acknowledges my name.</p>
+<p>15 He will call on me, and I will answer him;</p>
+<p>I will be with him in trouble,</p>
+<p>I will deliver him and honor him.</p>
+<p>16 With long life I will satisfy him</p>
+<p>and show him my salvation.&quot;</p>
+</section>
+<section id="ocr-page-19">
+<h3 id="ocr-page-heading-19" class="ocr-page-heading">PAGE 19</h3>
+<p>Our Lady, Queen of Ireland, we give your our lives, our people, our ministry, our families for your protection and help.</p>
+<h2>The Memorare</h2>
+<p>REMEMBER, O most gracious Virgin Mary, that never was it known that anyone who fled to thy protection, implored thy help, or sought thy intercession was left unaided. Inspired with this confidence, I fly to thee, O Virgin of virgins, my Mother; to thee do I come; before thee I stand, sinful and sorrowful. O Mother of the Word Incarnate, despise not my petitions, but in thy mercy hear and answer me. Amen.</p>
+<h2>From Pope Francis</h2>
+<p>Tonight, before falling asleep, think about when we will return to the street,</p>
+<p>When we hug again.</p>
+<p>When all the shopping together will seem like a party.</p>
+<p>Let&#x27;s think about when the coffees will return to the cafes.</p>
+<p>Let&#x27;s think about the small talk, the photos close to each other.</p>
+<p>We think about when it will all be a memory, but &quot;normal&quot; will seem an unexpected and beautiful gift.</p>
+<p>We will love everything that has so far seemed futile to us.</p>
+<p>Every second will be precious.</p>
+<p>Swims at the sea.</p>
+<p>Watching the sun until late.</p>
+<p>Sunsets, toasts, laughter.</p>
+<p>We will go back to laughing together.</p>
+<p>Strentht and courage!</p>
+<p>See you soon!</p>
+<p>#Papafrancesco #estateacasa #pope #pope francis</p>
+</section>
+<section id="ocr-page-20">
+<h3 id="ocr-page-heading-20" class="ocr-page-heading">PAGE 20</h3>
+<p>St Eugene&#x27;s Cathedral (Templemore)</p>
+<p><a href="https://steugenescathedral.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://steugenescathedral.com</a></p>
+<h1>The Little Way Novena in honour of St Therese of Lisieux</h1>
+<p>&quot;My peace consists in remaining little.&quot;</p>
+<p>&quot;It is not the greatness of our actions that matters, but the love with which we do them.&quot;</p>
+<p>(Extract from a Story of a Soul: The Autobiography of St Thérèse)</p>
+<p>![img-33.jpeg](img-33.jpeg)</p>
+<p>At 3.00pm today (Sunday), our Little Way Novena will conclude with a ceremony of prayer and thanksgiving. We sincerely thank everyone who contributed to the success of the Novena — our speakers, readers, singers, candle sellers, and all who work in the Cathedral, Parochial House, and grounds. The witness of faith and commitment throughout the Novena has been truly uplifting.</p>
+<p>Through the intercession of St Thérèse, we have opened our hearts to God and entrusted to Him our intentions. You are warmly invited to bring a rose to this afternoon&#x27;s service as a symbol of your prayer at this time. St Thérèse candles will also be blessed during the ceremony.</p>
+<h1>A short reflection on today&#x27;s Gospel Matthew 28:16-20</h1>
+<p>In today&#x27;s Gospel, the risen Jesus meets His disciples on the mountain and gives them their mission: &quot;Go, therefore, and make disciples of all the nations.&quot; Even after witnessing the Resurrection, some of the disciples still doubted. Yet Jesus still entrusted them with the work of building His Church. This reminds us that God does not wait for perfect people before calling them to serve Him. He works through ordinary people who are willing to follow Him in faith.</p>
+<p>Jesus also gives a beautiful promise: &quot;I am with you always, yes to the end of time.&quot; As we face the challenges and uncertainties of daily life, we are never alone. The Lord walks with us, strengthens us through prayer and the sacraments, and sends us out to share His love by the witness of our lives. May we have the courage to live as faithful disciples and to bring the hope of the Gospel to others.</p>
+<p>Prayer for Vocations to the Priesthood: On Ascension Sunday we celebrate World Communications Day. We pray for those who will be called as priests to preach the Gospel, to communicate the Good News of God&#x27;s love as God reveals it to us in His Word and in the person of Jesus Christ.</p>
+<p>The St Dymphna Mass with Anointing of the Sick will be celebrated at St Eugene&#x27;s Cathedral on Tuesday 19th May at 7.30pm. This Mass is to give thanks to God for positive mental health and to pray for those who are struggling with mental health issues and those who care for them.</p>
+<p>St. Eugene&#x27;s Cathedral 3 Day Pilgrimage to Knock &amp;amp; Co Mayo 6th – 8th September 2026. Cost £300 per person sharing. For more information and full itinerary contact Anne Marie Hickey, Pastoral Coordinator on <a href="mailto:amhickey@derrydiocese.org" style="color:#1a6b6b;">amhickey@derrydiocese.org</a>, phone the Parish Office on <a href="tel:+3532871262894" style="color:#1a6b6b;">028 71262894</a> or call into the Parish Office.</p>
+<p>Derry Diocesan Pilgrimage to Knock Shrine will take place on Saturday 6th June 2026. Buses will leave St Eugene&#x27;s Cathedral, Derry, at 8.00am: cost £50, which includes dinner in Knock House Hotel following the conclusion of the Mass in the Basilica. For further information, please contact Karen in the parish office at St Eugene&#x27;s on 028 7126 2894 or by email at <a href="mailto:cathedral@derrydiocese.org" style="color:#1a6b6b;">cathedral@derrydiocese.org</a>. Full schedule to follow.</p>
+<h1>Sympathy</h1>
+<p>We offer our sympathy to the family and friends of:</p>
+<p>Meta Harkin</p>
+<p>Pauline Kelly</p>
+<p>Clare Hunter</p>
+<p>Jim McDaid</p>
+<p>Marie Cowan</p>
+<p>May they rest in peace</p>
+<h1>Anniversaries</h1>
+<p>Please pray for the repose of the souls of:</p>
+<p>Eileen Kyle</p>
+<p>Peter Kyle</p>
+<p>William McGeehan</p>
+<p>Mary McGeehan</p>
+<p>Dermot Francis</p>
+<p>Grace Moran</p>
+<p>Gertrude Hegarty</p>
+<p>Mary Kelly</p>
+<p>May they rest in peace</p>
+<h1>Baptisms</h1>
+<p>We welcome as members of God&#x27;s family:</p>
+<p>Céad Caolán Dunnion</p>
+<p>Mary Teresa Sweeney</p>
+<p>Grace Kathleen Gorman</p>
+<p>Rossa William Cusack</p>
+<h1>Collection</h1>
+<p>Last week&#x27;s collection: £6,307</p>
+<p>Parish Development: £1,255</p>
+<p>Thank you for your generosity</p>
+<h1>Thank you</h1>
+<p>Fr Farren acknowledges with thanks the following donations for:</p>
+<p>Cathedral Funds: £60, £40</p>
+<p>Sr Orla&#x27;s Charity: £50</p>
+<p>Gaza Appeal: £20</p>
+<p>Sight Savers: £10, £40, £50, £50</p>
+<p>Smile Train: £40, £50, £50</p>
+<p>Mary&#x27;s Meals: £60, £100</p>
+<p>Trocaire: £10</p>
+<h1>Readers for 23rd / 24th May</h1>
+<p>06.15 pm Roisin Rice Cutter</p>
+<p>07.30 pm Niamh Kehoe</p>
+<p>09.30 am Rosemary Finan</p>
+<p>11.00 am St Mary&#x27;s College</p>
+<p>12.30 pm Kevin Finan</p>
+<p>07.00 pm Anna Begley</p>
+<p>As the pilgrims of St Eugene&#x27;s Parish begin their pilgrimage to Assisi this weekend, we ask that they keep us in their prayers. We pray that God will remain with them throughout this holy journey and guide them always according to His will. May He shelter them under His protection by day, grant them the light of His grace by night, and, as their companion along the way, bring them safely to their destination.</p>
+<p>May Carlo Acutis, whose life of faith and devotion continues to inspire so many, pray for our pilgrims and lead them ever closer to the heart of Christ.</p>
+<p>St Carlo Acutis, pray for us.</p>
+<p>Diocese of Derry Lough Derg Pilgrimage 2026: The Diocese of Derry Three-Day Pilgrimage to Lough Derg will take place from Friday 24th July to Sunday 26th July 2026. Cost: £95 / £110 including bus transport. You are welcome, of course, to use your own means of transport. Booking form and full details available at: derrydiocese/lough-derg</p>
+</section>
+<section id="ocr-page-21">
+<h3 id="ocr-page-heading-21" class="ocr-page-heading">PAGE 21</h3>
+<p>Job Opportunity - Derry Diocesan Trust: Caretaker, St Joseph&#x27;s Hall, Omagh: 20 Hours Per Week. One-year fixed term contract (with possibility of extension). Days and times in agreement with Parish Priest and to facilitate operational needs of the parish and may include evening and weekend work. For job description and application pack please telephone (028) 7126 2302 or email: <a href="mailto:recruitment@derrydiocese.org" style="color:#1a6b6b;">recruitment@derrydiocese.org</a>. Completed applications must be returned to: Personnel, Bishop&#x27;s House, St Eugene&#x27;s Cathedral, Francis Street, Derry, BT48 9AP or via email to <a href="mailto:recruitment@derrydiocese.org" style="color:#1a6b6b;">recruitment@derrydiocese.org</a> no later than 12.00 noon on Friday 29 May 2026. Derry Diocesan Trust is an Equal Opportunities Employer. We welcome applications from all men and women and from members of all communities.</p>
+<p>The Sisters from the Apostles of the Sacred Heart of Jesus based in Waterford will lead a ladies weekend retreat in the Carmelite Retreat Centre, Termonbacca, Derry, entitled &#x27;In the Upper Room with Mary&#x27;, from Friday 22nd- Sunday 24th May, Pentecost weekend. The cost of the weekend including accommodation is £90. For booking and queries call Aoife on <a href="tel:+3532871262512" style="color:#1a6b6b;">02871262512</a> or email <a href="mailto:termonbaccaderry@ocd.ie" style="color:#1a6b6b;">termonbaccaderry@ocd.ie</a></p>
+<p>The Columban Young Adults is a new group for those aged 18 - 30 in the diocese, who are seeking a community of like-minded young adults who have Christ at the centre of their lives. The next event will be a talk and meditation on Marian Devotion on Thursday 21st May, 7.00pm at our Lady of Lourdes Church, Steelstown, delivered by Fr Declan McGeehan. The meditation will be followed by Solemn Benediction and finish with light refreshments.</p>
+<p>Lough Derg will host their Day of Friendship and Prayer this Wednesday, 20th May. This special annual event promotes Christian unity. The day begins at 10am, finishing at 3pm on Station Island, an oasis of calm &amp;amp; peace with over 1500 years of history. Admission fee of €25 includes boat fare, refreshments and lunch. Advance booking is essential. <a href="https://www.loughderg.org" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.loughderg.org</a> <a href="mailto:info@loughderg.org" style="color:#1a6b6b;">info@loughderg.org</a> tel. 0(0353) 71 9861518.</p>
+<p>DEEDS - Supporting The Carer Series. The third talk in our supporting the carer series focuses on how to get a social worker, accessing care and support available for carers. This is a great opportunity! For more information, contact Eilish on 02871 373870 or <a href="mailto:eilish@olt.ie" style="color:#1a6b6b;">eilish@olt.ie</a></p>
+<p>St Eugene&#x27;s Cathedral is monitored by CCTV cameras and by two live streaming cameras. Live streaming can be viewed online at <a href="https://www.churchservices.tv" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.churchservices.tv</a>, <a href="https://www.watchmcnmedia" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.watchmcnmedia</a> or the parish website. The Diocese of Derry Privacy Notice is displayed on the parish website and Cathedral notice board, or you may obtain a copy from the Parish Office.</p>
+<p>Safeguarding Notice: If you have any concerns with regard to the Safeguarding of children within the Church please contact Marie O&#x27;Kane, the Diocesan Designated Liaison Person (DLP) on +447596500793 or email: <a href="mailto:dlp@derrydiocese.org" style="color:#1a6b6b;">dlp@derrydiocese.org</a>.</p>
+<p>Northern Ireland emergency services: PSNI (Police Service of Northern Ireland): 101 Social Services: Gateway Services, Western HSC Trust: 028 7131 4090 (and ask for the Duty Social Worker), Gateway Services, Northern HSC Trust: 028 9442 4459, Regional Emergency Social Work Services: 0800 1979 995. Republic of Ireland emergency services: Garda Siochána Buncrana: 00353 749 320 540 Letterkenny: 00353 749 167 100, TUSLA (ROI) Child and Family Agency: 00353 749 102 233</p>
+<p>Vol 54 No 19</p>
+<p>The Ascension of the Lord</p>
+<p>17th May 2026</p>
+<p>Priests: Fr Paul Farren, Fr Shaun Doherty</p>
+</section>
+<section id="ocr-page-22">
+<h3 id="ocr-page-heading-22" class="ocr-page-heading">PAGE 22</h3>
+<p>St Mary&#x27;s Parish Creggan</p>
+<p><a href="https://www.stmarysparishcreegan.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.stmarysparishcreegan.com</a></p>
+<p>Welcome, Lord Jesus, O welcome.</p>
+<p>Thank you for coming to me.</p>
+<p>Thank you, Lord Jesus,</p>
+<p>O thank you</p>
+<p>For giving yourself to me.</p>
+<p>Make me strong to show your love</p>
+<p>Wherever I may be.</p>
+<p>Be near me, Lord Jesus,</p>
+<p>I ask you to stay</p>
+<p>Close by me forever</p>
+<p>and love me, I pray.</p>
+<p>Bless all of us children</p>
+<p>in your loving care</p>
+<p>And bring us to heaven to live</p>
+<p>with you there.</p>
+<p>I&#x27;m ready now, Lord Jesus,</p>
+<p>To show how much I care.</p>
+<p>I&#x27;m ready now to give your love</p>
+<p>At home and everywhere.</p>
+<p>Amen.</p>
+<p>![img-34.jpeg](img-34.jpeg)</p>
+<p>![img-35.jpeg](img-35.jpeg)</p>
+<p>BAPTISMS Saturday at 5pm Contact the Parish Office 71263152 between 10am-12 noon Mon-Fri</p>
+<p>MARRIAGES At least 3 months notice must be given to the Parish. Contact Parish Office to arrange Pre-Marriage Preparation Course.</p>
+<p>THE WEBCAM: To join us for the live streaming of all Masses via the webcam, log into <a href="https://www.cregganchapel.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.cregganchapel.com</a> or <a href="https://www.churchservies.tv/creggan" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.churchservies.tv/creggan</a>.</p>
+<p>If you have any difficulty accessing the webcam, please contact the parish office on 028 7126 3152 or email <a href="mailto:stmaryscreggan@derrydiocese.org" style="color:#1a6b6b;">stmaryscreggan@derrydiocese.org</a>.</p>
+<p>IF YOU HAVE CONCERNS REGARDING SAFEGUARDING CHILDREN &amp;amp; ADULTS</p>
+<p>in need of protection within the Church, please contact Marie O&#x27;Kane, the Diocesan Designated Liaison Person (DLP) 07596500793 or at <a href="mailto:dlp@derrydiocese.org" style="color:#1a6b6b;">dlp@derrydiocese.org</a> Additional Contact numbers -</p>
+<p>PSNI Tel 101 or Social Services Western SHC Trust Tel <a href="tel:+3532871314090" style="color:#1a6b6b;">02871314090</a> (ask for Duty Social Worker)</p>
+<p>REPUBLIC OF IRELAND: GARDA SÍOCHÁNA, BUNCRANA <a href="tel:+353749320540" style="color:#1a6b6b;">+353749320540</a> OR LETTERKENNY HQ <a href="tel:+353749167100" style="color:#1a6b6b;">+353749167100</a></p>
+<p>TUSLA FAMILY AND CHILD AGENCY, BUNCRANA <a href="tel:+353749320420" style="color:#1a6b6b;">+353749320420</a> OR LETTERKENNY <a href="tel:+353749123672" style="color:#1a6b6b;">+353749123672</a></p>
+<h1>Parish of St. Mary CREGGAN</h1>
+<p>![img-36.jpeg](img-36.jpeg)</p>
+<p>SUNDAY MASS</p>
+<p>Vigil (Saturday)</p>
+<p>6.30 pm</p>
+<p>10.30 am</p>
+<p>12.15 pm</p>
+<p>Solub. Mass</p>
+<p>4.00 pm (every 2nd &amp;amp; 4th Sunday)</p>
+<p>SACRAMENT OF CONFESSION</p>
+<p>Monday - Friday 5.00 pm - 5.30 pm</p>
+<p>Saturday - 10.30 am</p>
+<p>5.30 pm - 6.20 pm</p>
+<p>HOLY DAY MASS</p>
+<p>as announced</p>
+<p>EXPOSITION OF BLESSED SACRAMENT</p>
+<p>(in the Divine Mercy Chapel)</p>
+<p>Sunday 1.30 pm - 6 pm</p>
+<p>Monday 10.30 am - 7 pm</p>
+<p>Tuesday &amp;amp; Friday 7.30 pm</p>
+<p>Tue - Sat 10.30 am - 12 pm</p>
+<p>Fr. Daniel McFaul PP</p>
+<p>Fr. Ignacy Saniuta CC</p>
+<p>PAROCHIAL HOUSE. 1 FANAD DRIVE, DERRY. BT48 9QE</p>
+<p>OFFICE HOURS</p>
+<p>Monday - Friday 10 am - 1 pm</p>
+<p>Tel <a href="tel:+3532871263152" style="color:#1a6b6b;">02871263152</a> - email: <a href="mailto:stmaryscreggan@derrydiocese.org" style="color:#1a6b6b;">stmaryscreggan@derrydiocese.org</a></p>
+<p><a href="https://www.stmaryscreggan.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.stmaryscreggan.com</a></p>
+</section>
+<section id="ocr-page-23">
+<h3 id="ocr-page-heading-23" class="ocr-page-heading">PAGE 23</h3>
+<p>10th May 2026</p>
+<p>6th Sunday of Easter</p>
+<p>![img-37.jpeg](img-37.jpeg)</p>
+<p>Bene Merenti Medal: The Bene Merenti Medal is one of the highest honours that can be bestowed by the Holy Father upon a lay person. The Latin words Bene Merenti mean &quot;well deserved,&quot; reflecting the Church&#x27;s deep appreciation for faithful and generous service.</p>
+<p>We are delighted to announce that Kathleen Doherty has been awarded this high and prestigious Papal honour by Pope Leo XIV. The medal will be conferred on her by Bishop Donal McKeown at the 12.15 pm Mass today Sunday 10th May 2026.</p>
+<p>This papal award recognises Kathleen&#x27;s exceptional dedication, faithful service, and generous commitment to our parish community over many years. Her quiet witness, willingness to serve, and deep faith have enriched the life of our parish in countless ways.</p>
+<p>As a parish, we are immensely proud of Kathleen. With full hearts, we congratulate her and thank her sincerely for all she has done for us as a parish and as a community.</p>
+<p>May her example continue to inspire us all.</p>
+<hr>
+<p>First Holy Communion: We remember in our prayers the P4 children from Holy Child Primary School who will celebrate their First Holy Communion in this Church on Friday 15th May, at 12.30pm Mass.</p>
+<p>The P4 children from St John&#x27;s PS will make their First Holy Communion on Friday 5th June, at 12.30pm Mass. Please keep them in your prayers.</p>
+<p>![img-38.jpeg](img-38.jpeg)</p>
+<p>A Marian Evening of Prayer will be here, in St Mary&#x27;s Church, Creggan, on Wednesday, 27th May. (please note the change of date). The event is hosted by Derry Youth Ministry, who are preparing for their diocesan pilgrimage to Fatima in August of this year. The night will begin at 7:00pm with a rosary procession (outdoors, weather permitting), followed by a short talk on Our Lady and the Eucharist, Adoration, and Benediction. Music will be provided by the Diocesan Youth music group, with refreshments following in the community room. All ages welcome! Contact Bethany at <a href="mailto:bethany.doherty@derrydiocese.org" style="color:#1a6b6b;">bethany.doherty@derrydiocese.org</a> for more details.</p>
+<p>Fr Daniel will be the spiritual director on the Pilgrimage to Lourdes from 3rd until 8th July, 2026. Flights from Derry and full board £899. Contact Maria at <a href="tel:+3532881648357" style="color:#1a6b6b;">02881648357</a> or WhatsApp 07768 395038 for further details.</p>
+<p>ACCORD: There are still a few places available on the June 19th/20th Course being held in the Everglades Hotel, Derry Booking online now at <a href="https://www.accordni.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.accordni.com</a></p>
+<p>Recent Deaths: We offer prayers and sympathy to the family and friends of</p>
+<p>Terence (Don) O&#x27;Donnell Circular Road</p>
+<p>May his soul experience the everlasting love and mercy of God</p>
+<p>Recent Baptisms: We welcome through the Sacrament of Baptism</p>
+<p>Rían Michael Moran, Aniyah Lilly Dorney and Eimhear Margaret Page</p>
+<p>Last Week&#x27;s Collection: £1838 Parish Development £532</p>
+<p>Standing Orders £150 Thank you for your continued support and generosity</p>
+<p>The Annual Diocesan Collection will be taken up at all Masses next weekend</p>
+<hr>
+<p>Prayer for Vocations: In our first reading this weekend we hear about the people of Samaria receiving the Holy Spirit. As we approach Pentecost we pray for a fresh and powerful outpouring of the Holy Spirit on the Church, on the world, on our country, on our parish communities, and on each one of us. May the Spirit fill the hearts and minds of deacons, seminarians, and all those discerning a vocation to the diocesan priesthood, and may many more hear and follow the call to serve the Church as priests.</p>
+<p>The Little Way Novena in St Eugene&#x27;s Cathedral – 9th May to 17th May: Everyone welcome.</p>
+<p>DERRY DIOCESAN PILGRIMAGE TO KNOCK SHRINE will take place on Saturday 6 June 2026. Fr Daniel will be attending the pilgrimage, if you would like to join him, please contact Karen in the parish office at St Eugene&#x27;s on 027 7126 2894 or by email at <a href="mailto:cathedral@derrydiocese.org" style="color:#1a6b6b;">cathedral@derrydiocese.org</a>.</p>
+<p>The Sisters from the Apostles of the Sacred Heart of Jesus based in Waterford will lead a ladies weekend retreat in the Carmelite Retreat Centre, Termonbacca, Derry, entitled &#x27;In the Upper Room with Mary&#x27;, from Friday 22nd- Sunday 24th May, Pentecost weekend. The cost of the weekend including accommodation is £90. For booking and queries call Aoife on <a href="tel:+3532871262512" style="color:#1a6b6b;">02871262512</a> or email <a href="mailto:termonbaccaderry@ocd.ie" style="color:#1a6b6b;">termonbaccaderry@ocd.ie</a></p>
+<p>Derry Youth Fundraising Concert: Derry Youth Ministry will be holding a Fundraising Concert to raise money for their upcoming Fatima Pilgrimage. The concert will take place in St Anne&#x27;s Parish Hall, Brisland Road, Eglinton at 7.30pm. Come and enjoy a great night of entertainment, raffle prizes and light refreshments, all while supporting our young people on their pilgrimage. Tickets are £10, for tickets and more info please call <a href="tel:+3532871264087" style="color:#1a6b6b;">02871264087</a> or email <a href="mailto:ddcc@derrydiocese.org" style="color:#1a6b6b;">ddcc@derrydiocese.org</a></p>
+<p>The Annual Service of Intercession for the Dead will takes place in the City Cemetery on Sunday, 7th June at 3.00 pm</p>
+</section>
+<section id="ocr-page-24">
+<h3 id="ocr-page-heading-24" class="ocr-page-heading">PAGE 24</h3>
+<p>Star of the Sea (Magilligan)</p>
+<p><a href="https://starofttheseacatholic.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://starofttheseacatholic.com</a></p>
+<h1>Resurrection</h1>
+<p>On wings of living light</p>
+<p>At earliest dawn of day</p>
+<p>Came down the angel bright</p>
+<p>And rolled the stone away</p>
+<p>Your voices raise</p>
+<p>With one accord</p>
+<p>To bless and praise</p>
+<p>Your risen Lord</p>
+<p>Ye children of the light</p>
+<p>Arise with Him, arise</p>
+<p>See how the Daystar bright</p>
+<p>Is burning in the skies</p>
+<p>Leave in the grave beneath</p>
+<p>The old things passed away</p>
+<p>Buried with Him in death</p>
+<p>O live with Him today</p>
+<p>We sing thee Lord Divine</p>
+<p>With all our hearts and powers</p>
+<p>For we are ever thine</p>
+<p>And thou art ever ours.</p>
+<p>![img-39.jpeg](img-39.jpeg)</p>
+<p>Thank you. Keep it up!</p>
+<p>During Lent it was most encouraging to see how many parishioners attended weekday Mass,</p>
+<p>If you are free to do so, please come along to weekday Mass because by doing so you cannot imagine the number of graces and blessing that you bring upon yourself, your loved ones, the sick and all who stand in need of God&#x27;s help, protection, comfort and healing.</p>
+<p>Save us, Saviour of the world, for by your Cross and Resurrection you have set us free.</p>
+<h1>Parish of Faughanvale &amp;amp; Lower Cumber</h1>
+<p>5th April 2026</p>
+<p>Easter Sunday</p>
+<p>Welcome to parish Mass today.</p>
+<p>The priests of the parish wish you a happy and holy Easter.</p>
+<p>Website: <a href="https://www.starofttheseacatholic.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.starofttheseacatholic.com</a></p>
+<p>![img-40.jpeg](img-40.jpeg)</p>
+<p>Star of the Sea, Faughanvale</p>
+<p>![img-41.jpeg](img-41.jpeg)</p>
+<p>St Mary&#x27;s, Tamnaherin</p>
+<p>Sunday Masses:</p>
+<p>Vigil: 5:00 p.m.</p>
+<p>Sunday: 12:00 noon</p>
+<p>Sunday Masses:</p>
+<p>Vigil: 6:30 p.m.</p>
+<p>Sunday: 10:00 a.m.</p>
+<p>Weekday Mass:</p>
+<p>Tuesday: No Mass Today.</p>
+<p>Friday: 7:30 p.m.</p>
+<p>Rosary: 7:00 p.m.</p>
+<p>Weekday Mass:</p>
+<p>Monday: 10:00 a.m.</p>
+<p>Parish Office: Tel: 028 7181 2358 (Office hours: 9:30 a.m. - 2:00 p.m.)</p>
+<p>Email: <a href="mailto:stanneshall55@yahoo.com" style="color:#1a6b6b;">stanneshall55@yahoo.com</a></p>
+<p>Parish Website: <a href="https://www.starofttheseacatholic.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.starofttheseacatholic.com</a></p>
+<p>Rev. Noel F. Mc Dermott P.P. Tel: 028 7181 0235 (Mobile: 07855 164 324)</p>
+<p>Monsignor Andrew Dolan (Priest in Residence)</p>
+</section>
+<section id="ocr-page-25">
+<h3 id="ocr-page-heading-25" class="ocr-page-heading">PAGE 25</h3>
+<h1>First Anniversary Mass</h1>
+<p>The first anniversary Mass for the late Lisa McGonigle will be offered in Star of the Sea, Faughanvale, on Saturday next (11th) at 5:00 p.m.</p>
+<p>The first anniversary Mass for the late Mary &#x27;O&#x27; Lynch will be offered in Saint Mary&#x27;s, Tamnaherin on Sunday next (12th) at 10:00 a.m.</p>
+<h1>Star of the Sea and Saint Mary&#x27;s</h1>
+<p>Our churches are open every day from 8:00 a.m. until 8:00 p.m. for public worship and private prayer and devotion.</p>
+<h1>Thank You</h1>
+<p>Sincere thanks to our Sacristans Brian and Angela and the cleaning teams who ensure that our churches are kept clean and tidy.</p>
+<h1>Collecting Your Parish Envelopes</h1>
+<p>Thanks to all who have already collected their envelopes from the church porch.</p>
+<p>Some envelopes are still available in the porches of both churches and you can collect them any day from 8:00 a.m. until 8:00 p.m. Thank you for your ongoing and generous support.</p>
+<h1>Palms on Sunday Last</h1>
+<p>Sincere thanks to John King for making available a great number of Palm branches for parishioners last weekend.</p>
+<h1>Trócaire Lenten Appeal</h1>
+<p>Your Trócaire donation can be left at the Parish Office, Star of the Sea or Saint Mary&#x27;s. To assist the counters please change all coin into notes and use the envelope in your Trócaire box.</p>
+<p>What we give to the poor we give to God and what we give to God we never miss.</p>
+<h1>Parish Baptism Dates In April And May</h1>
+<p>Easter Monday 6th April: St Mary&#x27;s at 10:45 a.m.</p>
+<p>Saturday 11th April: Saint Mary&#x27;s at 1:30 p.m.</p>
+<p>Saturday 18th April: Star of the Sea at 3:00 p.m.</p>
+<p>Saturday 2nd May: Star of the Sea at 3:00 p.m.</p>
+<p>Saturday 23rd May: Saint Mary&#x27;s at 1:30 p.m.</p>
+<p>Please collect a Baptism Card from the church porch, select the date of your choice, complete the card and put it in the letterbox in the sacristy door.</p>
+<p>Remember to include a contact number. Thank you!</p>
+<h1>Thank You</h1>
+<p>Sincere thanks to everyone who participated in the ceremonies of Holy Week and Easter. Your spiritual participation and assistance are greatly appreciated.</p>
+<h1>Next Sunday...</h1>
+<p>Next Sunday is Divine Mercy Sunday.</p>
+<p>Jesus, I trust in you.</p>
+<h1>Coming Home</h1>
+<p>If you have been away from the Church or have stopped going to Mass, please remember that you are always welcome back again and that the parish community prays for you and your speedy return each time we gather for Holy Mass.</p>
+<p>Check out chnetwork.org for accounts of others from all countries, religions and backgrounds who have come home to the Catholic Church.</p>
+<h1>Practical Christianity</h1>
+<p>- Please continue to light a candle for an end to war.</p>
+<p>- Remember to return your Trócaire box in the next few days.</p>
+<h1>Parish Cemeteries</h1>
+<p>Please note that no surrounds of any kind are permitted in the cemeteries of this parish.</p>
+<h1>Dates for Your Diary</h1>
+<p>Thursday 30th April at 7:00 p.m.: Rosary and blessing of the May Well, Ballygudden Road. All welcome. Please remember to wear suitable footwear for crossing the field.</p>
+<p>Saturday 9th May: First Holy Communion in Star of the Sea at 10:00 a.m. (Broadbridge Primary School)</p>
+<p>Saturday 9th May: First Holy Communion in Star of the Sea at 12:00 noon (Faughanvale Primary School)</p>
+<p>Sunday 10th May: First Holy Communion in Saint Mary&#x27;s at 10:00 a.m. (Our Lady of Fatima Primary School)</p>
+<p>Wednesday 13th May: Feast of Our Lady of Fatima. Mass at 10:00 a.m. in Saint Mary&#x27;s.</p>
+<p>Monday 8th June: 7:30 p.m. Mass for the two hundredth anniversary of the opening of Mullabuoy Chapel at the Mullabuoy site including the annual blessing of the graves during Mass. All welcome. Please be in place by 7:15 p.m.</p>
+<h1>Faughanvale Credit Union: For You, Not Profit</h1>
+<p>Opening hours: Monday, Tuesday and Wednesday from 9:30 a.m. until 4:00 p.m.</p>
+<p>Friday from 9:30 a.m. until 5:00 p.m.</p>
+<p>Saturday from 10:00 a.m. until 12:00 noon.</p>
+<p>Thursday: Closed.</p>
+<p>Phone: 028 7181 0856.</p>
+<p>Email: <a href="mailto:office@faughanvalecu.com" style="color:#1a6b6b;">office@faughanvalecu.com</a></p>
+<p>Website: <a href="https://www.faughanvalecreditunion.co.uk" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">www.faughanvalecreditunion.co.uk</a></p>
+</section>
+<section id="ocr-page-26">
+<h3 id="ocr-page-heading-26" class="ocr-page-heading">PAGE 26</h3>
+<p>Steelstown</p>
+<p><a href="http://www.steelstownparish.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://www.steelstownparish.com</a></p>
+<p>![img-42.jpeg](img-42.jpeg)</p>
+<h1>PRAYING FOR ONE ANOTHER</h1>
+<p>Please prayer for the intentions of all those who live or work in the areas listed each day.</p>
+<p>Jesus, help us to make you the centre of our lives. Through the power of your Holy Spirit, help us to repent of the wrongs we have done, that we may be refreshed in spirit and renewed in hope.</p>
+<p>Through that same Spirit, help us to be good to one another and to be faithful to you, as we live out our vocations: married, single, priest, religious, so that our homes and our parish may be filled with your presence and be powerful sources of your peace. Amen.</p>
+<p>Our Lady of Lourdes, Pray for us</p>
+<p>St Bernadette, Pray for us</p>
+<p>Sunday 21 March Portlock Place; Boomhall Park</p>
+<p>Monday 22 March Racecourse Road East</p>
+<p>Tuesday 23 March Rockfield</p>
+<p>Wednesday 24 March Springfield Road South</p>
+<p>Thursday 25 March St Elmos; Greenhaw Manor</p>
+<p>Friday 26 March Steelstown Gdns; Steelstown Village; Marion Hall</p>
+<p>Saturday 27 March Tara Park; Steelstown Road</p>
+<p>Parish prayer leaflets are available at the back of the Church.</p>
+</section>
+<section id="ocr-page-27">
+<h3 id="ocr-page-heading-27" class="ocr-page-heading">PAGE 27</h3>
+<h1>LENT 2021: 40 DAYS TOGETHER WITH JESUS</h1>
+<p>Lent is an opportunity to pray, fast and give as a Parish community with other Christians throughout the world. You are invited to join the Parish Lenten programme each day.</p>
+<p>It is an invitation to come together and closer to Jesus for these forty days.</p>
+<h1>Weekday Masses</h1>
+<p>Monday to Friday 7.45am, 10am, Saturday 10am.</p>
+<p>Each day we will pray for the members of our Parish community in different streets. The list will be printed in the Newsletter, on the facebook page and on prayer cards at the back of the Church.</p>
+<h1>Evening Session</h1>
+<p>There will be prayer at 7pm for half an hour:</p>
+<p>Monday Time of Adoration</p>
+<p>Wednesday Scripture Reflection: Taking the time led by Thornhill ministries</p>
+<p>Friday Stations of the Cross</p>
+<h1>Lenten Talks</h1>
+<p>Every Thursday Fr Columba will give a series of talks, <em>Little by Little</em>. He will focus on how we live our faith day by day and little by little. These talks can be accessed on our Facebook page every Thursday.</p>
+<h1>Bishop McKeown</h1>
+<p>On the Tuesdays of Lent at 7pm Bishop Donal is hosting a series of conversations with members of the wider community reflecting on Lent and our present reality.</p>
+</section>
+<section id="ocr-page-28">
+<h3 id="ocr-page-heading-28" class="ocr-page-heading">PAGE 28</h3>
+<p>Missing &amp;amp; Online-Only Bulletins</p>
+<p>The following parishes do not have a downloadable PDF bulletin. Click a link to view the bulletin online.</p>
+<p>- Aghyaran: <a href="https://www.parishofaghyaran.com/news.html" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.parishofaghyaran.com/news.html</a></p>
+<p>- Ardstraw East: <a href="http://parishofardstraweast.com/parishnews.html" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://parishofardstraweast.com/parishnews.html</a></p>
+<p>- Ballinascreen (&amp;amp; Desertmartin amalgamated): <a href="https://www.parishofballinascreen.com" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.parishofballinascreen.com</a></p>
+<p>- Bellaghy: <a href="https://bellaghyparish.com/wp-content/uploads/2026/05/Newsletter-17-May-2026-1.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://bellaghyparish.com/wp-content/uploads/2026/05/Newsletter-17-May-2026-1.pdf</a></p>
+<p>- Buncrana: <a href="https://www.buncranaparish.com/pdf/170526.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.buncranaparish.com/pdf/170526.pdf</a></p>
+<p>- Camus: <a href="https://camusparish.com/" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://camusparish.com/</a></p>
+<p>- Claudy: <a href="http://parishofclaudy.com/onewebmedia/Diocese" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://parishofclaudy.com/onewebmedia/Diocese</a> of Derry - GDPR Guide for Parishes v1 (Feb2019).pdf</p>
+<p>- Clonleigh (Strabane Pastoral Area): <a href="https://clonleighparish.com/2026/05/15/9417/" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://clonleighparish.com/2026/05/15/9417/</a></p>
+<p>- Clonmany: <a href="https://clonmanyparish.ie/wp-content/uploads/2026/05/2026-05-17.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://clonmanyparish.ie/wp-content/uploads/2026/05/2026-05-17.pdf</a></p>
+<p>- Coleraine (St John): <a href="https://www.parishofstjohncoleraine.com/" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.parishofstjohncoleraine.com/</a></p>
+<p>- Desertmartin: <a href="https://www.desertmartinparish.com/?page_id=6" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.desertmartinparish.com/?page_id=6</a></p>
+<p>- DMA Parish (Claudy area): <a href="https://dmaparish.com/pdf/170526.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://dmaparish.com/pdf/170526.pdf</a></p>
+<p>- Drumquin: <a href="https://drumquinparish.com/pdf/170526.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://drumquinparish.com/pdf/170526.pdf</a></p>
+<p>- Errigal: <a href="https://www.errigalparish.com/news.html" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.errigalparish.com/news.html</a></p>
+<p>- Fahan: <a href="http://www.fahanparish.com/pdf/170526.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://www.fahanparish.com/pdf/170526.pdf</a></p>
+<p>- Greencastle: <a href="https://greencastleparish.com/" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://greencastleparish.com/</a></p>
+<p>- Greenlough: <a href="http://www.greenlough.com/publications/newsletter/7th_Sunday_of_Easter_[2026-5-17].pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://www.greenlough.com/publications/newsletter/7th_Sunday_of_Easter_[2026-5-17].pdf</a></p>
+<p>- Kilrea: <a href="https://www.parishofkilrea.com/pdf/170526.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.parishofkilrea.com/pdf/170526.pdf</a></p>
+<p>- Lavey: <a href="https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf</a></p>
+<p>- Leckpatrick: <a href="https://www.leckpatrickparish.com/pdf/170526.pdf" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.leckpatrickparish.com/pdf/170526.pdf</a></p>
+<p>- Long Tower: <a href="https://longtowerchurch.org/" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://longtowerchurch.org/</a></p>
+<p>- Three Patrons: <a href="https://www.threepatrons.org/files/10/Weekly-Bulletins/96/" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">https://www.threepatrons.org/files/10/Weekly-Bulletins/96/</a></p>
+<p>- Urney and Castlefin: <a href="http://urneyandcastlefinparish.com/?page_id=1227" target="_blank" rel="noopener noreferrer" style="color:#1a6b6b;">http://urneyandcastlefinparish.com/?page_id=1227</a></p>
+</section></div>
+          <div class="note-box">Note: The plain-text OCR version is auto-generated and may contain errors so it is always best to double check with the original PDF.</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="parish-section">
+      <h2>DERRY Parishes with Working Bulletin Links</h2>
+      <input id="parish-filter" class="parish-filter" type="search" placeholder="Filter parishes..." aria-label="Filter parishes" />
+      <div id="parish-empty" class="empty-state" hidden>No matching parishes found.</div><ul id="parish-grid" class="parish-grid"><li class="parish-item" data-name="aghyaran"><a class="parish-link" href="https://www.parishofaghyaran.com/news.html" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Aghyaran</span></a></li><li class="parish-item" data-name="ardmore"><a class="parish-link" href="http://www.ardmoreparish.com/news.html" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Ardmore</span></a></li><li class="parish-item" data-name="ardstraw east"><a class="parish-link" href="http://parishofardstraweast.com/parishnews.html" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Ardstraw East</span></a></li><li class="parish-item" data-name="ballinascreen (&amp; desertmartin amalgamated)"><a class="parish-link" href="https://www.parishofballinascreen.com" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Ballinascreen (&amp; Desertmartin amalgamated)</span></a></li><li class="parish-item" data-name="banagher"><a class="parish-link" href="https://www.banagherparish.com/files/9/Newsletters/384/Bulletin---Divine-Mercy-Sunday---12th-April-2026" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Banagher</span></a></li><li class="parish-item" data-name="bellaghy"><a class="parish-link" href="https://bellaghyparish.com/wp-content/uploads/2026/04/Newsletter-12-April-2026-1.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Bellaghy</span></a></li><li class="parish-item" data-name="buncrana"><a class="parish-link" href="https://www.buncranaparish.com/pdf/050426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Buncrana</span></a></li><li class="parish-item" data-name="camus"><a class="parish-link" href="https://camusparish.com/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Camus</span></a></li><li class="parish-item" data-name="carndonagh"><a class="parish-link" href="http://www.carndonaghparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Carndonagh</span></a></li><li class="parish-item" data-name="castlederg"><a class="parish-link" href="https://www.castledergparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Castlederg</span></a></li><li class="parish-item" data-name="claudy"><a class="parish-link" href="http://parishofclaudy.com/onewebmedia/NEWSLETTER%2012-4-26.docx" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Claudy</span></a></li><li class="parish-item" data-name="clonleigh (strabane pastoral area)"><a class="parish-link" href="https://clonleighparish.com/2026/04/11/strabane-pastoral-area-newsletter-for-sunday-12th-april-2026/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Clonleigh (Strabane Pastoral Area)</span></a></li><li class="parish-item" data-name="clonmany"><a class="parish-link" href="https://clonmanyparish.ie/wp-content/uploads/2026/04/2026-04-12.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Clonmany</span></a></li><li class="parish-item" data-name="coleraine (st john)"><a class="parish-link" href="https://www.parishofstjohncoleraine.com/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Coleraine (St John)</span></a></li><li class="parish-item" data-name="culdaff"><a class="parish-link" href="http://www.culdaffparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Culdaff</span></a></li><li class="parish-item" data-name="culmoe"><a class="parish-link" href="http://culmoreparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Culmoe</span></a></li><li class="parish-item" data-name="desertmartin"><a class="parish-link" href="https://www.desertmartinparish.com/?page_id=6" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Desertmartin</span></a></li><li class="parish-item" data-name="dma parish (claudy area)"><a class="parish-link" href="https://dmaparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>DMA Parish (Claudy area)</span></a></li><li class="parish-item" data-name="drumquin"><a class="parish-link" href="https://drumquinparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Drumquin</span></a></li><li class="parish-item" data-name="drumragh"><a class="parish-link" href="https://www.drumraghparish.com/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Drumragh</span></a></li><li class="parish-item" data-name="dungiven"><a class="parish-link" href="https://parishofdungiven.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Dungiven</span></a></li><li class="parish-item" data-name="errigal"><a class="parish-link" href="https://www.errigalparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Errigal</span></a></li><li class="parish-item" data-name="fahan"><a class="parish-link" href="http://www.fahanparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Fahan</span></a></li><li class="parish-item" data-name="granaghan"><a class="parish-link" href="https://granaghanparish.com/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Granaghan</span></a></li><li class="parish-item" data-name="greencastle"><a class="parish-link" href="https://greencastleparish.com/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Greencastle</span></a></li><li class="parish-item" data-name="greenlough"><a class="parish-link" href="http://www.greenlough.com/publications/newsletter/2nd_Sunday_of_Easter_-_Divine_Mercy_Sunday_[2026-4-12].pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Greenlough</span></a></li><li class="parish-item" data-name="holy family"><a class="parish-link" href="https://www.holyfamily-parish.com/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Holy Family</span></a></li><li class="parish-item" data-name="iskaheen"><a class="parish-link" href="https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/04/1.jpg?w=1090&amp;ssl=1" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Iskaheen</span></a></li><li class="parish-item" data-name="kilrea"><a class="parish-link" href="https://www.parishofkilrea.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Kilrea</span></a></li><li class="parish-item" data-name="lavey"><a class="parish-link" href="https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Lavey</span></a></li><li class="parish-item" data-name="leckpatrick"><a class="parish-link" href="https://www.leckpatrickparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Leckpatrick</span></a></li><li class="parish-item" data-name="limavady"><a class="parish-link" href="https://www.limavadyparish.org/onewebmedia/5-4-26.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Limavady</span></a></li><li class="parish-item" data-name="long tower"><a class="parish-link" href="https://longtowerchurch.org/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Long Tower</span></a></li><li class="parish-item" data-name="maghera (derry)"><a class="parish-link" href="http://www.magheraparishderry.com/pdf/050426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Maghera (Derry)</span></a></li><li class="parish-item" data-name="malin"><a class="parish-link" href="https://malinparish.ie/wp-content/uploads/2026/04/Bulletin-5th-April-2026.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Malin</span></a></li><li class="parish-item" data-name="melmount (&amp; camus)"><a class="parish-link" href="https://www.melmountparish.com/parishnews.html" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Melmount (&amp; Camus)</span></a></li><li class="parish-item" data-name="moville"><a class="parish-link" href="https://movilleparish.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Moville</span></a></li><li class="parish-item" data-name="sion mills"><a class="parish-link" href="http://www.parishofsionmills.com/news.html" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Sion Mills</span></a></li><li class="parish-item" data-name="st eugene&#x27;s cathedral (templemore)"><a class="parish-link" href="https://steugenescathedral.com/pdf/120426.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>St Eugene&#x27;s Cathedral (Templemore)</span></a></li><li class="parish-item" data-name="st mary&#x27;s parish creggan"><a class="parish-link" href="https://www.stmarysparishcreggan.com/bulletins" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>St Mary&#x27;s Parish Creggan</span></a></li><li class="parish-item" data-name="star of the sea (magilligan)"><a class="parish-link" href="https://drive.usercontent.google.com/download?id=1cF4BuBrZCRrSwMQeTT8mJrGNpr5aFGpD&amp;export=download" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Star of the Sea (Magilligan)</span></a></li><li class="parish-item" data-name="steelstown"><a class="parish-link" href="http://www.steelstownparish.com/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Steelstown</span></a></li><li class="parish-item" data-name="three patrons"><a class="parish-link" href="https://www.threepatrons.org/files/10/Weekly-Bulletins/95/Sunday-12th-April-2026" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Three Patrons</span></a></li><li class="parish-item" data-name="urney and castlefin"><a class="parish-link" href="http://urneyandcastlefinparish.com/?page_id=1227" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Urney and Castlefin</span></a></li><li class="parish-item" data-name="waterside (&amp; strathfoyle amalgamated)"><a class="parish-link" href="https://watersideparish.net/wp-content/uploads/2026/04/newsletter_120426oo.pdf" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">⛪</span> <span>Waterside (&amp; Strathfoyle amalgamated)</span></a></li></ul>
+    </section>
+  </div>
+  <footer>
+    <div class="footer-inner">
+      <span>© 2026 Parish Bulletin Harvester</span>
+      <a href="https://github.com/Frankytyrone/parish_harvester" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    (function () {
+      const pdfHref = '../mega_pdf/derry_mega_bulletin.pdf';
+      const initialPages = 28;
+      const canvas = document.getElementById('pdf-canvas');
+      const canvasWrap = document.getElementById('pdf-canvas-wrap');
+      const context = canvas.getContext('2d');
+      const ocrPanel = document.getElementById('ocr-panel');
+      const indicators = Array.from(document.querySelectorAll('[data-role="page-indicator"]'));
+      const prevButtons = Array.from(document.querySelectorAll('button[data-action="prev"]'));
+      const nextButtons = Array.from(document.querySelectorAll('button[data-action="next"]'));
+      const ocrSearch = document.getElementById('ocr-search');
+      const clearSearch = document.getElementById('clear-search');
+      const parishFilter = document.getElementById('parish-filter');
+      const parishItems = Array.from(document.querySelectorAll('.parish-item'));
+      const parishEmpty = document.getElementById('parish-empty');
+      const originalOcrHtml = ocrPanel.innerHTML;
+      const pdfjs = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+      let currentPage = 1;
+      let totalPages = initialPages;
+      let pdfDoc = null;
+      let isRendering = false;
+      let pendingPage = null;
+
+      if (!pdfjs) {
+        return;
+      }
+
+      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      function escapeRegExp(text) {
+        const specials = new Set(['\\', '^', '$', '.', '|', '?', '*', '+', '(', ')', '[', ']', '{', '}']);
+        return Array.from(text).map((ch) => specials.has(ch) ? `\\${ch}` : ch).join('');
+      }
+
+      function updateControls() {
+        indicators.forEach((indicator) => {
+          indicator.textContent = `Page ${currentPage} of ${totalPages}`;
+        });
+        prevButtons.forEach((button) => {
+          button.disabled = currentPage <= 1 || !pdfDoc;
+        });
+        nextButtons.forEach((button) => {
+          button.disabled = currentPage >= totalPages || !pdfDoc;
+        });
+      }
+
+      function syncOcrToPage(pageNumber) {
+        const pageAnchor = document.getElementById(`ocr-page-${pageNumber}`);
+        const headingAnchor = document.querySelector(`#ocr-panel h3#ocr-page-${pageNumber}`);
+        const textHeading = Array.from(document.querySelectorAll('#ocr-panel h3')).find((heading) => {
+          return heading.textContent.trim().toUpperCase() === `PAGE ${pageNumber}`;
+        });
+        const target = pageAnchor || headingAnchor || textHeading;
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      function queueRender(pageNumber) {
+        if (isRendering) {
+          pendingPage = pageNumber;
+          return;
+        }
+        renderPage(pageNumber);
+      }
+
+      async function renderPage(pageNumber) {
+        if (!pdfDoc) {
+          return;
+        }
+        isRendering = true;
+        currentPage = pageNumber;
+        updateControls();
+        const page = await pdfDoc.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 1 });
+        const availableWidth = Math.max(canvasWrap.clientWidth - 16, 100);
+        const scale = availableWidth / viewport.width;
+        const scaledViewport = page.getViewport({ scale });
+        canvas.width = Math.floor(scaledViewport.width);
+        canvas.height = Math.floor(scaledViewport.height);
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        await page.render({
+          canvasContext: context,
+          viewport: scaledViewport,
+        }).promise;
+        syncOcrToPage(pageNumber);
+        isRendering = false;
+        if (pendingPage !== null) {
+          const queued = pendingPage;
+          pendingPage = null;
+          queueRender(queued);
+        }
+      }
+
+      function goToPage(nextPage) {
+        if (!pdfDoc) {
+          return;
+        }
+        const clamped = Math.min(Math.max(nextPage, 1), totalPages);
+        if (clamped === currentPage && !isRendering) {
+          return;
+        }
+        queueRender(clamped);
+      }
+
+      prevButtons.forEach((button) => {
+        button.addEventListener('click', function () {
+          goToPage(currentPage - 1);
+        });
+      });
+      nextButtons.forEach((button) => {
+        button.addEventListener('click', function () {
+          goToPage(currentPage + 1);
+        });
+      });
+
+      new ResizeObserver(function () {
+        if (pdfDoc) {
+          queueRender(currentPage);
+        }
+      }).observe(canvasWrap);
+
+      pdfjs.getDocument(pdfHref).promise.then(function (doc) {
+        pdfDoc = doc;
+        totalPages = doc.numPages || initialPages;
+        updateControls();
+        queueRender(currentPage);
+      }).catch(function () {
+        updateControls();
+      });
+
+      function applyOcrSearch(query) {
+        ocrPanel.innerHTML = originalOcrHtml;
+        if (!query) {
+          clearSearch.hidden = true;
+          return;
+        }
+        clearSearch.hidden = false;
+        const regex = new RegExp(escapeRegExp(query), 'gi');
+        const walker = document.createTreeWalker(ocrPanel, NodeFilter.SHOW_TEXT, null);
+        const nodes = [];
+        while (walker.nextNode()) {
+          const node = walker.currentNode;
+          if (node.parentElement && node.parentElement.tagName !== 'MARK' && node.nodeValue.trim()) {
+            nodes.push(node);
+          }
+        }
+        nodes.forEach((node) => {
+          const text = node.nodeValue;
+          regex.lastIndex = 0;
+          if (!regex.test(text)) {
+            return;
+          }
+          regex.lastIndex = 0;
+          const fragment = document.createDocumentFragment();
+          let lastIndex = 0;
+          let match = null;
+          while ((match = regex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+              fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+            }
+            const mark = document.createElement('mark');
+            mark.textContent = match[0];
+            fragment.appendChild(mark);
+            lastIndex = match.index + match[0].length;
+          }
+          if (lastIndex < text.length) {
+            fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+          }
+          node.parentNode.replaceChild(fragment, node);
+        });
+      }
+
+      ocrSearch.addEventListener('input', function (event) {
+        applyOcrSearch(event.target.value.trim());
+      });
+      clearSearch.addEventListener('click', function () {
+        ocrSearch.value = '';
+        applyOcrSearch('');
+        ocrSearch.focus();
+      });
+
+      parishFilter.addEventListener('input', function (event) {
+        const term = event.target.value.trim().toLowerCase();
+        let visibleCount = 0;
+        parishItems.forEach((item) => {
+          const matches = item.dataset.name.includes(term);
+          item.hidden = !matches;
+          if (matches) {
+            visibleCount += 1;
+          }
+        });
+        if (parishEmpty) {
+          parishEmpty.hidden = visibleCount !== 0;
+        }
+      });
+
+      updateControls();
+    })();
+  </script>
+</body>
+</html>
