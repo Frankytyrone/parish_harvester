@@ -91,7 +91,7 @@ def summarise_bulletin(text: str, parish_name: str, mistral_api_key: str | None)
         bullets = _parse_bullets(content)
         if bullets is None:
             return None
-        generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        generated_at = datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
         return {
             "bullets": bullets,
             "model": MISTRAL_MODEL,
