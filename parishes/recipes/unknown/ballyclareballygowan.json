@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "parish_key": "ballyclareballygowan",
+  "display_name": "Ballyclareballygowan",
+  "diocese": "",
+  "start_url": "https://ballyclareballygowan.com/notice%20board.htm",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://ballyclareballygowan.com/notice%20board.htm"
+    },
+    {
+      "action": "image",
+      "url": "https://ballyclareballygowan.com/index_htm_files/30053.png"
+    }
+  ],
+  "recorded_date": "2026-05-22"
+}
