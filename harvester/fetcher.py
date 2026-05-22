@@ -25,6 +25,7 @@ from urllib.parse import parse_qs, unquote, urljoin, urlparse
 from playwright.async_api import (
     Browser,
     Error as PlaywrightError,
+    Page,
     TimeoutError as PlaywrightTimeoutError,
     async_playwright,
 )
@@ -495,7 +496,7 @@ def _fit_image_to_a4_page(image):
     return canvas
 
 
-async def _page_wait(page, delay_ms: int) -> None:
+async def _page_wait(page: Page, delay_ms: int) -> None:
     if delay_ms <= 0:
         return
     wait_for_timeout = getattr(page, "wait_for_timeout", None)
@@ -518,7 +519,7 @@ def _is_recipe_fallback_enabled(recipe_meta: dict, flag_name: str) -> bool:
     return not bool(recipe_meta.get(flag_name))
 
 
-async def _render_page_to_pdf(page, dest_path: str) -> bool:
+async def _render_page_to_pdf(page: Page, dest_path: str) -> bool:
     """Render the currently-loaded Playwright page to a PDF on disk.
     Returns True on success, False on any error.
     """
@@ -530,7 +531,7 @@ async def _render_page_to_pdf(page, dest_path: str) -> bool:
         return False
 
 
-async def _download_image_bytes(url: str, page=None) -> bytes:
+async def _download_image_bytes(url: str, page: Page | None = None) -> bytes:
     if page is not None:
         response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
         if not response.ok:
@@ -546,7 +547,7 @@ async def _download_image_bytes(url: str, page=None) -> bytes:
 
 
 async def _download_images_as_single_pdf(
-    image_urls: list[str], dest_path: str, page=None
+    image_urls: list[str], dest_path: str, page: Page | None = None
 ) -> bool:
     """Download each image URL, decode with Pillow, assemble into a single
     multi-page PDF (one image per page, fit to A4). Returns True on success.
@@ -579,7 +580,7 @@ async def _download_images_as_single_pdf(
         return False
 
 
-async def _find_bulletin_image_urls(page) -> list[str]:
+async def _find_bulletin_image_urls(page: Page) -> list[str]:
     raw_images = await page.eval_on_selector_all(
         "img",
         """
@@ -638,7 +639,7 @@ async def _find_bulletin_image_urls(page) -> list[str]:
     return [url for _score, _idx, url in candidates[:30]]
 
 
-async def _find_pdfemb_url(page) -> str | None:
+async def _find_pdfemb_url(page: Page) -> str | None:
     links = await page.eval_on_selector_all(
         "a.pdfemb-viewer[href]",
         "(els) => els.map(el => el.getAttribute('href')).filter(Boolean)",
@@ -651,7 +652,7 @@ async def _find_pdfemb_url(page) -> str | None:
     return None
 
 
-async def _find_iframe_pdf_url(page) -> str | None:
+async def _find_iframe_pdf_url(page: Page) -> str | None:
     """Return the first iframe src that is (or contains) a direct PDF URL.
 
     Handles two cases:
