@@ -34,5 +34,5 @@ def prioritise(
     known = [key for key in parish_keys if key in failures]
     unknown = [key for key in parish_keys if key not in failures]
 
-    known.sort(key=lambda key: (-failures.get(key, 0), key))
+    known.sort(key=lambda parish_key: (-failures[parish_key], parish_key))
     return known + unknown
