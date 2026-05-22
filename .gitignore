@@ -14,3 +14,5 @@ Bulletins/current/*.pdf
 Bulletins/all_bulletins_*.pdf
 mega_pdf/*.pdf
 !Bulletins/current/.gitkeep
+Bulletins/raw/
+harvest_log.json

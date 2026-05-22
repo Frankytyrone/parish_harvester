@@ -64,8 +64,10 @@ jobs:
           shopt -s nullglob
           pdfs=(mega_pdf/*_mega_bulletin.pdf)
           if [ "${EVENT_NAME}" = "workflow_run" ] && [ ${#pdfs[@]} -eq 0 ]; then
-            echo "Error: no mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
-            exit 1
+            echo "::warning::Error: no mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
+            echo "This usually means the harvest produced only HTML-only links this week, or the harvest itself failed."
+            echo "Skipping Pages deploy — the previously-deployed Pages site remains live."
+            echo "DEPLOY_SKIP_NO_ARTIFACTS=true" >> "$GITHUB_ENV"
           fi
           for pdf in "${pdfs[@]}"; do
             if [ ! -s "${pdf}" ]; then
@@ -80,6 +82,7 @@ jobs:
           done
 
       - name: Build Pages site (mega PDFs + extension updates)
+        if: env.DEPLOY_SKIP_NO_ARTIFACTS != 'true'
         env:
           CHROME_EXTENSION_APP_ID: ${{ vars.CHROME_EXTENSION_APP_ID }}
           EVENT_NAME: ${{ github.event_name }}
@@ -137,15 +140,18 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Upload Pages artifact
+        if: env.DEPLOY_SKIP_NO_ARTIFACTS != 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site/
 
       - name: Deploy to GitHub Pages
+        if: env.DEPLOY_SKIP_NO_ARTIFACTS != 'true'
         id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Publish deploy summary
+        if: env.DEPLOY_SKIP_NO_ARTIFACTS != 'true'
         run: |
           set -euo pipefail
           {
@@ -162,7 +168,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clean mega PDFs from repository after deploy
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' && env.DEPLOY_SKIP_NO_ARTIFACTS != 'true'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -179,7 +185,36 @@ jobs:
           else
             git add -A mega_pdf Bulletins/current
           fi
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: clean deployed PDFs [skip ci]"
-            git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo "ℹ️  No staged cleanup changes — skipping commit."
+            exit 0
           fi
+          git commit -m "chore: clean deployed PDFs [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "✅ Cleanup pushed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "⚠️  Cleanup push attempt ${attempt} failed; pulling --rebase and retrying…"
+            git pull --rebase origin main || {
+              echo "❌ Rebase failed during cleanup; aborting."
+              git rebase --abort || true
+              exit 1
+            }
+          done
+          echo "❌ Could not push cleanup commit after 5 attempts."
+          exit 1
+
+      - name: Publish skip summary
+        if: env.DEPLOY_SKIP_NO_ARTIFACTS == 'true'
+        env:
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## ⏭️ Pages deploy skipped"
+            echo ""
+            echo "No mega PDF artifacts were downloaded from workflow run ${WORKFLOW_RUN_ID:-unknown}."
+            echo "Harvest likely produced only HTML-only links this week, or the upstream harvest failed."
+            echo "Skipping deploy intentionally — the previously-deployed Pages site remains live."
+          } >> "$GITHUB_STEP_SUMMARY"
