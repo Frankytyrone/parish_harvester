@@ -514,7 +514,7 @@ def _recipe_start_url(entry: ParishEntry, recipe_meta: dict, fallback_url: str) 
     ).strip()
 
 
-def _is_recipe_flag_enabled(recipe_meta: dict, flag_name: str) -> bool:
+def _is_recipe_fallback_enabled(recipe_meta: dict, flag_name: str) -> bool:
     return not bool(recipe_meta.get(flag_name))
 
 
@@ -965,7 +965,7 @@ async def _scrape_and_download(
                 if dest.exists() and not _is_real_pdf(dest, key):
                     dest.unlink(missing_ok=True)
 
-        if _is_recipe_flag_enabled(recipe_meta, "disable_image_pdf_fallback"):
+        if _is_recipe_fallback_enabled(recipe_meta, "disable_image_pdf_fallback"):
             image_urls = await _find_bulletin_image_urls(page)
             if image_urls and await _download_images_as_single_pdf(image_urls, str(dest), page=page):
                 if _is_real_pdf(dest, key):
@@ -983,7 +983,7 @@ async def _scrape_and_download(
                         last_err = str(exc)
                 dest.unlink(missing_ok=True)
 
-        if _is_recipe_flag_enabled(recipe_meta, "disable_html_render_fallback"):
+        if _is_recipe_fallback_enabled(recipe_meta, "disable_html_render_fallback"):
             if await _render_page_to_pdf(page, str(dest)) and _rendered_pdf_looks_usable(dest):
                 try:
                     _verify_bulletin_pdf(dest)
@@ -1842,7 +1842,7 @@ async def fetch_parish(
                 f"  ↩️  Retrying {entry.key} "
                 f"(attempt {attempt + 2}/{total_attempts}): {last_error}"
             )
-            time.sleep(retry_backoff_ms / 1000)
+            await asyncio.to_thread(time.sleep, retry_backoff_ms / 1000)
 
     return FetchResult(
         key=entry.key, display_name=entry.display_name,
