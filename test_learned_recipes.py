@@ -90,6 +90,7 @@ class LearnedRecipesTests(unittest.TestCase):
     def test_save_is_atomic_replace(self) -> None:
         payload = {
             "parish_key": "atomic",
+            "diocese": "",
             "fingerprint": {"host": "", "path_hint": "", "dom_markers": []},
             "last_success_date": "",
             "success_count": 0,
@@ -99,7 +100,8 @@ class LearnedRecipesTests(unittest.TestCase):
             "last_strategy": "",
         }
         learned_recipes.save("atomic", payload)
-        stored = self.learned_dir / "atomic.json"
+        # H1: no diocese → written to unknown/ subfolder.
+        stored = self.learned_dir / "unknown" / "atomic.json"
         self.assertTrue(stored.exists())
         parsed = json.loads(stored.read_text(encoding="utf-8"))
         self.assertEqual("atomic", parsed["parish_key"])

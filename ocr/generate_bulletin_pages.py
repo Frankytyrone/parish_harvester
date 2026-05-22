@@ -5,6 +5,7 @@ import json
 import html
 import os
 import re
+import tempfile
 import time
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -174,7 +175,30 @@ def _find_previous_viewer_path(diocese: str, bulletin_date: str) -> Path | None:
 
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    fd, tmp = tempfile.mkstemp(prefix=path.stem + "-", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2)
+            fh.write("\n")
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def _update_bulletins_index(base_dir: Path, diocese: str, parish_key: str, last_updated: str) -> None:
+    """Atomically update the per-diocese _index.json under *base_dir*."""
+    index_path = base_dir / diocese / "_index.json"
+    entries: dict[str, str] = {}
+    if index_path.exists():
+        try:
+            raw = json.loads(index_path.read_text(encoding="utf-8"))
+            if isinstance(raw, dict) and isinstance(raw.get("entries"), dict):
+                entries = raw["entries"]
+        except Exception:
+            entries = {}
+    entries[parish_key] = last_updated
+    _write_json(index_path, {"diocese": diocese, "entries": entries})
 
 
 def _write_parish_reader_outputs(
@@ -217,7 +241,8 @@ def _write_parish_reader_outputs(
             else:
                 summary_payload = summary_result
 
-        _write_json(SUMMARIES_DIR / f"{parish_key}.json", summary_payload)
+        _write_json(SUMMARIES_DIR / diocese / f"{parish_key}.json", summary_payload)
+        _update_bulletins_index(SUMMARIES_DIR, diocese, parish_key, bulletin_date)
 
         if prior_missing:
             diff_payload = {
@@ -228,7 +253,8 @@ def _write_parish_reader_outputs(
             }
         else:
             diff_payload = diff_bulletins(ocr_text, previous_text)
-        _write_json(DIFFS_DIR / f"{parish_key}.json", diff_payload)
+        _write_json(DIFFS_DIR / diocese / f"{parish_key}.json", diff_payload)
+        _update_bulletins_index(DIFFS_DIR, diocese, parish_key, bulletin_date)
 
 
 def _render_parish_links(parish_links: list[tuple[str, str]]) -> str:
