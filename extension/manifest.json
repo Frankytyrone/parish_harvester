@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Parish Trainer",
   "version": "1.30.65",
-  "update_url": "https://frankytyrone.github.io/parish_harvester/updates.xml",
+  "update_url": "https://raw.githubusercontent.com/Frankytyrone/parish_harvester/main/updates.xml",
   "permissions": [
     "activeTab",
     "scripting",
@@ -40,5 +40,6 @@
       "run_at": "document_start",
       "world": "ISOLATED"
     }
-  ]
+  ],
+  "key": "PASTE_BASE64_DER_PUBLIC_KEY_HERE"
 }
