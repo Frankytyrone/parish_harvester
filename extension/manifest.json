@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Parish Trainer",
-  "version": "1.30.64",
+  "version": "1.30.65",
   "update_url": "https://raw.githubusercontent.com/Frankytyrone/parish_harvester/main/updates.xml",
   "permissions": [
     "activeTab",
