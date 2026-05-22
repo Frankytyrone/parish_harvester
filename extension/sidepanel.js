@@ -7,6 +7,28 @@ function setStatus(text, type) {
     type === "err" ? "error" : (String(text || "").startsWith("⏳") ? "pending" : "success");
 }
 
+const _spPanels = {
+  trainer: {
+    tab: document.getElementById("tab-trainer"),
+    panel: document.getElementById("panel-trainer"),
+  },
+  problems: {
+    tab: document.getElementById("tab-problems"),
+    panel: document.getElementById("panel-problems"),
+  },
+};
+
+function _spShowPanel(name) {
+  for (const [key, refs] of Object.entries(_spPanels)) {
+    const active = key === name;
+    refs.tab.classList.toggle("active", active);
+    refs.panel.classList.toggle("active", active);
+  }
+  if (name === "problems") {
+    void loadProblemsDashboard();
+  }
+}
+
 async function withActiveTab(callback) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) {
@@ -151,6 +173,9 @@ const CONSECUTIVE_FAILURES_PATH = "parishes/consecutive_failures.json";
 const STALE_BULLETINS_PATH = "parishes/stale_bulletins.json";
 const CURRENT_BULLETINS_PATH_PREFIX = "Bulletins/current";
 const _pdParishDetailsCache = {}; // key -> details payload
+const PROBLEMS_REPORT_URL = "https://raw.githubusercontent.com/Frankytyrone/parish_harvester/main/Bulletins/report.json";
+const PROBLEMS_CONSECUTIVE_URL = "https://raw.githubusercontent.com/Frankytyrone/parish_harvester/main/parishes/consecutive_failures.json";
+let _problemsLoaded = false;
 
 // Replicate Python's _url_to_key logic
 function _pdUrlToKey(url, headerName = "") {
@@ -618,6 +643,133 @@ function _pdStatusDot(parish) {
   if (rs === "ok")   return "🟢";
   if (rs === "none") return "🟡";
   return "⬜";
+}
+
+function _problemsCategory(errorText) {
+  const text = String(errorText || "");
+  if (/getaddrinfo|Name or service not known|ENOTFOUND|Could not resolve host/i.test(text)) return "dns";
+  if (/SSL|certificate/i.test(text)) return "ssl";
+  if (/timeout|Timeout|TimeoutError/i.test(text)) return "timeout";
+  if (/Recipe download step did not find|Recipe finished without downloading/i.test(text)) return "recipe_drift";
+  if (/no PDF|html_link/i.test(text)) return "no_pdf";
+  return "other";
+}
+
+function _problemsRenderRows(rows) {
+  const tbody = document.getElementById("problems-body");
+  const empty = document.getElementById("problems-empty");
+  if (!tbody || !empty) return;
+  tbody.innerHTML = "";
+  if (!rows.length) {
+    empty.textContent = "No current problem rows.";
+    return;
+  }
+  empty.textContent = "";
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+
+    const parish = document.createElement("td");
+    parish.textContent = row.display_name || row.parish || "Unknown";
+    tr.appendChild(parish);
+
+    const category = document.createElement("td");
+    category.textContent = row.category;
+    tr.appendChild(category);
+
+    const lastSeen = document.createElement("td");
+    lastSeen.textContent = row.last_seen;
+    tr.appendChild(lastSeen);
+
+    const consecutive = document.createElement("td");
+    consecutive.textContent = String(row.consecutive_failures);
+    tr.appendChild(consecutive);
+
+    const action = document.createElement("td");
+    const fixBtn = document.createElement("button");
+    fixBtn.type = "button";
+    fixBtn.className = "problems-fix-btn";
+    fixBtn.textContent = "🔧 Fix now";
+    fixBtn.addEventListener("click", () => {
+      const startUrl = String(row.start_url || row.url || "").trim();
+      if (!/^https?:\/\//i.test(startUrl)) {
+        setStatus("❌ No valid start URL for this parish.", "err");
+        return;
+      }
+      chrome.tabs.create({ url: startUrl, active: true }, (tab) => {
+        const tabId = tab?.id;
+        if (!tabId) return;
+        const onUpdated = (updatedTabId, changeInfo) => {
+          if (updatedTabId !== tabId || changeInfo.status !== "complete") return;
+          chrome.tabs.onUpdated.removeListener(onUpdated);
+          chrome.runtime.sendMessage({
+            type: "dispatch_to_tab",
+            tabId,
+            allowInject: true,
+            payload: { type: "ph_show_toolbar", reason: "fix_now", parish_key: row.parish },
+          });
+        };
+        chrome.tabs.onUpdated.addListener(onUpdated);
+      });
+    });
+    action.appendChild(fixBtn);
+    tr.appendChild(action);
+
+    tbody.appendChild(tr);
+  }
+}
+
+async function loadProblemsDashboard() {
+  if (_problemsLoaded) return;
+  const warning = document.getElementById("problems-warning");
+  const empty = document.getElementById("problems-empty");
+  if (warning) warning.style.display = "none";
+  if (empty) empty.textContent = "Loading…";
+  try {
+    const [reportResp, failuresResp] = await Promise.all([
+      fetch(PROBLEMS_REPORT_URL, { cache: "no-store" }),
+      fetch(PROBLEMS_CONSECUTIVE_URL, { cache: "no-store" }),
+    ]);
+    if (!reportResp.ok || !failuresResp.ok) {
+      throw new Error("Could not fetch live report data");
+    }
+    const report = await reportResp.json();
+    const consecutive = await failuresResp.json();
+    const consecutiveFailures = (consecutive && typeof consecutive === "object") ? consecutive : {};
+    const targetDate = String(report?.target_date || "");
+    const lastSeen = formatUkDate(targetDate);
+    const failed = Array.isArray(report?.failed) ? report.failed : [];
+    const htmlLinks = Array.isArray(report?.html_links) ? report.html_links : [];
+    const rows = [
+      ...failed.map((item) => ({
+        parish: String(item?.parish || ""),
+        display_name: String(item?.display_name || item?.parish || ""),
+        start_url: String(item?.start_url || item?.url || ""),
+        url: String(item?.url || ""),
+        category: _problemsCategory(item?.error || ""),
+        last_seen: lastSeen,
+        consecutive_failures: Number(consecutiveFailures[item?.parish] || 0),
+      })),
+      ...htmlLinks.map((item) => ({
+        parish: String(item?.parish || ""),
+        display_name: String(item?.display_name || item?.parish || ""),
+        start_url: String(item?.start_url || item?.url || ""),
+        url: String(item?.url || ""),
+        category: "no_pdf",
+        last_seen: lastSeen,
+        consecutive_failures: Number(consecutiveFailures[item?.parish] || 0),
+      })),
+    ];
+    _problemsRenderRows(rows);
+    _problemsLoaded = true;
+  } catch (_e) {
+    if (warning) warning.style.display = "block";
+    _problemsRenderRows([]);
+    _problemsLoaded = false;
+  } finally {
+    if (empty && !empty.textContent) {
+      empty.textContent = "";
+    }
+  }
 }
 
 const _PD_DOT_TITLES = { "🟢": "Recipe trained", "🟡": "Needs training", "🔴": "Dead website", "⚫": "Disabled", "📌": "Manual override URL set", "⬜": "Checking…" };
@@ -1171,6 +1323,10 @@ document.getElementById("stale-banner-toggle").addEventListener("click", functio
   list.style.display = isOpen ? "none" : "block";
   this.textContent = isOpen ? "Show" : "Hide";
 });
+
+_spPanels.trainer.tab.addEventListener("click", () => _spShowPanel("trainer"));
+_spPanels.problems.tab.addEventListener("click", () => _spShowPanel("problems"));
+void loadProblemsDashboard();
 
 // ── Crop done notification ─────────────────────────────────────────────────
 

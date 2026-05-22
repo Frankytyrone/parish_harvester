@@ -16,6 +16,23 @@
       }
       .wrap { padding: 10px 12px; }
       h1 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+      .sp-tabs { display: flex; gap: 4px; margin: 0 0 8px; }
+      .sp-tab {
+        border: 1px solid #374151;
+        border-radius: 6px;
+        background: #1e293b;
+        color: #cbd5e1;
+        font-size: 11px;
+        line-height: 1.2;
+        padding: 6px 8px;
+        width: auto;
+      }
+      .sp-tab.active {
+        background: #1d4ed8;
+        color: #ffffff;
+      }
+      .sp-panel { display: none; }
+      .sp-panel.active { display: block; }
       .guided-badge {
         background: #16a34a; color: #fff; border-radius: 4px;
         padding: 1px 5px; font-size: 9px; font-weight: 600;
@@ -153,6 +170,50 @@
         background: #991b1b;
       }
       .pd-excl-label { font-size: 9px; color: #9ca3af; flex-shrink: 0; }
+      #problems-warning {
+        display: none;
+        margin-bottom: 6px;
+        border: 1px solid #854d0e;
+        background: #713f12;
+        color: #fde68a;
+        border-radius: 4px;
+        padding: 5px 6px;
+        font-size: 10px;
+      }
+      .problems-table-wrap {
+        max-height: 520px;
+        overflow: auto;
+        border: 1px solid #374151;
+        border-radius: 6px;
+      }
+      #problems-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+      }
+      #problems-table th, #problems-table td {
+        border-bottom: 1px solid #334155;
+        padding: 5px 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+      #problems-table th {
+        position: sticky;
+        top: 0;
+        background: #0f172a;
+        color: #93c5fd;
+      }
+      .problems-empty {
+        color: #9ca3af;
+        font-size: 10px;
+        padding: 8px 0;
+      }
+      .problems-fix-btn {
+        width: auto;
+        padding: 3px 7px;
+        font-size: 9px;
+        background: #b45309;
+      }
     </style>
   </head>
   <body>
@@ -160,6 +221,13 @@
       <h1>Parish Trainer <span class="guided-badge">Guided ✓</span></h1>
 
       <p id="status">Ready.</p>
+
+      <div class="sp-tabs">
+        <button id="tab-trainer" class="sp-tab active" type="button">🛠️ Trainer</button>
+        <button id="tab-problems" class="sp-tab" type="button">🚨 Problems</button>
+      </div>
+
+      <div id="panel-trainer" class="sp-panel active">
 
       <!-- Guided mode wizard — 3 simple choices -->
       <div class="section operator-hidden" aria-hidden="true">
@@ -225,6 +293,28 @@
           <p class="note" style="margin-top:4px;">📌 saves a parish bulletin override from the active tab URL. ☑ skips a parish in this week's mega PDF. 📁 opens parish details (URL, recipe changes, repo/mega timestamps).</p>
         </div>
       </details>
+      </div>
+
+      <div id="panel-problems" class="sp-panel">
+        <div class="section">
+          <div id="problems-warning">⚠️ Could not load latest report (offline?)</div>
+          <div class="problems-table-wrap">
+            <table id="problems-table">
+              <thead>
+                <tr>
+                  <th>Parish</th>
+                  <th>Failure category</th>
+                  <th>Last seen</th>
+                  <th>Consecutive failures</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="problems-body"></tbody>
+            </table>
+          </div>
+          <div id="problems-empty" class="problems-empty">Loading…</div>
+        </div>
+      </div>
     </div>
     <script src="sidepanel.js"></script>
   </body>

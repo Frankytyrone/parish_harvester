@@ -45,6 +45,7 @@ from .config import (
     PARISHES_DIR,
     TOTAL_TIMEOUT_S,
 )
+from . import learned_recipes
 from .replay import RecipeReplayError, _print_page_to_pdf, recipe_path_for, replay_recipe
 from .pattern_detector import detect_pattern, save_pattern_change
 from .utils import (
@@ -1281,6 +1282,40 @@ def _load_recipe_metadata(recipe_path: Path) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _learned_recipe_is_eligible(data: dict | None, today: date) -> bool:
+    if not isinstance(data, dict):
+        return False
+    try:
+        success_rate = float(data.get("success_rate", 0.0))
+    except (TypeError, ValueError):
+        return False
+    if success_rate < 0.5:
+        return False
+    last_success_date = str(data.get("last_success_date") or "").strip()
+    if not last_success_date:
+        return False
+    try:
+        last_success = date.fromisoformat(last_success_date)
+    except ValueError:
+        return False
+    return (today - last_success).days <= 60
+
+
+async def _replay_learned_playbook(playbook: list, dest: Path, browser: Browser) -> tuple[Path, str, str]:
+    steps = [step for step in playbook if isinstance(step, dict)]
+    if not steps:
+        raise RecipeReplayError("Learned playbook has no steps")
+    recipe_payload = {"steps": steps}
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+        json.dump(recipe_payload, tmp)
+        tmp.flush()
+        recipe_path = Path(tmp.name)
+    try:
+        return await replay_recipe(recipe_path=recipe_path, dest=dest, browser=browser)
+    finally:
+        recipe_path.unlink(missing_ok=True)
+
+
 def _normalize_mistral_url(raw: str) -> str:
     text = (raw or "").strip()
     if not text:
@@ -1572,6 +1607,44 @@ async def _fetch_entry(
             if dest.exists() and not _is_real_pdf(dest, key):
                 dest.unlink(missing_ok=True)
 
+    learned_attempted = False
+    learned_data = learned_recipes.load(key)
+    learned_playbook = learned_data.get("playbook", []) if isinstance(learned_data, dict) else []
+    if _learned_recipe_is_eligible(learned_data, date.today()):
+        learned_attempted = True
+        learned_strategy = str((learned_data or {}).get("last_strategy") or "learned_playbook").strip() or "learned_playbook"
+        try:
+            replayed_path, replay_file_type, replay_url = await _replay_learned_playbook(
+                playbook=learned_playbook,
+                dest=dest,
+                browser=browser,
+            )
+            learned_recipes.record_success(key, learned_strategy, learned_playbook)
+            if replay_file_type == "html_link":
+                return FetchResult(
+                    key=key,
+                    display_name=entry.display_name,
+                    status="html_link",
+                    url=replay_url,
+                    file_type="html_link",
+                )
+            if _is_real_pdf(replayed_path, key):
+                return FetchResult(
+                    key=key,
+                    display_name=entry.display_name,
+                    status="ok",
+                    url=replay_url,
+                    file_path=replayed_path,
+                    file_type=replay_file_type,
+                )
+            learned_recipes.record_failure(key)
+        except Exception as exc:
+            print(f"  ↩️  {key}: learned playbook failed: {exc}")
+            learned_recipes.record_failure(key)
+        finally:
+            if dest.exists() and not _is_real_pdf(dest, key):
+                dest.unlink(missing_ok=True)
+
     recipe_path = recipe_path_for(key, PARISHES_DIR)
     recipe_meta = _load_recipe_metadata(recipe_path) if recipe_path.exists() else {}
     host_profile = _get_host_profile(_recipe_start_url(entry, recipe_meta, target_url))
@@ -1609,6 +1682,7 @@ async def _fetch_entry(
                 browser=browser,
             )
             if replay_file_type == "html_link":
+                learned_recipes.record_success(key, replay_file_type, recipe_meta.get("steps") if isinstance(recipe_meta, dict) else [])
                 return FetchResult(
                     key=key,
                     display_name=entry.display_name,
@@ -1617,6 +1691,7 @@ async def _fetch_entry(
                     file_type="html_link",
                 )
             if _is_real_pdf(replayed_path, key):
+                learned_recipes.record_success(key, replay_file_type, recipe_meta.get("steps") if isinstance(recipe_meta, dict) else [])
                 return FetchResult(
                     key=key,
                     display_name=entry.display_name,
@@ -1654,13 +1729,18 @@ async def _fetch_entry(
         if healed is not None:
             return healed
 
-        return FetchResult(
-            key=key,
-            display_name=entry.display_name,
-            status="error",
-            url=target_url,
-            error=recipe_error or "Recipe replay produced no valid PDF",
-        )
+        if learned_attempted:
+            print(f"  ↪️  {key}: falling back after recipe failure")
+            if dest.exists() and not _is_real_pdf(dest, key):
+                dest.unlink(missing_ok=True)
+        else:
+            return FetchResult(
+                key=key,
+                display_name=entry.display_name,
+                status="error",
+                url=target_url,
+                error=recipe_error or "Recipe replay produced no valid PDF",
+            )
 
     # Non-html entries keep URL prediction first.
     if entry.content_type != "html_link":

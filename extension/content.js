@@ -2653,6 +2653,9 @@
       const short = url.length > 50 ? url.slice(0, 47) + "…" : url;
       showStatus(`🔍 Document detected in network: ${short}`, "info");
     });
+    window.addEventListener("ph-retraining-hint", () => {
+      showStatus("Retraining: follow the steps on this page, then push the updated recipe.", "warn");
+    });
 
     // ── IDENTIFY PAGE ──────────────────────────────────────────────────────
     const identifyBtn = document.createElement("button");
@@ -3893,6 +3896,11 @@
 
     if (message.type === "show_toolbar") {
       _ensureToolbar(true);
+      return { ok: true };
+    }
+    if (message.type === "ph_show_toolbar") {
+      _ensureToolbar(true);
+      window.dispatchEvent(new CustomEvent("ph-retraining-hint", { detail: { parish_key: message.parish_key || "" } }));
       return { ok: true };
     }
 
