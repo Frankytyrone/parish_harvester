@@ -1,21 +1,41 @@
 from __future__ import annotations
 
 import argparse
+import json
 import html
+import os
 import re
+import time
 from dataclasses import dataclass
+from datetime import date, timedelta
 from pathlib import Path
 
 from PyPDF2 import PdfReader
 
+from harvester.ai_summaries import summarise_bulletin
+from harvester.weekly_diff import diff_bulletins
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "docs"
 BULLETINS_DIR = DOCS_DIR / "bulletins"
+BULLETINS_DATA_DIR = REPO_ROOT / "Bulletins"
+SUMMARIES_DIR = BULLETINS_DATA_DIR / "summaries"
+DIFFS_DIR = BULLETINS_DATA_DIR / "diffs"
+CONTACTS_PATH_BY_DIOCESE = {
+    "derry": REPO_ROOT / "parishes" / "derry_diocese_contacts.json",
+    "down_and_connor": REPO_ROOT / "parishes" / "down_and_connor_contacts.json",
+}
 
 HEADER_PATTERN = re.compile(r"^#\s*---\s*(.*?)\s*---\s*$")
 OCR_BODY_PATTERN = re.compile(r'<div class="scrollable-viewer">\s*(.*?)\s*</div>\s*</body>', re.DOTALL | re.IGNORECASE)
 OCR_PAGE_HEADING_PATTERN = re.compile(r"<h2>\s*Page\s+(\d+)\s*</h2>", re.IGNORECASE)
 VIEWER_FILE_PATTERN = re.compile(r"^(derry|down_and_connor)-(\d{4}-\d{2}-\d{2})\.html$")
+OCR_PANEL_PATTERN = re.compile(
+    r'<div id="ocr-panel">\s*(.*?)\s*</div>\s*<div class="note-box">',
+    re.DOTALL | re.IGNORECASE,
+)
+HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+WHITESPACE_PATTERN = re.compile(r"\s+")
 TEAL = "#1a6b6b"
 TEXT = "#1a1a2e"
 ACCENT = "#c0392b"
@@ -84,6 +104,127 @@ def extract_ocr_fragment(path: Path) -> str:
 
 def count_pdf_pages(path: Path) -> int:
     return len(PdfReader(str(path)).pages)
+
+
+def _normalise_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (value or "").lower())
+
+
+def _load_parish_entries(diocese: str, parish_links: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    contacts_path = CONTACTS_PATH_BY_DIOCESE.get(diocese)
+    display_to_key: dict[str, str] = {}
+    if contacts_path and contacts_path.exists():
+        try:
+            payload = json.loads(contacts_path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {}
+        if isinstance(payload, dict):
+            for key, value in payload.items():
+                parish_key = str(key).strip()
+                if not parish_key:
+                    continue
+                display_to_key[_normalise_name(parish_key)] = parish_key
+                if isinstance(value, dict):
+                    display_name = str(value.get("display_name") or "").strip()
+                    if display_name:
+                        display_to_key[_normalise_name(display_name)] = parish_key
+                        if display_name.lower().endswith(" parish"):
+                            display_to_key[_normalise_name(display_name[:-7])] = parish_key
+    entries: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for name, _ in parish_links:
+        normalized = _normalise_name(name)
+        parish_key = display_to_key.get(normalized) or normalized
+        if not parish_key or parish_key in seen:
+            continue
+        seen.add(parish_key)
+        entries.append((parish_key, name))
+    return entries
+
+
+def _fragment_to_plain_text(ocr_fragment: str) -> str:
+    text = html.unescape(HTML_TAG_PATTERN.sub("\n", ocr_fragment))
+    lines = [WHITESPACE_PATTERN.sub(" ", line).strip() for line in text.splitlines()]
+    return "\n".join(line for line in lines if line)
+
+
+def _read_viewer_plain_text(path: Path) -> str:
+    raw_html = path.read_text(encoding="utf-8")
+    match = OCR_PANEL_PATTERN.search(raw_html)
+    if not match:
+        return ""
+    return _fragment_to_plain_text(match.group(1))
+
+
+def _find_previous_viewer_path(diocese: str, bulletin_date: str) -> Path | None:
+    try:
+        current_date = date.fromisoformat(bulletin_date)
+    except ValueError:
+        return None
+    target = current_date - timedelta(days=7)
+    for day_offset in [0, -1, 1, -2, 2, -3, 3]:
+        candidate_date = target + timedelta(days=day_offset)
+        if candidate_date == current_date:
+            continue
+        candidate_path = BULLETINS_DIR / f"{diocese}-{candidate_date.isoformat()}.html"
+        if candidate_path.exists():
+            return candidate_path
+    return None
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _write_parish_reader_outputs(
+    diocese: str,
+    bulletin_date: str,
+    ocr_text: str,
+    parish_links: list[tuple[str, str]],
+) -> None:
+    parish_entries = _load_parish_entries(diocese, parish_links)
+    if not parish_entries:
+        return
+
+    previous_viewer_path = _find_previous_viewer_path(diocese, bulletin_date)
+    if previous_viewer_path:
+        previous_text = _read_viewer_plain_text(previous_viewer_path)
+        prior_missing = False
+    else:
+        previous_text = ""
+        prior_missing = True
+
+    summaries_disabled = os.getenv("PARISH_AI_SUMMARIES_DISABLE", "").strip() == "1"
+    if summaries_disabled:
+        print("AI bulletin summaries disabled via PARISH_AI_SUMMARIES_DISABLE=1")
+
+    mistral_api_key = os.getenv("MISTRAL_API_KEY")
+    for idx, (parish_key, parish_name) in enumerate(parish_entries):
+        if summaries_disabled:
+            summary_payload = {"bullets": None, "error": "ai_summaries_disabled"}
+        else:
+            if idx > 0:
+                time.sleep(0.5)
+            summary_result = summarise_bulletin(ocr_text, parish_name, mistral_api_key)
+            if summary_result is None:
+                error_reason = "missing_mistral_api_key" if not (mistral_api_key or "").strip() else "summary_generation_failed"
+                summary_payload = {"bullets": None, "error": error_reason}
+            else:
+                summary_payload = summary_result
+
+        _write_json(SUMMARIES_DIR / f"{parish_key}.json", summary_payload)
+
+        if prior_missing:
+            diff_payload = {
+                "added_lines": [],
+                "removed_lines": [],
+                "kept_count": 0,
+                "note": "no_prior_bulletin_found",
+            }
+        else:
+            diff_payload = diff_bulletins(ocr_text, previous_text)
+        _write_json(DIFFS_DIR / f"{parish_key}.json", diff_payload)
 
 
 def _render_parish_links(parish_links: list[tuple[str, str]]) -> str:
@@ -658,12 +799,14 @@ def write_viewer_page(diocese: str, bulletin_date: str, pdf_path: Path, ocr_html
     config = DIOCESES[diocese]
     page_count = count_pdf_pages(pdf_path)
     ocr_fragment = extract_ocr_fragment(ocr_html_path)
+    ocr_plain_text = _fragment_to_plain_text(ocr_fragment)
     parish_links = parse_parish_links(config.evidence_path)
     output_path = BULLETINS_DIR / f"{diocese}-{bulletin_date}.html"
     output_path.write_text(
         render_viewer_page(config, bulletin_date, page_count, ocr_fragment, parish_links),
         encoding="utf-8",
     )
+    _write_parish_reader_outputs(diocese, bulletin_date, ocr_plain_text, parish_links)
     return output_path
 
 
@@ -794,6 +937,7 @@ def write_root_index(entries: list[ViewerEntry]) -> None:
     <div class="archive-card">
       <p><a href="bulletins/index.html">Browse the full OCR bulletin archive</a></p>
       <p><a href="mega_pdf/index.html">Open the mega PDF tab viewer</a></p>
+      <p><a href="search/">Search all bulletins</a></p>
     </div>
   </main>
 </body>

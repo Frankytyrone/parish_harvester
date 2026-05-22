@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from datetime import datetime, timezone
 from email.utils import format_datetime
@@ -12,6 +13,19 @@ from ocr.generate_bulletin_pages import DIOCESES
 
 PAGES_BASE_URL = "https://frankytyrone.github.io/parish_harvester"
 CDN_BASE_URL = "https://cdn.jsdelivr.net/gh/Frankytyrone/parish_harvester@main"
+VIEWER_FILE_PATTERN = re.compile(r"^(derry|down_and_connor)-(\d{4}-\d{2}-\d{2})\.html$")
+OCR_PANEL_PATTERN = re.compile(
+    r'<div id="ocr-panel">\s*(.*?)\s*</div>\s*<div class="note-box">',
+    re.DOTALL | re.IGNORECASE,
+)
+PARISH_NAME_PATTERN = re.compile(
+    r"<li class=\"parish-item\"[^>]*>\s*<a class=\"parish-link\"[^>]*>\s*<span[^>]*>.*?</span>\s*<span>(.*?)</span>\s*</a>\s*</li>",
+    re.DOTALL | re.IGNORECASE,
+)
+HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+WHITESPACE_PATTERN = re.compile(r"\s+")
+MAX_SEARCH_DOC_TEXT = 4_000
+MAX_SEARCH_INDEX_BYTES = 5 * 1024 * 1024
 
 
 def _coerce_rows(value: object) -> list[dict]:
@@ -122,6 +136,106 @@ def _normalise_last_success(raw: object) -> str | None:
     if len(text) >= 10:
         return text[:10]
     return text
+
+
+def _normalise_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (value or "").lower())
+
+
+def _load_display_to_key_map(repo_root: Path) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    parishes_dir = repo_root / "parishes"
+    for path in parishes_dir.glob("*_contacts.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        for key, value in payload.items():
+            parish_key = str(key).strip()
+            if not parish_key:
+                continue
+            mapping[_normalise_key(parish_key)] = parish_key
+            if isinstance(value, dict):
+                display_name = str(value.get("display_name") or "").strip()
+                if display_name:
+                    mapping[_normalise_key(display_name)] = parish_key
+                    if display_name.lower().endswith(" parish"):
+                        mapping[_normalise_key(display_name[:-7])] = parish_key
+    return mapping
+
+
+def _extract_ocr_text(viewer_html: str) -> str:
+    match = OCR_PANEL_PATTERN.search(viewer_html)
+    if not match:
+        return ""
+    text = HTML_TAG_PATTERN.sub("\n", match.group(1))
+    lines = [WHITESPACE_PATTERN.sub(" ", line).strip() for line in text.splitlines()]
+    return "\n".join(line for line in lines if line)
+
+
+def _extract_parish_names(viewer_html: str) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for match in PARISH_NAME_PATTERN.finditer(viewer_html):
+        name = str(match.group(1) or "").strip()
+        if not name:
+            continue
+        key = _normalise_key(name)
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(name)
+    return names
+
+
+def _write_search_index(repo_root: Path, docs_dir: Path, generated_at: str) -> None:
+    bulletins_dir = docs_dir / "bulletins"
+    display_to_key = _load_display_to_key_map(repo_root)
+    documents: list[dict[str, str]] = []
+    for viewer_path in sorted(bulletins_dir.glob("*.html")):
+        if viewer_path.name == "index.html":
+            continue
+        match = VIEWER_FILE_PATTERN.match(viewer_path.name)
+        if not match:
+            continue
+        ocr_slug, bulletin_date = match.groups()
+        diocese = "derry_diocese" if ocr_slug == "derry" else "down_and_connor"
+        viewer_html = viewer_path.read_text(encoding="utf-8")
+        ocr_text = _extract_ocr_text(viewer_html)
+        if not ocr_text:
+            continue
+        snippet = ocr_text[:MAX_SEARCH_DOC_TEXT]
+        parish_names = _extract_parish_names(viewer_html)
+        if not parish_names:
+            parish_names = [DIOCESES[ocr_slug].display_name]
+        for parish_name in parish_names:
+            parish_key = display_to_key.get(_normalise_key(parish_name), _normalise_key(parish_name))
+            documents.append(
+                {
+                    "id": f"{diocese}-{bulletin_date}-{parish_key}",
+                    "parish": parish_name,
+                    "diocese": diocese,
+                    "date": bulletin_date,
+                    "viewer_url": f"{PAGES_BASE_URL}/bulletins/{viewer_path.name}#{parish_key}",
+                    "text": snippet,
+                }
+            )
+
+    documents.sort(key=lambda item: str(item.get("date") or ""), reverse=True)
+    original_count = len(documents)
+    payload = {"generated_at": generated_at, "documents": documents}
+    encoded = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    while len(encoded) > MAX_SEARCH_INDEX_BYTES and documents:
+        documents.pop()
+        payload["documents"] = documents
+        encoded = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    if len(encoded) > MAX_SEARCH_INDEX_BYTES:
+        print("Warning: docs/search-index.json exceeded 5MB and no documents could be retained.")
+    elif len(documents) < original_count:
+        print("Warning: docs/search-index.json exceeded 5MB; dropped oldest documents.")
+    _write_atomic_json(docs_dir / "search-index.json", payload)
 
 
 def _build_reliability(repo_root: Path, generated_at: str) -> dict[str, object]:
@@ -262,3 +376,4 @@ def build_manifest(report_path: Path, dioceses_in_run: list[str], output_path: P
     _write_atomic_json(output_path, payload)
     _write_atomic_json(docs_dir / "reliability.json", _build_reliability(repo_root, generated_at))
     _write_rss_feeds(docs_dir, dioceses, target_date, generated_at_dt)
+    _write_search_index(repo_root, docs_dir, generated_at)
