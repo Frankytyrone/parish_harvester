@@ -3,6 +3,8 @@ const statusEl = document.getElementById("status");
 function setStatus(text, type) {
   statusEl.textContent = text;
   statusEl.className = type || "ok";
+  statusEl.dataset.status =
+    type === "err" ? "error" : (String(text || "").startsWith("⏳") ? "pending" : "success");
 }
 
 async function withActiveTab(callback) {
@@ -29,6 +31,7 @@ function _dispatchErrorText(result) {
 }
 
 async function sendToActiveTab(message, successText) {
+  console.log("[PH-SAVE]", { action: message?.type || "unknown", request: message, phase: "request" });
   await withActiveTab((tab) => {
     if (!/^https?:\/\//i.test(tab.url || "")) {
       setStatus("This tab is not scriptable. Open a normal http/https page.", "err");
@@ -40,15 +43,16 @@ async function sendToActiveTab(message, successText) {
       payload: message,
       allowInject: true,
     }, (result) => {
+      console.log("[PH-SAVE]", { action: message?.type || "unknown", request: message, response: result || null });
       if (chrome.runtime.lastError) {
         setStatus(`Could not communicate with extension background: ${chrome.runtime.lastError.message}`, "err");
         return;
       }
       if (!result?.ok) {
-        setStatus(`❌ ${_dispatchErrorText(result)}`, "err");
+        setStatus(`❌ ${result?.reason || _dispatchErrorText(result)}`, "err");
         return;
       }
-      setStatus(successText, "ok");
+      setStatus(result?.reason ? `✅ ${result.reason}` : successText, "ok");
     });
   });
 }
@@ -80,21 +84,10 @@ document.getElementById("wizard-pick-image").addEventListener("click", () => {
   );
 });
 
-document.getElementById("wizard-iframe").addEventListener("click", () => {
-  void sendToActiveTab(
-    { type: "start_pick_iframe" },
-    "📐 Opening iframe picker in the toolbar…"
-  );
-});
-
 // ── Advanced / fallback buttons ───────────────────────────────────────────
 
-document.getElementById("mark-html").addEventListener("click", () => {
-  void sendToActiveTab({ type: "mark_html" }, "✅ Marked as HTML page");
-});
-
-document.getElementById("mark-file").addEventListener("click", () => {
-  void sendToActiveTab({ type: "mark_file" }, "✅ Marked current URL as file");
+document.getElementById("mark-element").addEventListener("click", () => {
+  void sendToActiveTab({ type: "mark_element" }, "✅ Element marked.");
 });
 
 document.getElementById("crop-btn").addEventListener("click", async () => {
@@ -387,7 +380,14 @@ function _pdFormatTime(ts) {
   if (!ts) return "—";
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
+  return formatUkDate(d.toISOString().slice(0, 10));
+}
+
+function formatUkDate(isoDate) {
+  const value = String(isoDate || "").trim();
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "—";
+  return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
 async function _pdFetchLatestCommitTime(path) {
@@ -451,7 +451,7 @@ function _pdConfirmedChangesList(parish, override, recipe, recipePath) {
     updates.push("Manual override URL saved");
   }
   if (recipe?.recorded_date) {
-    updates.push(`Recipe updated ${recipe.recorded_date}`);
+    updates.push(`Recipe updated ${formatUkDate(recipe.recorded_date)}`);
   }
   if (recipePath) {
     updates.push(`Recipe file: ${recipePath}`);
@@ -1178,23 +1178,34 @@ chrome.runtime.onMessage.addListener((message) => {
   const pageY = Number(message.pageY ?? y);
   const elementSelector = message.element_selector || "";
 
-  setStatus(`✂️ Crop saved (${Math.round(width)}×${Math.round(height)})`, "ok");
-
   void withActiveTab((tab) => {
+    const payload = {
+      type: "mark_crop",
+      x,
+      y,
+      width,
+      height,
+      pageX,
+      pageY,
+      element_selector: elementSelector,
+    };
+    console.log("[PH-SAVE]", { action: "mark_crop", request: payload, phase: "request" });
     chrome.runtime.sendMessage({
       type: "dispatch_to_tab",
       tabId: tab.id,
-      payload: {
-        type: "mark_crop",
-        x,
-        y,
-        width,
-        height,
-        pageX,
-        pageY,
-        element_selector: elementSelector,
-      },
+      payload,
       allowInject: true,
+    }, (result) => {
+      console.log("[PH-SAVE]", { action: "mark_crop", request: payload, response: result || null });
+      if (chrome.runtime.lastError) {
+        setStatus(`❌ Could not save crop: ${chrome.runtime.lastError.message}`, "err");
+        return;
+      }
+      if (!result?.ok) {
+        setStatus(`❌ ${result?.reason || _dispatchErrorText(result)}`, "err");
+        return;
+      }
+      setStatus(`✂️ Crop saved (${Math.round(width)}×${Math.round(height)})`, "ok");
     });
   });
 });

@@ -5,7 +5,7 @@
   let toolbar = null;
   const TOOLBAR_ID = "ph-floating-toolbar";
   let toolbarReadyLogged = false;
-  let sessionSteps = []; // {type, label} tracked in the training UI
+  let recipeSteps = []; // single source of truth for both UI preview and standalone recipe push
   let pickLinkActive = false;
   let pickLinkHighlightEl = null;
   let pickLinkCancelListeners = [];
@@ -25,7 +25,6 @@
   // When the Playwright training bindings (window.ph_*) are absent, the
   // extension operates in "standalone" mode.  Steps are stored here so the
   // user can later push the recipe directly to GitHub without running train.py.
-  const standaloneSteps = []; // {action, ...} — recipe step objects
   let standaloneStartUrl = "";
 
   const _inStandaloneMode = () => typeof window.ph_mark_download_url !== "function";
@@ -181,17 +180,30 @@
     } catch (_e) {}
   };
 
-  const standaloneAddStep = (step) => {
+  const _standaloneRecipeSteps = () =>
+    recipeSteps
+      .filter((entry) => entry && entry.recipeStep && typeof entry.recipeStep.action === "string")
+      .map((entry) => entry.recipeStep);
+
+  const standaloneAddStep = (step, uiType = "", uiLabel = "") => {
     if (!_inStandaloneMode()) return;
     // Replace an existing download/image/html step if one already exists
     const terminal = ["download", "image", "html"];
     if (terminal.includes(step.action)) {
-      const idx = standaloneSteps.findIndex((s) => terminal.includes(s.action));
+      const idx = recipeSteps.findIndex((entry) =>
+        terminal.includes(String(entry?.recipeStep?.action || ""))
+      );
       if (idx >= 0) {
-        standaloneSteps.splice(idx, 1);
+        recipeSteps.splice(idx, 1);
       }
     }
-    standaloneSteps.push(step);
+    recipeSteps.push({
+      type: uiType || step.action || "step",
+      label: uiLabel || `• ${step.action || "step"}`,
+      recipeStep: step,
+    });
+    if (_stepsListEl) _renderSessionSteps();
+    if (_refreshRecipeCount) _refreshRecipeCount();
     if (!standaloneStartUrl) {
       standaloneStartUrl = window.location.href;
     }
@@ -199,12 +211,14 @@
 
   const standaloneUndo = (actionType) => {
     if (!_inStandaloneMode()) return;
-    for (let i = standaloneSteps.length - 1; i >= 0; i--) {
-      if (standaloneSteps[i].action === actionType) {
-        standaloneSteps.splice(i, 1);
+    for (let i = recipeSteps.length - 1; i >= 0; i--) {
+      if (recipeSteps[i]?.recipeStep?.action === actionType) {
+        recipeSteps.splice(i, 1);
         break;
       }
     }
+    if (_stepsListEl) _renderSessionSteps();
+    if (_refreshRecipeCount) _refreshRecipeCount();
   };
 
   const buildStandaloneRecipe = (parishKey, displayName, diocese) => {
@@ -212,7 +226,7 @@
     if (standaloneStartUrl) {
       steps.push({ action: "goto", url: standaloneStartUrl });
     }
-    steps.push(...standaloneSteps);
+    steps.push(..._standaloneRecipeSteps());
     return {
       version: 1,
       parish_key: parishKey,
@@ -224,7 +238,9 @@
   };
 
   const clearStandaloneRecipe = () => {
-    standaloneSteps.length = 0;
+    recipeSteps = recipeSteps.filter((entry) => !entry?.recipeStep);
+    if (_stepsListEl) _renderSessionSteps();
+    if (_refreshRecipeCount) _refreshRecipeCount();
     standaloneStartUrl = "";
   };
 
@@ -669,7 +685,7 @@
         emoji: "🖼️",
         summary: `Found ${maybeDocIframes.length} frame(s) — may contain a PDF viewer.`,
         advice:
-          "Click \"It's embedded in a frame\" to inspect the frames, or use \"Deep Detect\" if the PDF loads in the background.",
+          "Click \"It's embedded in a frame\" to inspect the frames. Background PDF detection now runs automatically as fallback.",
         type: "iframe_maybe",
       };
     }
@@ -692,7 +708,7 @@
         emoji: "📎",
         summary: `Found ${pdfEmbeds.length} embedded PDF object(s).`,
         advice:
-          'If the bulletin is showing here, use "Yes, it\'s a PDF". Otherwise try "Deep Detect".',
+          'If the bulletin is showing here, use "Yes, it\'s a PDF". If not, background PDF detection runs automatically.',
         type: "embed",
       };
     }
@@ -782,7 +798,7 @@
         emoji: "📋",
         summary: "HTML page — no PDF or document links detected.",
         advice:
-          'Try "Deep Detect" to listen for background PDF loads, or "No — I need to click a link" to navigate to the bulletin.',
+          'Background PDF detection now runs automatically. If still nothing appears, use "No — I need to click a link".',
         type: "html",
       };
     }
@@ -874,19 +890,19 @@
   // ── Session step tracking ─────────────────────────────────────────────────
 
   const addSessionStep = (type, label) => {
-    sessionSteps.push({ type, label });
+    recipeSteps.push({ type, label, recipeStep: null });
     if (_stepsListEl) _renderSessionSteps();
     if (_refreshRecipeCount) _refreshRecipeCount();
   };
 
   const undoSessionStep = () => {
-    if (sessionSteps.length === 0) return null;
-    const removed = sessionSteps.pop();
+    if (recipeSteps.length === 0) return null;
+    const removed = recipeSteps.pop();
     if (_stepsListEl) _renderSessionSteps();
     if (_refreshRecipeCount) _refreshRecipeCount();
     if (typeof window.ph_undo_step === "function") {
       try {
-        window.ph_undo_step({ step_type: removed.type });
+        window.ph_undo_step({ step_type: removed?.type || "" });
       } catch (_e) {
         // ph_undo_step may not be available in all training sessions
       }
@@ -897,14 +913,14 @@
   const _renderSessionSteps = () => {
     if (!_stepsListEl) return;
     _stepsListEl.innerHTML = "";
-    if (sessionSteps.length === 0) {
+    if (recipeSteps.length === 0) {
       const empty = document.createElement("div");
       empty.style.cssText = "opacity:0.55;font-size:10px;padding:2px 0;";
       empty.textContent = "No steps recorded yet.";
       _stepsListEl.appendChild(empty);
       return;
     }
-    sessionSteps.forEach((step, i) => {
+    recipeSteps.forEach((step, i) => {
       const item = document.createElement("div");
       item.style.cssText = [
         "display:flex",
@@ -1151,10 +1167,20 @@
     }
     if (window.ph_mark_download_url) {
       try {
-        window.ph_mark_download_url({ url });
+        const request = { url };
+        const result = window.ph_mark_download_url(request);
+        const response = result === false
+          ? { ok: false, reason: "Page rejected the file URL save." }
+          : { ok: true };
+        _logSaveCycle("mark_file", request, response);
+        if (result === false) {
+          if (showStatus) showStatus(`❌ ${response.reason}`, "error");
+          return;
+        }
         addSessionStep("mark_file", `📄 File: ${url.slice(-50)}`);
         if (showStatus) showStatus("✅ Bulletin file URL recorded.");
       } catch (_e) {
+        _logSaveCycle("mark_file", { url }, { ok: false, reason: "Could not communicate with page. Try refreshing." });
         if (showStatus)
           showStatus(
             "❌ Could not communicate with page. Try refreshing.",
@@ -1163,8 +1189,11 @@
       }
     } else {
       // Standalone mode: accumulate step locally for later GitHub push
-      standaloneAddStep({ action: "download", url });
-      addSessionStep("mark_file", `📄 File: ${url.slice(-50)}`);
+      standaloneAddStep(
+        { action: "download", url },
+        "mark_file",
+        `📄 File: ${url.slice(-50)}`
+      );
       if (showStatus) showStatus("✅ File URL saved (standalone). Use ⬆ Push Recipe to save to GitHub.");
     }
   };
@@ -1962,6 +1991,12 @@
       statusBar.textContent = message;
       statusBar.style.display = "block";
       statusBar.style.opacity = "1";
+      statusBar.dataset.status =
+        type === "error"
+          ? "error"
+          : (type === "info" || type === "warn" || String(message || "").startsWith("⏳"))
+          ? "pending"
+          : "success";
       if (type === "error") {
         statusBar.style.background = "#7f1d1d";
         statusBar.style.color = "#fca5a5";
@@ -2078,8 +2113,7 @@
       };
       let immediateStandaloneSaved = false;
       if (_inStandaloneMode()) {
-        standaloneAddStep(immediateStandaloneStep);
-        addSessionStep("click", clickLabel);
+        standaloneAddStep(immediateStandaloneStep, "click", clickLabel);
         immediateStandaloneSaved = true;
       }
 
@@ -2172,11 +2206,9 @@
           "↩ Undo",
           "#78350f",
           () => {
-            const idx = standaloneSteps.lastIndexOf(immediateStandaloneStep);
-            if (idx >= 0) standaloneSteps.splice(idx, 1);
-            for (let i = sessionSteps.length - 1; i >= 0; i--) {
-              if (sessionSteps[i].label === clickLabel) {
-                sessionSteps.splice(i, 1);
+            for (let i = recipeSteps.length - 1; i >= 0; i--) {
+              if (recipeSteps[i]?.label === clickLabel) {
+                recipeSteps.splice(i, 1);
                 break;
               }
             }
@@ -2451,15 +2483,28 @@
           pickedImages.push({ url: absUrl, el: imgEl });
           if (window.ph_mark_image) {
             try {
-              window.ph_mark_image({ url: absUrl });
+              const request = { url: absUrl };
+              const markResult = window.ph_mark_image(request);
+              const response = markResult === false
+                ? { ok: false, reason: "Page rejected the image save." }
+                : { ok: true };
+              _logSaveCycle("mark_image", request, response);
+              if (markResult === false) {
+                showStatus(`❌ ${response.reason}`, "error");
+                return;
+              }
               addSessionStep("mark_image", `🖼️ Image: ${absUrl.slice(-50)}`);
               showStatus(`✅ Image recorded: ${absUrl.slice(-40)}`);
             } catch (_e) {
+              _logSaveCycle("mark_image", { url: absUrl }, { ok: false, reason: "Could not record image. Try refreshing." });
               showStatus("❌ Could not record image. Try refreshing.", "error");
             }
           } else {
-            standaloneAddStep({ action: "image", url: absUrl });
-            addSessionStep("mark_image", `🖼️ Image: ${absUrl.slice(-50)}`);
+            standaloneAddStep(
+              { action: "image", url: absUrl },
+              "mark_image",
+              `🖼️ Image: ${absUrl.slice(-50)}`
+            );
             showStatus(`✅ Image noted: ${absUrl.slice(-40)}`);
           }
           pickedImages = [];
@@ -2703,113 +2748,99 @@
         identifyResult.appendChild(pickNewestBtn);
       }
 
-      // "Deep Detect" button for pages with no obvious document content
+      // Deep-detect fallback for pages with no obvious document content
       if (
         result.type === "html" ||
         result.type === "unknown" ||
         result.type === "embed" ||
         result.type === "iframe_maybe"
       ) {
-        const deepBtn = makeSmallBtn(
-          "🕵️ Deep Detect (10 s) — watch for hidden PDF loads",
-          "#4b5563",
-          () => {
-            deepBtn.disabled = true;
-            deepBtn.style.opacity = "0.5";
-            startDeepDetect(
-              (urls) => {
-                deepBtn.disabled = false;
-                deepBtn.style.opacity = "1";
-                if (urls.length === 0) {
-                  if (hasPickableImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
-                    showStatus(
-                      "Deep Detect: no PDFs found. This looks like an image bulletin — try 'Pick an image on this page' instead.",
-                      "info"
-                    );
-                  } else {
-                    showStatus(
-                      "Deep Detect: no document URLs detected in 10 s.",
-                      "info"
-                    );
-                  }
-                  return;
-                }
-                identifyResult.innerHTML = "";
-                const heading = document.createElement("div");
-                heading.style.cssText =
-                  "font-weight:600;color:#93c5fd;margin-bottom:5px;font-size:10px;";
+        showStatus("🕵️ Running deep detection fallback for 10 seconds…", "info");
+        startDeepDetect(
+          (urls) => {
+            if (urls.length === 0) {
+              if (hasPickableImageInContentAreas(MIN_CONTENT_IMAGE_WIDTH)) {
+                showStatus(
+                  "Deep Detect: no PDFs found. This looks like an image bulletin — try 'Pick an image on this page' instead.",
+                  "info"
+                );
+              } else {
+                showStatus(
+                  "Deep Detect: no document URLs detected in 10 s.",
+                  "info"
+                );
+              }
+              return;
+            }
+            identifyResult.innerHTML = "";
+            const heading = document.createElement("div");
+            heading.style.cssText =
+              "font-weight:600;color:#93c5fd;margin-bottom:5px;font-size:10px;";
 
-                // Sort detected URLs by date score (newest first)
-                const scoredUrls = urls.map((url, idx) => ({
-                  url,
-                  domIdx: idx,
-                  ...scoreUrlCandidateStr(url, "", idx),
-                }));
-                scoredUrls.sort(_bulletinDateSortFn);
-                const hasAnyUrlDate = scoredUrls.some((c) => c.hasDate);
+            // Sort detected URLs by date score (newest first)
+            const scoredUrls = urls.map((url, idx) => ({
+              url,
+              domIdx: idx,
+              ...scoreUrlCandidateStr(url, "", idx),
+            }));
+            scoredUrls.sort(_bulletinDateSortFn);
+            const hasAnyUrlDate = scoredUrls.some((c) => c.hasDate);
 
-                heading.textContent = `🕵️ Detected ${urls.length} document URL(s) — sorted by recency:`;
-                identifyResult.appendChild(heading);
+            heading.textContent = `🕵️ Detected ${urls.length} document URL(s) — sorted by recency:`;
+            identifyResult.appendChild(heading);
 
-                // Explain the recommendation or warn that no dates were found
-                const note = document.createElement("div");
-                note.style.cssText = "font-size:9px;margin-bottom:5px;";
-                if (hasAnyUrlDate) {
-                  note.style.color = "#6b7280";
-                  note.textContent = "⭐ marks the recommended pick (looks like the newest dated bulletin).";
-                } else {
-                  note.style.color = "#fbbf24";
-                  note.textContent = "⚠️ No dates detected in URLs — please review and pick manually.";
-                }
-                identifyResult.appendChild(note);
+            const note = document.createElement("div");
+            note.style.cssText = "font-size:9px;margin-bottom:5px;";
+            if (hasAnyUrlDate) {
+              note.style.color = "#6b7280";
+              note.textContent = "⭐ marks the recommended pick (looks like the newest dated bulletin).";
+            } else {
+              note.style.color = "#fbbf24";
+              note.textContent = "⚠️ No dates detected in URLs — please review and pick manually.";
+            }
+            identifyResult.appendChild(note);
 
-                scoredUrls.forEach(({ url, hasDate }, rankIdx) => {
-                  const row = document.createElement("div");
-                  row.style.cssText =
-                    "display:flex;gap:5px;margin-bottom:3px;align-items:center;";
-                  // Highlight the top recommended URL when we have date info
-                  if (rankIdx === 0 && hasDate) {
-                    row.style.cssText +=
-                      "background:#052e16;border-radius:3px;padding:2px 3px;";
-                  }
-                  const preview = document.createElement("span");
-                  preview.style.cssText =
-                    "flex:1;font-size:9px;word-break:break-all;line-height:1.35;white-space:pre-wrap;";
-                  preview.style.color = (rankIdx === 0 && hasDate) ? "#86efac" : "#d1d5db";
-                  let labelText = "";
-                  if (rankIdx === 0 && hasDate) {
-                    labelText = "⭐ Recommended (newest)\n";
-                  }
-                  labelText += url.length > 70 ? url.slice(0, 67) + "…" : url;
-                  preview.textContent = labelText;
-                  const useBtn = document.createElement("button");
-                  useBtn.textContent = "Use";
-                  useBtn.style.cssText = [
-                    "border:none",
-                    "border-radius:3px",
-                    "padding:2px 6px",
-                    "background:#16a34a",
-                    "color:#fff",
-                    "cursor:pointer",
-                    "font-size:9px",
-                    "font-family:inherit",
-                    "flex-shrink:0",
-                  ].join(";");
-                  useBtn.addEventListener("click", () =>
-                    markDownloadUrlSafe(url, showStatus, isDocumentUrl(url))
-                  );
-                  row.appendChild(preview);
-                  row.appendChild(useBtn);
-                  identifyResult.appendChild(row);
-                });
-              },
-              showStatus
-            );
+            scoredUrls.forEach(({ url, hasDate }, rankIdx) => {
+              const row = document.createElement("div");
+              row.style.cssText =
+                "display:flex;gap:5px;margin-bottom:3px;align-items:center;";
+              if (rankIdx === 0 && hasDate) {
+                row.style.cssText +=
+                  "background:#052e16;border-radius:3px;padding:2px 3px;";
+              }
+              const preview = document.createElement("span");
+              preview.style.cssText =
+                "flex:1;font-size:9px;word-break:break-all;line-height:1.35;white-space:pre-wrap;";
+              preview.style.color = (rankIdx === 0 && hasDate) ? "#86efac" : "#d1d5db";
+              let labelText = "";
+              if (rankIdx === 0 && hasDate) {
+                labelText = "⭐ Recommended (newest)\n";
+              }
+              labelText += url.length > 70 ? url.slice(0, 67) + "…" : url;
+              preview.textContent = labelText;
+              const useBtn = document.createElement("button");
+              useBtn.textContent = "Use";
+              useBtn.style.cssText = [
+                "border:none",
+                "border-radius:3px",
+                "padding:2px 6px",
+                "background:#16a34a",
+                "color:#fff",
+                "cursor:pointer",
+                "font-size:9px",
+                "font-family:inherit",
+                "flex-shrink:0",
+              ].join(";");
+              useBtn.addEventListener("click", () =>
+                markDownloadUrlSafe(url, showStatus, isDocumentUrl(url))
+              );
+              row.appendChild(preview);
+              row.appendChild(useBtn);
+              identifyResult.appendChild(row);
+            });
           },
-          "Listens for any PDF/DOCX requests the page makes in the background — interact with the page to trigger loads"
+          showStatus
         );
-        deepBtn.style.marginTop = "6px";
-        identifyResult.appendChild(deepBtn);
       }
 
       // Wix PDF viewer handling
@@ -2907,8 +2938,8 @@
 
     // Wire up the recipe count refresh callback
     _refreshRecipeCount = () => {
-      recipeTitleEl.textContent = `📋 Recipe Preview (${sessionSteps.length} step${
-        sessionSteps.length !== 1 ? "s" : ""
+      recipeTitleEl.textContent = `📋 Recipe Preview (${recipeSteps.length} step${
+        recipeSteps.length !== 1 ? "s" : ""
       })`;
     };
 
@@ -2984,29 +3015,14 @@
     };
 
     row.appendChild(
-      makeBtn("Mark Page as HTML", () => {
-        if (window.ph_mark_html) {
-          try {
-            window.ph_mark_html({ url: window.location.href });
-            addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
-            showStatus("✅ Marked as HTML bulletin page.");
-          } catch (_e) {
-            showStatus("❌ Could not communicate with page. Try refreshing.", "error");
-          }
+      makeBtn("✨ Mark this element", () => {
+        const result = _handleIncomingMessage({ type: "mark_element" });
+        if (result?.ok) {
+          if (result.reason) showStatus(`✅ ${result.reason}`);
+          else showStatus("✅ Element marked.");
         } else {
-          // Standalone extension mode — record html step
-          standaloneAddStep({ action: "html", url: window.location.href });
-          addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
-          showStatus("✅ Marked as HTML bulletin page.");
+          showStatus(`❌ ${result?.reason || "Could not mark this element."}`, "error");
         }
-      })
-    );
-
-    // "Mark Current URL as File" is kept for backward compatibility.
-    // Safety validation is applied via markDownloadUrlSafe.
-    row.appendChild(
-      makeBtn("Mark Current URL as File", () => {
-        markDownloadUrlSafe(window.location.href, showStatus, false);
       })
     );
 
@@ -3248,7 +3264,7 @@
 
     // ── Push Recipe to GitHub (standalone mode) ───────────────────────────
     // Only rendered when the Playwright bindings are absent.  Uses the
-    // standaloneSteps[] accumulated above to build a recipe JSON and push
+    // recipeSteps[] accumulated above to build a recipe JSON and push
     // it directly to the repo via the GitHub Contents API.
     if (_inStandaloneMode()) {
       const pushSection = document.createElement("div");
@@ -3385,7 +3401,7 @@
       const stepCountEl = document.createElement("div");
       stepCountEl.style.cssText = "font-size:9px;color:#6b7280;margin-bottom:5px;";
       const refreshStepCount = () => {
-        stepCountEl.textContent = `${standaloneSteps.length} step(s) recorded`;
+        stepCountEl.textContent = `${_standaloneRecipeSteps().length} step(s) recorded`;
       };
       refreshStepCount();
       pushSection.appendChild(stepCountEl);
@@ -3619,15 +3635,17 @@
           showStatus("❌ Could not infer parish key. Please enter it above.", "error");
           return;
         }
-        if (standaloneSteps.length === 0) { showStatus("⚠️ No steps recorded yet.", "warn"); return; }
+        if (_standaloneRecipeSteps().length === 0) { showStatus("⚠️ No steps recorded yet.", "warn"); return; }
 
         console.log(`Parish Trainer: pushing recipe for key=${key}, diocese=${diocese}`);
         const recipe = buildStandaloneRecipe(key, name || key, diocese);
         pushBtn.disabled = true;
         pushBtn.textContent = "⏳ Pushing…";
+        _logSaveCycle("push_recipe", { parish_key: key, recipe }, { ok: "pending" });
         showStatus("⏳ Pushing recipe to GitHub…", "info");
 
         _safeSendMessage({ type: "push_recipe", parish_key: key, recipe }, (response, bridgeError) => {
+          _logSaveCycle("push_recipe", { parish_key: key, recipe }, bridgeError ? { ok: false, reason: bridgeError } : response);
           pushBtn.disabled = false;
           pushBtn.textContent = "⬆ Push Recipe to GitHub";
           if (bridgeError) {
@@ -3690,7 +3708,7 @@
       ].join(";");
       clearBtn.addEventListener("click", () => {
         clearStandaloneRecipe();
-        sessionSteps.length = 0;
+        recipeSteps = [];
         if (_stepsListEl) _stepsListEl.innerHTML = "";
         refreshStepCount();
         showStatus("🗑 Steps cleared.", "info");
@@ -3721,6 +3739,11 @@
               commitMessage,
             },
             (response, bridgeError) => {
+              _logSaveCycle(
+                "update_start_url",
+                { path: driftRecipePath, commitMessage },
+                bridgeError ? { ok: false, reason: bridgeError } : response
+              );
               updateStartUrlBtn.disabled = false;
               updateStartUrlBtn.textContent = "Update start_url";
               if (bridgeError || !response?.ok) {
@@ -3841,9 +3864,19 @@
 
   // ── Message listener from isolated world / popup / side panel ─────────────
 
+  const _logSaveCycle = (action, request, response) => {
+    try {
+      console.log("[PH-SAVE]", { action, request, response });
+    } catch (_e) {
+      // no-op
+    }
+  };
+
   const _handleIncomingMessage = (message) => {
-    if (!message || typeof message !== "object") return false;
-    if (message.type === "ph_ping") return true;
+    if (!message || typeof message !== "object") {
+      return { ok: false, reason: "Invalid message payload." };
+    }
+    if (message.type === "ph_ping") return { ok: true };
 
     if (message.type === "toggle_toolbar") {
       const bar = _getToolbarNode();
@@ -3855,82 +3888,205 @@
         bar.dataset.phHidden = "true";
         bar.style.display = "none";
       }
-      return true;
+      return { ok: true };
     }
 
     if (message.type === "show_toolbar") {
       _ensureToolbar(true);
-      return true;
+      return { ok: true };
     }
 
-    const type = message.type;
-    if (type === "mark_html") {
-      if (window.ph_mark_html) {
-        window.ph_mark_html({ url: window.location.href });
-      } else {
-        // Standalone mode
-        standaloneAddStep({ action: "html", url: window.location.href });
+    const _recordStandaloneStep = (standaloneStep, stepType, stepLabel) => {
+      standaloneAddStep(standaloneStep, stepType, stepLabel);
+      return { ok: true };
+    };
+
+    const _recordBoundStep = ({ type, bindingName, payload, stepType, stepLabel, unavailableReason }) => {
+      if (_inStandaloneMode()) {
+        let standaloneStep = null;
+        if (type === "mark_html") standaloneStep = { action: "html", url: window.location.href };
+        if (type === "mark_file") standaloneStep = { action: "download", url: String(payload?.url || window.location.href).trim() };
+        if (type === "mark_image") standaloneStep = { action: "image", url: String(payload?.url || "").trim() };
+        if (standaloneStep) return _recordStandaloneStep(standaloneStep, stepType, stepLabel);
       }
-      addSessionStep("mark_html", `🔗 HTML: ${window.location.pathname}`);
-      return true;
+
+      const fn = window[bindingName];
+      if (typeof fn !== "function") {
+        return { ok: false, reason: unavailableReason || "Page save handler is not available." };
+      }
+      try {
+        const result = fn(payload);
+        if (result === false) {
+          return { ok: false, reason: "Page rejected the save action." };
+        }
+        addSessionStep(stepType, stepLabel);
+        return { ok: true };
+      } catch (_e) {
+        return { ok: false, reason: "Could not save on this page. Try refreshing and retry." };
+      }
+    };
+
+    const type = message.type;
+    if (type === "mark_element") {
+      const detected = detectPageType();
+      const currentUrl = window.location.href;
+      const responseFor = (next) => {
+        const response = _handleIncomingMessage(next);
+        _logSaveCycle(type, { detectedType: detected.type, next }, response);
+        return response;
+      };
+
+      if (isDocumentUrl(currentUrl)) {
+        return responseFor({ type: "mark_file", url: currentUrl });
+      }
+      if (detected.type === "wix_viewer" && detected.wixPdfUrl) {
+        return responseFor({ type: "mark_file", url: detected.wixPdfUrl });
+      }
+      const linkCandidates = Array.isArray(detected.links) ? detected.links : [];
+      if (linkCandidates.length > 0) {
+        const scored = linkCandidates.map((el, idx) => {
+          const url = el.getAttribute("href") || "";
+          const label = (el.innerText || el.textContent || "").trim();
+          return { url, domIdx: idx, ...scoreUrlCandidateStr(url, label, idx) };
+        });
+        scored.sort(_bulletinDateSortFn);
+        const bestUrl = String(scored[0]?.url || "").trim();
+        if (bestUrl) {
+          return responseFor({ type: "mark_file", url: bestUrl });
+        }
+      }
+
+      if (detected.type === "image") {
+        const candidate = Array.from(document.querySelectorAll("img[src]")).find((img) =>
+          isLargeImage(img, 300) || hasBulletinLikeFilename(img.getAttribute("src") || "")
+        );
+        if (candidate) {
+          const rawSrc = candidate.getAttribute("src") || "";
+          try {
+            const absSrc = new URL(rawSrc, window.location.href).href;
+            return responseFor({ type: "mark_image", url: absSrc });
+          } catch (_e) {
+            // fall through to HTML marker
+          }
+        }
+      }
+
+      if (detected.type === "embed" || detected.type === "iframe_maybe" || detected.type === "wix_viewer") {
+        _ensureToolbar(true);
+        window.dispatchEvent(new CustomEvent("ph-start-pick-iframe"));
+        const response = { ok: true, reason: "Opened frame picker to mark embedded bulletin content." };
+        _logSaveCycle(type, { detectedType: detected.type }, response);
+        return response;
+      }
+
+      return responseFor({ type: "mark_html" });
+    }
+    if (type === "mark_html") {
+      const request = { url: window.location.href };
+      const response = _recordBoundStep({
+        type,
+        bindingName: "ph_mark_html",
+        payload: request,
+        stepType: "mark_html",
+        stepLabel: `🔗 HTML: ${window.location.pathname}`,
+        unavailableReason: "HTML mark handler is unavailable on this page.",
+      });
+      _logSaveCycle(type, request, response);
+      return response;
     }
     if (type === "mark_file") {
-      if (window.ph_mark_download_url) {
-        window.ph_mark_download_url({ url: window.location.href });
-      } else {
-        // Standalone mode
-        standaloneAddStep({ action: "download", url: window.location.href });
-      }
-      addSessionStep("mark_file", `📄 File: ${window.location.pathname}`);
-      return true;
+      const selectedUrl = String(message.url || window.location.href).trim();
+      const request = { url: selectedUrl };
+      const response = _recordBoundStep({
+        type,
+        bindingName: "ph_mark_download_url",
+        payload: request,
+        stepType: "mark_file",
+        stepLabel: `📄 File: ${selectedUrl.slice(-45)}`,
+        unavailableReason: "File mark handler is unavailable on this page.",
+      });
+      _logSaveCycle(type, request, response);
+      return response;
     }
-    if (type === "mark_image" && message.url) {
-      if (window.ph_mark_image) {
-        window.ph_mark_image({ url: message.url });
-      } else {
-        // Standalone mode
-        standaloneAddStep({ action: "image", url: message.url });
+    if (type === "mark_image") {
+      const imageUrl = String(message.url || "").trim();
+      if (!imageUrl) {
+        const response = { ok: false, reason: "No image URL was provided." };
+        _logSaveCycle(type, { url: imageUrl }, response);
+        return response;
       }
-      addSessionStep("mark_image", `🖼️ Image: ${message.url.slice(-45)}`);
-      return true;
+      const request = { url: imageUrl };
+      const response = _recordBoundStep({
+        type,
+        bindingName: "ph_mark_image",
+        payload: request,
+        stepType: "mark_image",
+        stepLabel: `🖼️ Image: ${imageUrl.slice(-45)}`,
+        unavailableReason: "Image mark handler is unavailable on this page.",
+      });
+      _logSaveCycle(type, request, response);
+      return response;
     }
     if (type === "start_crop") {
       startCrop();
-      return true;
+      return { ok: true };
     }
     if (type === "start_pick_link") {
       _ensureToolbar(true);
       window.dispatchEvent(new CustomEvent("ph-start-pick-link"));
-      return true;
+      return { ok: true };
     }
     if (type === "start_pick_iframe") {
       _ensureToolbar(true);
       window.dispatchEvent(new CustomEvent("ph-start-pick-iframe"));
-      return true;
+      return { ok: true };
     }
     if (type === "start_pick_image") {
       _ensureToolbar(true);
       window.dispatchEvent(new CustomEvent("ph-start-pick-image-mode"));
-      return true;
+      return { ok: true };
     }
     if (type === "mark_crop") {
       const payload = message?.x != null ? message : null;
-      if (!payload) return false;
-      if (cropSignature(payload) === lastCropSignature) return true;
-      if (!window.ph_mark_crop) {
-        console.warn("Parish Trainer: ph_mark_crop binding is unavailable.");
-        return false;
+      if (!payload) {
+        const response = { ok: false, reason: "Crop data is missing." };
+        _logSaveCycle(type, message, response);
+        return response;
       }
-      window.ph_mark_crop(payload);
-      return true;
+      if (cropSignature(payload) === lastCropSignature) {
+        const response = { ok: true };
+        _logSaveCycle(type, payload, response);
+        return response;
+      }
+      if (!window.ph_mark_crop) {
+        const response = { ok: false, reason: "Crop save handler is unavailable on this page." };
+        _logSaveCycle(type, payload, response);
+        return response;
+      }
+      try {
+        const cropResult = window.ph_mark_crop(payload);
+        if (cropResult === false) {
+          const response = { ok: false, reason: "Crop was not saved by the page." };
+          _logSaveCycle(type, payload, response);
+          return response;
+        }
+        addSessionStep("mark_crop", `✂️ Crop: ${Math.round(payload.width || 0)}×${Math.round(payload.height || 0)}`);
+        const response = { ok: true };
+        _logSaveCycle(type, payload, response);
+        return response;
+      } catch (_e) {
+        const response = { ok: false, reason: "Could not save the crop selection. Try again." };
+        _logSaveCycle(type, payload, response);
+        return response;
+      }
     }
     if (type === "document_url_detected") {
       const url = message?.url || "";
       _ensureToolbar(true);
       window.dispatchEvent(new CustomEvent("ph-document-detected", { detail: { url } }));
-      return true;
+      return { ok: true };
     }
-    return false;
+    return { ok: false, reason: "Unsupported action." };
   };
 
   window.addEventListener("message", (event) => {
@@ -3943,11 +4099,11 @@
   if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message?.type === "get_standalone_steps") {
-        sendResponse({ ok: true, count: standaloneSteps.length });
+        sendResponse({ ok: true, count: _standaloneRecipeSteps().length });
         return true;
       }
-      const handled = _handleIncomingMessage(message);
-      sendResponse({ ok: handled });
+      const result = _handleIncomingMessage(message);
+      sendResponse(result);
       return true;
     });
   }
@@ -4010,8 +4166,7 @@
         else if (href && href.toLowerCase().endsWith(".docx")) fallbacks.push("a[href$='.docx']");
         if (clickData.css_path && clickData.css_path !== selector) fallbacks.push(clickData.css_path);
         if (fallbacks.length) step.fallback_selectors = fallbacks;
-        standaloneAddStep(step);
-        addSessionStep("click", label);
+        standaloneAddStep(step, "click", label);
       }
     },
     true

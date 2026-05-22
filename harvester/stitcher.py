@@ -44,6 +44,15 @@ _HEADER_RULE_SIDE_PADDING = 16
 _HEADER_BACKGROUND_ALPHA = 0.75
 _HEADER_BACKGROUND_OFFSET = 4
 
+
+def format_uk_date(iso_date: str) -> str:
+    raw = str(iso_date or "").strip()
+    match = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", raw)
+    if not match:
+        return raw
+    return f"{match.group(3)}/{match.group(2)}/{match.group(1)}"
+
+
 def _xml_escape(text: str) -> str:
     """Escape XML/HTML special characters for use in ReportLab markup."""
     return (
@@ -262,6 +271,8 @@ def stitch_mega_pdf(
         story: list = [
             Paragraph("Missing &amp; Online-Only Bulletins", styles["Title"]),
             Spacer(1, 0.25 * cm),
+            Paragraph(f"Generated {format_uk_date(target.isoformat())}", styles["Normal"]),
+            Spacer(1, 0.12 * cm),
             HRFlowable(width="100%", thickness=1, color=colors.grey),
             Spacer(1, 0.2 * cm),
             Paragraph(
