@@ -35,6 +35,7 @@ from harvester.harvest_log import (
     update_consecutive_failures,
     update_stale_bulletins,
 )
+from harvester.manifest_builder import build_manifest
 from harvester.report import generate_report
 from harvester.stitcher import stitch_mega_pdf
 from train import run_training
@@ -366,6 +367,17 @@ def main() -> int:
                     print(f"  🗑️  Deleted {deleted} single PDF file(s) for {short}")
             except Exception as exc:
                 print(f"  ⚠️  {short} mega PDF failed (non-fatal): {exc}")
+
+    print("\n── Manifest ────────────────────────────────────────────────")
+    try:
+        build_manifest(
+            report_path=REPORT_JSON,
+            dioceses_in_run=sorted(diocese_results.keys()),
+            output_path=Path("docs") / "manifest.json",
+        )
+        print("  📄 Wrote       : docs/manifest.json")
+    except Exception as exc:
+        print(f"  ⚠️  Manifest generation failed (non-fatal): {exc}")
 
     # Print harvest log summary
     print_summary()
