@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Search all bulletins</title>
+  <link rel="stylesheet" href="../assets/site.css" />
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f7faf9; color: #1a1a2e; }
+    .page { max-width: 980px; margin: 0 auto; padding: 28px 20px 40px; }
+    .search-input { width: 100%; border: 1px solid #bdd7d5; border-radius: 12px; min-height: 48px; padding: 12px 14px; font-size: 1rem; }
+    .meta { color: #4b5563; margin-top: 12px; }
+    .warning { margin-top: 16px; background: #fff7cc; border: 1px solid #e7d88c; border-radius: 10px; padding: 10px 12px; }
+    .result { margin-top: 14px; background: #fff; border: 1px solid #d6ecea; border-radius: 12px; padding: 14px; }
+    .result h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .result p { margin: 0; color: #374151; }
+    mark { background: #ffe08a; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <p><a href="../index.html">← Back to dashboard</a></p>
+    <h1>Search all bulletins</h1>
+    <input id="search-input" class="search-input" type="search" placeholder="Type a word like mass, novena, baptism..." aria-label="Search all bulletins" />
+    <div id="warning" class="warning" hidden>⚠️ Search index unavailable</div>
+    <p id="meta" class="meta">No matches yet — try a different word.</p>
+    <div id="results"></div>
+  </main>
+
+  <script>
+    (function () {
+      const input = document.getElementById('search-input');
+      const warning = document.getElementById('warning');
+      const meta = document.getElementById('meta');
+      const resultsEl = document.getElementById('results');
+      let documents = [];
+      let timer = null;
+
+      function escapeRegExp(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function highlightSnippet(text, query) {
+        const lowerText = text.toLowerCase();
+        const lowerQuery = query.toLowerCase();
+        const idx = lowerText.indexOf(lowerQuery);
+        if (idx === -1) {
+          return escapeHtml(text.slice(0, 150));
+        }
+        const start = Math.max(0, idx - 75);
+        const end = Math.min(text.length, idx + query.length + 75);
+        const chunk = text.slice(start, end);
+        const regex = new RegExp('(' + escapeRegExp(query) + ')', 'ig');
+        return escapeHtml(chunk).replace(regex, '<mark>$1</mark>');
+      }
+
+      function render(query) {
+        const trimmed = query.trim();
+        resultsEl.innerHTML = '';
+
+        if (!trimmed) {
+          meta.textContent = 'No matches yet — try a different word.';
+          return;
+        }
+
+        const q = trimmed.toLowerCase();
+        const matches = documents.filter((doc) => {
+          const parish = String(doc.parish || '').toLowerCase();
+          const text = String(doc.text || '').toLowerCase();
+          return parish.includes(q) || text.includes(q);
+        });
+
+        meta.textContent = matches.length + " bulletins match '" + trimmed + "'";
+        if (!matches.length) {
+          resultsEl.innerHTML = '<p>No matches yet — try a different word.</p>';
+          return;
+        }
+
+        matches.forEach((doc) => {
+          const wrapper = document.createElement('article');
+          wrapper.className = 'result';
+          const snippet = highlightSnippet(String(doc.text || ''), trimmed);
+          wrapper.innerHTML =
+            '<h3><a href="' + escapeHtml(String(doc.viewer_url || '#')) + '">' + escapeHtml(String(doc.parish || 'Unknown parish')) + '</a></h3>' +
+            '<p><strong>' + escapeHtml(String(doc.date || '')) + '</strong> · ' + escapeHtml(String(doc.diocese || '')) + '</p>' +
+            '<p>' + snippet + '</p>';
+          resultsEl.appendChild(wrapper);
+        });
+      }
+
+      input.addEventListener('input', function () {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        timer = setTimeout(function () {
+          render(input.value);
+        }, 150);
+      });
+
+      fetch('../search-index.json')
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('search index fetch failed');
+          }
+          return response.json();
+        })
+        .then((payload) => {
+          documents = Array.isArray(payload.documents) ? payload.documents : [];
+          render(input.value);
+        })
+        .catch(() => {
+          warning.hidden = false;
+          documents = [];
+          render(input.value);
+        });
+    })();
+  </script>
+</body>
+</html>
