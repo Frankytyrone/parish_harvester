@@ -485,8 +485,8 @@ def _fit_image_to_a4_page(image):
     scale = min(page_width / source.width, page_height / source.height)
     scaled = source.resize(
         (
-            max(1, int(source.width * scale)),
-            max(1, int(source.height * scale)),
+            max(1, int(round(source.width * scale))),
+            max(1, int(round(source.height * scale))),
         ),
         Image.Resampling.LANCZOS,
     )
@@ -1208,7 +1208,6 @@ async def _download_image_as_pdf(
 ) -> None:
     """Download a JPEG/PNG image and convert it to a single-page PDF."""
     from PIL import Image  # type: ignore[import]
-    import io
 
     context = await browser.new_context()
     try:
