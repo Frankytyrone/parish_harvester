@@ -1,0 +1,15 @@
+{
+  "parish_key": "st-mary-of-the-visitation-church-killybegs",
+  "parish_name": "St Mary Of The Visitation Church Killybegs",
+  "display_name": "St Mary Of The Visitation Church Killybegs",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://mcn.live/Camera/st-mary-of-the-visitation-church-killybegs",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://mcn.live/Camera/st-mary-of-the-visitation-church-killybegs"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

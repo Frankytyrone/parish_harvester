@@ -1,0 +1,15 @@
+{
+  "parish_key": "gort-a-choirce",
+  "parish_name": "Gort A Choirce",
+  "display_name": "Gort A Choirce",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://www.parishpress.net/wp-content/uploads/parish-bulletins/donegal/raphoe/gort-a-choirce/bulletin.pdf?t=1771000171",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.parishpress.net/wp-content/uploads/parish-bulletins/donegal/raphoe/gort-a-choirce/bulletin.pdf?t=1771000171"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

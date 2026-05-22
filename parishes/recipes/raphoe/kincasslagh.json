@@ -1,0 +1,15 @@
+{
+  "parish_key": "kincasslagh",
+  "parish_name": "Kincasslagh",
+  "display_name": "Kincasslagh",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://www.kincasslagh.ie/?post_type=kbp_bulletins",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.kincasslagh.ie/?post_type=kbp_bulletins"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

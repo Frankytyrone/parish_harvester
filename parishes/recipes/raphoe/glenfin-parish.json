@@ -1,0 +1,15 @@
+{
+  "parish_key": "glenfin-parish",
+  "parish_name": "Glenfin Parish",
+  "display_name": "Glenfin Parish",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://www.glenfin-parish.com/#sbp-bulletin",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.glenfin-parish.com/#sbp-bulletin"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

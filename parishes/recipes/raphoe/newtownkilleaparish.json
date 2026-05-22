@@ -1,0 +1,15 @@
+{
+  "parish_key": "newtownkilleaparish",
+  "parish_name": "Newtownkilleaparish",
+  "display_name": "Newtownkilleaparish",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://newtownkilleaparish.ie/bulletin/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://newtownkilleaparish.ie/bulletin/"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

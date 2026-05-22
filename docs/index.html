@@ -3,73 +3,47 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Parish Bulletin Dashboard</title>
+  <title>Parish Press — Irish Catholic Bulletins</title>
   <link rel="stylesheet" href="assets/site.css" />
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: linear-gradient(180deg, #eff9f8 0%, #f8fbfb 100%); color: #1a1a2e; }
-    .hero { padding: 44px 20px 24px; background: linear-gradient(135deg, #1a6b6b 0%, #114b4b 100%); color: white; }
-    .hero-inner, .content { max-width: 1160px; margin: 0 auto; }
-    .hero h1 { margin: 0 0 10px; font-size: clamp(2.1rem, 4vw, 3.2rem); }
-    .hero p { margin: 0; max-width: 760px; color: rgba(255,255,255,0.88); font-size: 1.05rem; }
-    .content { padding: 28px 20px 40px; }
-    .section-title { margin: 0 0 16px; color: #1a6b6b; font-size: 1.45rem; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-    .card { background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 22px; box-shadow: 0 14px 34px rgba(26, 122, 122, 0.08); }
-    .eyebrow { margin: 0 0 8px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; font-weight: 700; }
-    .card h2 { margin: 0 0 10px; font-size: 1.45rem; }
-    .card p { margin: 0 0 18px; color: #4b5563; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-    .button { display: inline-flex; align-items: center; justify-content: center; padding: 11px 16px; border-radius: 999px; font-weight: 700; text-decoration: none; }
-    .button.primary { background: #1a6b6b; color: white; }
-    .button.secondary { background: #edf7f6; color: #1a6b6b; border: 1px solid #cfe8e6; }
-    .archive-card { margin-top: 24px; background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 20px; box-shadow: 0 12px 30px rgba(26, 122, 122, 0.06); }
-    .archive-card a { color: #1a6b6b; font-weight: 700; text-decoration: none; }
-    .archive-card a:hover { text-decoration: underline; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f7fbfb; color: #16202a; }
+    .hero { background: #1a6b6b; color: #fff; padding: 26px 18px; }
+    .hero-inner, .content, .footer { max-width: 1180px; margin: 0 auto; }
+    .banner { background: #fff4df; border: 1px solid #f5d08d; color: #704d0f; border-radius: 10px; padding: 10px 12px; margin-top: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 18px; }
+    .diocese-card { background: #fff; border: 1px solid #d6ecea; border-radius: 12px; padding: 14px; }
+    .diocese-card h2 { margin: 0 0 8px; font-size: 1.08rem; }
+    .diocese-card p { margin: 0 0 8px; color: #4b5563; }
+    .diocese-card a { color: #1a6b6b; font-weight: 700; text-decoration: none; }
+    .diocese-card a:hover { text-decoration: underline; }
+    .content { padding: 20px 16px 10px; }
+    .footer { border-top: 1px solid #d6ecea; margin-top: 18px; padding: 14px 16px 24px; color: #4b5563; font-size: 0.95rem; }
+    .footer a { color: #1a6b6b; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <section class="hero">
+  <header class="hero">
     <div class="hero-inner">
-      <h1>Parish Bulletin Dashboard</h1>
-      <p>Read the latest diocesan mega PDFs, switch to OCR side-by-side viewer pages, and browse the growing bulletin archive published to GitHub Pages.</p>
+      <h1>Parish Press — Irish Catholic Bulletins</h1>
+      <p>Auto-collected every Sunday. Free forever.</p>
+      <p class="banner">🤖 Bulletins are auto-collected from parish websites. OCR may contain errors. Always check the original PDF.</p>
     </div>
-  </section>
+  </header>
   <main class="content">
-    <h2 class="section-title">Mega PDF cards</h2>
-    <div class="cards">
-        <article class="card">
-          <p class="eyebrow">Mega PDF card</p>
-          <h2>Derry Diocese</h2>
-          <p>Latest OCR viewer: <strong>22/05/2026</strong></p>
-          <div class="actions">
-            <a class="button secondary" href="mega_pdf/index.html#derry">👁 View Online</a>
-            <a class="button primary" href="bulletins/derry-2026-05-22.html">📖 Read OCR Text</a>
-            <a class="button secondary" href="mega_pdf/derry_mega_bulletin.pdf" download>⬇ Download PDF</a>
-          </div>
-        </article>
-            
-        <article class="card">
-          <p class="eyebrow">Mega PDF card</p>
-          <h2>Down &amp; Connor Diocese</h2>
-          <p>Latest OCR viewer: <strong>22/05/2026</strong></p>
-          <div class="actions">
-            <a class="button secondary" href="mega_pdf/index.html#down_and_connor">👁 View Online</a>
-            <a class="button primary" href="bulletins/down_and_connor-2026-05-22.html">📖 Read OCR Text</a>
-            <a class="button secondary" href="mega_pdf/down_and_connor_mega_bulletin.pdf" download>⬇ Download PDF</a>
-          </div>
-        </article>
-            </div>
-    <div class="archive-card">
-      <p><a href="bulletins/index.html">Browse the full OCR bulletin archive</a></p>
-      <p><a href="mega_pdf/index.html">Open the mega PDF tab viewer</a></p>
-      <p><a href="EMBEDDING.md">Read the embedding guide</a> · <a href="embed-examples.html">Open copy/paste embed examples</a></p>
-      <p><a href="badges/">Parish reliability scores</a></p>
-      <p>Subscribe (RSS): <a href="feeds/derry_diocese.xml">Derry Diocese</a> · <a href="feeds/down_and_connor.xml">Down &amp; Connor</a></p>
-      <p><a href="search/">Search all bulletins</a></p>
-      <p>📅 Subscribe in Google/Apple Calendar: <a href="calendars/derry.ics">Derry Diocese</a> · <a href="calendars/down_and_connor.ics">Down &amp; Connor</a> · <a href="calendars/all.ics">All parishes</a></p>
-      <p><a href="sitemap.html">🗺️ Site map — every public URL</a> · <a href="COST_DASHBOARD.md">💷 Cost dashboard</a></p>
-    </div>
+    <section class="grid"><article class="diocese-card"><h2>Armagh</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/armagh/">Open →</a></article><article class="diocese-card"><h2>Dublin</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/dublin/">Open →</a></article><article class="diocese-card"><h2>Cashel and Emly</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/cashel-and-emly/">Open →</a></article><article class="diocese-card"><h2>Tuam</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/tuam/">Open →</a></article><article class="diocese-card"><h2>Clogher</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/clogher/">Open →</a></article><article class="diocese-card"><h2>Cloyne</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/cloyne/">Open →</a></article><article class="diocese-card"><h2>Cork and Ross</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/cork-and-ross/">Open →</a></article><article class="diocese-card"><h2>Derry</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: 2026-05-22</p><a href="dioceses/derry/">Open →</a></article><article class="diocese-card"><h2>Down and Connor</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: 2026-05-22</p><a href="dioceses/down-and-connor/">Open →</a></article><article class="diocese-card"><h2>Dromore</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/dromore/">Open →</a></article><article class="diocese-card"><h2>Elphin</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/elphin/">Open →</a></article><article class="diocese-card"><h2>Ferns</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/ferns/">Open →</a></article><article class="diocese-card"><h2>Galway Kilmacduagh and Kilfenora</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/galway-kilmacduagh-and-kilfenora/">Open →</a></article><article class="diocese-card"><h2>Kerry</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/kerry/">Open →</a></article><article class="diocese-card"><h2>Kildare and Leighlin</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/kildare-and-leighlin/">Open →</a></article><article class="diocese-card"><h2>Killala</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/killala/">Open →</a></article><article class="diocese-card"><h2>Killaloe</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/killaloe/">Open →</a></article><article class="diocese-card"><h2>Limerick</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/limerick/">Open →</a></article><article class="diocese-card"><h2>Meath</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/meath/">Open →</a></article><article class="diocese-card"><h2>Ossory</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/ossory/">Open →</a></article><article class="diocese-card"><h2>Raphoe</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/raphoe/">Open →</a></article><article class="diocese-card"><h2>Waterford and Lismore</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/waterford-and-lismore/">Open →</a></article><article class="diocese-card"><h2>Achonry</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/achonry/">Open →</a></article><article class="diocese-card"><h2>Ardagh and Clonmacnoise</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/ardagh-and-clonmacnoise/">Open →</a></article><article class="diocese-card"><h2>Kilmore</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/kilmore/">Open →</a></article><article class="diocese-card"><h2>Kilfenora-and-Kilmacduagh</h2><p><strong>⚪</strong> No reliability data yet</p><p>Last updated: Coming soon</p><a href="dioceses/kilfenora-and-kilmacduagh/">Open →</a></article></section>
   </main>
+  <footer class="footer">
+    <p><a href="bulletins/index.html">Browse the full OCR bulletin archive</a></p>
+    <p><a href="mega_pdf/index.html">Open the mega PDF tab viewer</a></p>
+    <p><a href="EMBEDDING.md">Read the embedding guide</a> · <a href="embed-examples.html">Open copy/paste embed examples</a></p>
+    <p><a href="badges/">Parish reliability scores</a></p>
+    <p>Subscribe (RSS): <a href="feeds/derry_diocese.xml">Derry Diocese</a> · <a href="feeds/down_and_connor.xml">Down &amp; Connor</a></p>
+    <p><a href="search/">Search all bulletins</a></p>
+    <p>📅 Subscribe in Google/Apple Calendar: <a href="calendars/derry.ics">Derry Diocese</a> · <a href="calendars/down_and_connor.ics">Down &amp; Connor</a> · <a href="calendars/all.ics">All parishes</a></p>
+    <p><a href="sitemap.html">🗺️ Site map — every public URL</a> · <a href="COST_DASHBOARD.md">💷 Cost dashboard</a></p>
+    <p><a href="subscribe/">📬 Subscribe for reminders</a></p>
+    <p>© 2026 Parish Press</p>
+  </footer>
 </body>
 </html>

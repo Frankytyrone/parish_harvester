@@ -1,0 +1,15 @@
+{
+  "parish_key": "inverparish",
+  "parish_name": "Inverparish",
+  "display_name": "Inverparish",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://www.inverparish.com/parish-newsletter.html",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.inverparish.com/parish-newsletter.html"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

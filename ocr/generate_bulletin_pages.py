@@ -993,7 +993,6 @@ def write_root_index(entries: list[ViewerEntry]) -> None:
 def rebuild_indexes() -> None:
     entries = scan_viewer_entries()
     write_bulletins_index(entries)
-    write_root_index(entries)
 
 
 def main() -> None:

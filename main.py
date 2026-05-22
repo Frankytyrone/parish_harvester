@@ -39,6 +39,7 @@ from harvester.harvest_log import (
 from harvester.manifest_builder import build_manifest
 from harvester.priority_queue import prioritise
 from harvester.report import generate_report
+from harvester.site_builder import run as run_site_builder
 from harvester.stitcher import stitch_mega_pdf
 from train import run_training
 
@@ -398,7 +399,9 @@ def main() -> int:
             dioceses_in_run=sorted(diocese_results.keys()),
             output_path=Path("docs") / "manifest.json",
         )
+        run_site_builder(report_path=REPORT_JSON, docs_dir=Path("docs"))
         print("  📄 Wrote       : docs/manifest.json")
+        print("  🌐 Wrote       : docs/dioceses/*/index.html and docs/index.html")
     except Exception as exc:
         print(f"  ⚠️  Manifest generation failed (non-fatal): {exc}")
 

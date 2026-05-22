@@ -1,0 +1,15 @@
+{
+  "parish_key": "milfordrathmullanparishes",
+  "parish_name": "Milfordrathmullanparishes",
+  "display_name": "Milfordrathmullanparishes",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://milfordrathmullanparishes.ie/bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://milfordrathmullanparishes.ie/bulletins/"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

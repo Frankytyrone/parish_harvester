@@ -1,0 +1,15 @@
+{
+  "parish_key": "kilbarron",
+  "parish_name": "Kilbarron",
+  "display_name": "Kilbarron",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://www.kilbarron.org/bulletin",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.kilbarron.org/bulletin"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

@@ -1,0 +1,15 @@
+{
+  "parish_key": "holy-cross-church",
+  "parish_name": "Holy Cross Church",
+  "display_name": "Holy Cross Church",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://mcn.live/Camera/holy-cross-church",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://mcn.live/Camera/holy-cross-church"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}
