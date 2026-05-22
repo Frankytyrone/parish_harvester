@@ -95,6 +95,12 @@ document.getElementById("gh-save").addEventListener("click", () => {
   const mistralApiKey = (document.getElementById("mistral-api-key").value || "").trim();
   const ghStatusEl = document.getElementById("gh-save-status");
   chrome.storage.local.set({ gh_pat: pat, gh_repo: repo, mistral_api_key: mistralApiKey }, () => {
+    if (chrome.runtime.lastError) {
+      ghStatusEl.textContent = `❌ Save failed: ${chrome.runtime.lastError.message}`;
+      ghStatusEl.style.color = "#fca5a5";
+      setTimeout(() => { ghStatusEl.textContent = ""; }, 4000);
+      return;
+    }
     if (!pat || !repo) {
       ghStatusEl.textContent = "⚠️ Saved. Add GitHub PAT + repo to enable recipe push.";
       ghStatusEl.style.color = "#fde68a";
@@ -237,16 +243,19 @@ async function runDiagnostics() {
 
   // 6. Content script check
   const scriptRow = _addDiagRow("⏳", "Pinging page script…");
-  const pingResult = await dispatchToActiveTab({ type: "ping" });
-  let scriptOk = pingResult?.ok;
-  if (!scriptOk) {
-    const compatPingResult = await dispatchToActiveTab({ type: "ph_ping" });
-    scriptOk = compatPingResult?.ok;
-  }
+  await dispatchToActiveTab({ type: "ping" });
+  const compatPingResult = await dispatchToActiveTab({ type: "ph_ping" });
+  const scriptOk = (
+    compatPingResult &&
+    typeof compatPingResult === "object" &&
+    Object.keys(compatPingResult).length === 2 &&
+    compatPingResult.ok === true &&
+    compatPingResult.pong === true
+  );
   if (scriptOk) {
     _updateDiagRow(scriptRow, "✅", "Page script responding — toolbar ready");
   } else {
-    _updateDiagRow(scriptRow, "❌", "Page script not responding — are you on a normal http/https page? Try refreshing.");
+    _updateDiagRow(scriptRow, "❌", "Page script not responding (or wrong version)");
   }
 
   // 7. Standalone steps recorded

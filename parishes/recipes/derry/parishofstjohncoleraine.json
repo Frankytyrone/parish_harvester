@@ -5,5 +5,7 @@
   "status": "inactive",
   "skip": true,
   "reason": "Website DNS no longer resolves (parishofstjohncoleraine.com).",
-  "recorded_date": "2026-05-12"
+  "recorded_date": "2026-05-12",
+  "inactive_reason": "DNS dead (no such domain)",
+  "inactive_marked": "2026-05-22"
 }

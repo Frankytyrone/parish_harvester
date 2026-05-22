@@ -1,3 +1,9 @@
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "ph_ping") return false;
+  sendResponse({ ok: true, pong: true });
+  return true;
+});
+
 chrome.runtime.onMessage.addListener((message) => {
   window.postMessage({ direction: "from-isolated", message }, "*");
 });

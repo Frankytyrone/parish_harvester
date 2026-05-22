@@ -16,5 +16,7 @@
   "diocese": "down_and_connor",
   "status": "inactive",
   "skip": true,
-  "reason": "Website DNS no longer resolves (drumbocarryduff.ie)."
+  "reason": "Website DNS no longer resolves (drumbocarryduff.ie).",
+  "inactive_reason": "DNS dead (no such domain)",
+  "inactive_marked": "2026-05-22"
 }

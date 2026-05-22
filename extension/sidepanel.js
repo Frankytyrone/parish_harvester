@@ -117,6 +117,12 @@ document.getElementById("gh-save").addEventListener("click", () => {
     return;
   }
   chrome.storage.local.set({ gh_pat: pat, gh_repo: repo }, () => {
+    if (chrome.runtime.lastError) {
+      status.textContent = `❌ Save failed: ${chrome.runtime.lastError.message}`;
+      status.style.color = "#fca5a5";
+      setTimeout(() => { status.textContent = ""; }, 4000);
+      return;
+    }
     status.textContent = "✅ Settings saved.";
     status.style.color = "#86efac";
     setTimeout(() => { status.textContent = ""; }, 3000);
