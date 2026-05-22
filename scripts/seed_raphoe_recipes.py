@@ -26,10 +26,10 @@ def _domain_label(host: str) -> str:
 
 def _derive_parish_key(url: str) -> tuple[str, str | None]:
     parsed = urlparse(url)
-    host = (parsed.netloc or "").lower()
+    host = (parsed.hostname or "").lower()
     path_bits = [part for part in parsed.path.split("/") if part]
 
-    if "drive.google.com" in host:
+    if host == "drive.google.com":
         token = ""
         if "folders" in path_bits:
             token = path_bits[-1]
@@ -38,11 +38,11 @@ def _derive_parish_key(url: str) -> tuple[str, str | None]:
         key = _slugify(f"drive-{token[:10]}")
         return key, f"ambiguous Google Drive URL, best guess key '{key}' from path token"
 
-    if "mcn.live" in host:
+    if host == "mcn.live" or host.endswith(".mcn.live"):
         guess = _slugify(path_bits[-1] if path_bits else _domain_label(host))
         return guess, f"ambiguous mcn.live URL, best guess key '{guess}' from camera path"
 
-    if "parishpress.net" in host:
+    if host == "parishpress.net" or host.endswith(".parishpress.net"):
         guess = _slugify(path_bits[-2] if len(path_bits) >= 2 else _domain_label(host))
         return guess, f"ambiguous parishpress.net file URL, best guess key '{guess}' from path"
 
