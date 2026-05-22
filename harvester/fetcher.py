@@ -7,11 +7,13 @@ date math, and downloads each bulletin directly.  No crawling, no guessing.
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import os
 import re
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -42,7 +44,7 @@ from .config import (
     PARISHES_DIR,
     TOTAL_TIMEOUT_S,
 )
-from .replay import RecipeReplayError, recipe_path_for, replay_recipe
+from .replay import RecipeReplayError, _print_page_to_pdf, recipe_path_for, replay_recipe
 from .pattern_detector import detect_pattern, save_pattern_change
 from .utils import (
     extract_date_from_slug,
@@ -62,6 +64,8 @@ _PLAYWRIGHT_SHUTDOWN_DELAY_S: float = 0.5
 _MAX_ATTEMPTS: int = 3
 # Seconds to wait between retry attempts
 _RETRY_DELAY_S: float = 3.0
+HTML_RENDER_MIN_BYTES = 4096
+_HOST_PROFILES_CACHE: dict | None = None
 _HEADER_DASH_CLASS = r"[-\u2013\u2014]"
 _MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 _MISTRAL_MODEL = "mistral-small-latest"
@@ -403,6 +407,237 @@ def _looks_like_document_link(url: str) -> bool:
     return any(p in lower for p in patterns)
 
 
+def _load_host_profiles() -> dict:
+    global _HOST_PROFILES_CACHE
+    if _HOST_PROFILES_CACHE is not None:
+        return _HOST_PROFILES_CACHE
+
+    fallback = {
+        "_default": {
+            "navigation_timeout_ms": PAGE_LOAD_TIMEOUT_MS,
+            "wait_after_load_ms": 1500,
+            "max_retries": _MAX_ATTEMPTS - 1,
+            "retry_backoff_ms": int(_RETRY_DELAY_S * 1000),
+        },
+        "hosts": {},
+    }
+    path = PARISHES_DIR / "host_profiles.json"
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            fallback["_default"].update(
+                loaded.get("_default", {}) if isinstance(loaded.get("_default"), dict) else {}
+            )
+            hosts = loaded.get("hosts")
+            if isinstance(hosts, dict):
+                fallback["hosts"] = hosts
+    except Exception:
+        pass
+    _HOST_PROFILES_CACHE = fallback
+    return fallback
+
+
+def _get_host_profile(start_url: str) -> dict:
+    """Returns merged profile (defaults + host-specific overrides)."""
+    profiles = _load_host_profiles()
+    merged = dict(profiles.get("_default", {}))
+    host = urlparse(start_url).netloc.lower().split(":", 1)[0]
+    candidates = [host]
+    if host.startswith("www."):
+        candidates.append(host[4:])
+    elif host:
+        candidates.append(f"www.{host}")
+    host_overrides = profiles.get("hosts", {})
+    if isinstance(host_overrides, dict):
+        for candidate in candidates:
+            override = host_overrides.get(candidate)
+            if isinstance(override, dict):
+                merged.update(override)
+                break
+    return {
+        "navigation_timeout_ms": int(merged.get("navigation_timeout_ms", PAGE_LOAD_TIMEOUT_MS)),
+        "wait_after_load_ms": int(merged.get("wait_after_load_ms", 1500)),
+        "max_retries": int(merged.get("max_retries", _MAX_ATTEMPTS - 1)),
+        "retry_backoff_ms": int(merged.get("retry_backoff_ms", int(_RETRY_DELAY_S * 1000))),
+    }
+
+
+def _rendered_pdf_looks_usable(path: Path) -> bool:
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return False
+    if size < HTML_RENDER_MIN_BYTES:
+        return False
+    try:
+        return path.read_bytes()[:5] == b"%PDF-"
+    except OSError:
+        return False
+
+
+def _fit_image_to_a4_page(image):
+    from PIL import Image  # type: ignore[import]
+
+    page_width = 1240
+    page_height = 1754
+    source = image.convert("RGB")
+    scale = min(page_width / source.width, page_height / source.height)
+    scaled = source.resize(
+        (
+            max(1, int(source.width * scale)),
+            max(1, int(source.height * scale)),
+        ),
+        Image.Resampling.LANCZOS,
+    )
+    canvas = Image.new("RGB", (page_width, page_height), (255, 255, 255))
+    offset = ((page_width - scaled.width) // 2, (page_height - scaled.height) // 2)
+    canvas.paste(scaled, offset)
+    return canvas
+
+
+async def _page_wait(page, delay_ms: int) -> None:
+    if delay_ms <= 0:
+        return
+    wait_for_timeout = getattr(page, "wait_for_timeout", None)
+    if callable(wait_for_timeout):
+        await wait_for_timeout(delay_ms)
+    else:
+        await asyncio.sleep(delay_ms / 1000)
+
+
+def _recipe_start_url(entry: ParishEntry, recipe_meta: dict, fallback_url: str) -> str:
+    return str(
+        recipe_meta.get("start_url")
+        or entry.bulletin_page
+        or entry.example_url
+        or fallback_url
+    ).strip()
+
+
+def _is_recipe_flag_enabled(recipe_meta: dict, flag_name: str) -> bool:
+    return not bool(recipe_meta.get(flag_name))
+
+
+async def _render_page_to_pdf(page, dest_path: str) -> bool:
+    """Render the currently-loaded Playwright page to a PDF on disk.
+    Returns True on success, False on any error.
+    """
+    try:
+        await _print_page_to_pdf(page, Path(dest_path))
+        return True
+    except Exception as exc:
+        print(f"  ⚠️  Warning: HTML render fallback failed: {exc}")
+        return False
+
+
+async def _download_image_bytes(url: str, page=None) -> bytes:
+    if page is not None:
+        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+        if not response.ok:
+            raise RuntimeError(f"HTTP {response.status} downloading image from {url}")
+        return await response.body()
+
+    def _fetch() -> bytes:
+        request = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urlopen(request, timeout=PAGE_LOAD_TIMEOUT_MS / 1000) as response:
+            return response.read()
+
+    return await asyncio.to_thread(_fetch)
+
+
+async def _download_images_as_single_pdf(
+    image_urls: list[str], dest_path: str, page=None
+) -> bool:
+    """Download each image URL, decode with Pillow, assemble into a single
+    multi-page PDF (one image per page, fit to A4). Returns True on success.
+    If `page` is provided (Playwright page), use it to fetch images so cookies/
+    referer/JS-set headers carry over. Falls back to plain requests otherwise.
+    """
+    try:
+        from PIL import Image  # type: ignore[import]
+    except ImportError:
+        return False
+
+    pages = []
+    try:
+        for url in image_urls:
+            body = await _download_image_bytes(url, page=page)
+            with Image.open(io.BytesIO(body)) as img:
+                pages.append(_fit_image_to_a4_page(img))
+        if not pages:
+            return False
+        pages[0].save(
+            dest_path,
+            save_all=True,
+            append_images=pages[1:],
+            format="PDF",
+            resolution=150,
+        )
+        return True
+    except Exception as exc:
+        print(f"  ⚠️  Warning: multi-image PDF fallback failed: {exc}")
+        return False
+
+
+async def _find_bulletin_image_urls(page) -> list[str]:
+    raw_images = await page.eval_on_selector_all(
+        "img",
+        """
+        (els) => els.map((el, index) => {
+            const nearestMain = el.closest('article,main,[role="main"]');
+            const src =
+              el.currentSrc ||
+              el.getAttribute('src') ||
+              el.getAttribute('data-src') ||
+              el.getAttribute('data-lazy-src') ||
+              el.getAttribute('data-original') ||
+              '';
+            return {
+              index,
+              src,
+              alt: el.getAttribute('alt') || '',
+              className: el.className || '',
+              parentClass: el.parentElement ? (el.parentElement.className || '') : '',
+              naturalWidth: Number(el.naturalWidth || 0),
+              naturalHeight: Number(el.naturalHeight || 0),
+              inMain: Boolean(nearestMain),
+            };
+        })
+        """,
+    )
+    candidates: list[tuple[int, int, str]] = []
+    seen: set[str] = set()
+    preferred_tokens = ("bulletin", "newsletter", "page", "notice")
+    for item in raw_images:
+        if not isinstance(item, dict):
+            continue
+        src = str(item.get("src", "")).strip()
+        if not src or src.startswith("data:"):
+            continue
+        resolved = urljoin(page.url, src)
+        lower = resolved.lower()
+        if lower in seen or lower.endswith(".svg") or "image/svg+xml" in lower:
+            continue
+        width = int(item.get("naturalWidth") or 0)
+        height = int(item.get("naturalHeight") or 0)
+        long_side = max(width, height)
+        short_side = min(width, height)
+        if long_side < 800 or short_side < 600:
+            continue
+        score = 0
+        haystack = " ".join(
+            str(item.get(field, "")).lower() for field in ("src", "alt", "className", "parentClass")
+        )
+        if any(token in haystack for token in preferred_tokens):
+            score += 2
+        if bool(item.get("inMain")):
+            score += 1
+        seen.add(lower)
+        candidates.append((score, int(item.get("index") or 0), resolved))
+    candidates.sort(key=lambda item: (-item[0], item[1]))
+    return [url for _score, _idx, url in candidates[:30]]
+
+
 async def _find_pdfemb_url(page) -> str | None:
     links = await page.eval_on_selector_all(
         "a.pdfemb-viewer[href]",
@@ -513,14 +748,19 @@ def _candidate_score(
     )
 
 
-async def _download_candidate(url: str, dest: Path, browser: Browser) -> str:
+async def _download_candidate(
+    url: str,
+    dest: Path,
+    browser: Browser,
+    navigation_timeout_ms: int = PAGE_LOAD_TIMEOUT_MS,
+) -> str:
     """Download a scraped candidate URL and return the output file type."""
     encoded = url.replace(" ", "%20")
     if _is_docx_url(url):
-        await _download_docx_as_pdf(encoded, dest, browser)
+        await _download_docx_as_pdf(encoded, dest, browser, timeout_ms=navigation_timeout_ms)
         file_type = "docx_to_pdf"
     else:
-        await _download_pdf(encoded, dest, browser)
+        await _download_pdf(encoded, dest, browser, timeout_ms=navigation_timeout_ms)
         file_type = "pdf"
     if dest.exists():
         _verify_bulletin_pdf(dest)
@@ -563,27 +803,39 @@ async def _scrape_and_download(
     scrape_url: str,
     dest: Path,
     browser: Browser,
+    recipe_meta: dict | None = None,
+    host_profile: dict | None = None,
 ) -> FetchResult:
     """Scrape a page for bulletin document links and download the best match."""
     context = await browser.new_context()
     page = await context.new_page()
     key = entry.key
     last_err = "No downloadable bulletin links found"
+    recipe_meta = recipe_meta or {}
+    host_profile = host_profile or _get_host_profile(scrape_url)
+    navigation_timeout_ms = int(host_profile.get("navigation_timeout_ms", PAGE_LOAD_TIMEOUT_MS))
+    wait_after_load_ms = int(host_profile.get("wait_after_load_ms", 1500))
     try:
         await page.goto(
             scrape_url.replace(" ", "%20"),
-            timeout=20_000,
+            timeout=navigation_timeout_ms,
             wait_until="domcontentloaded",
         )
         try:
-            await page.wait_for_load_state("networkidle", timeout=5_000)
+            await page.wait_for_load_state("networkidle", timeout=min(navigation_timeout_ms, 5_000))
         except PlaywrightTimeoutError:
             pass
+        await _page_wait(page, wait_after_load_ms)
 
         preferred_pdfemb = await _find_pdfemb_url(page)
         if preferred_pdfemb:
             try:
-                file_type = await _download_candidate(preferred_pdfemb, dest, browser)
+                file_type = await _download_candidate(
+                    preferred_pdfemb,
+                    dest,
+                    browser,
+                    navigation_timeout_ms=navigation_timeout_ms,
+                )
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key,
@@ -604,7 +856,12 @@ async def _scrape_and_download(
         iframe_pdf_url = await _find_iframe_pdf_url(page)
         if iframe_pdf_url:
             try:
-                file_type = await _download_candidate(iframe_pdf_url, dest, browser)
+                file_type = await _download_candidate(
+                    iframe_pdf_url,
+                    dest,
+                    browser,
+                    navigation_timeout_ms=navigation_timeout_ms,
+                )
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key,
@@ -657,15 +914,6 @@ async def _scrape_and_download(
         if _looks_like_document_link(page_url_unwrapped):
             candidates.insert(0, (page_url_unwrapped, "", -1))
 
-        if not candidates:
-            return FetchResult(
-                key=key,
-                display_name=entry.display_name,
-                status="error",
-                url=scrape_url,
-                error=last_err,
-            )
-
         # Prevent stale downloads: if dated links exist and none match this week, fail.
         week_start = target - timedelta(days=6)
         dated = [
@@ -695,7 +943,12 @@ async def _scrape_and_download(
 
         for candidate_url, _label, _i in ranked:
             try:
-                file_type = await _download_candidate(candidate_url, dest, browser)
+                file_type = await _download_candidate(
+                    candidate_url,
+                    dest,
+                    browser,
+                    navigation_timeout_ms=navigation_timeout_ms,
+                )
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key,
@@ -711,6 +964,40 @@ async def _scrape_and_download(
             finally:
                 if dest.exists() and not _is_real_pdf(dest, key):
                     dest.unlink(missing_ok=True)
+
+        if _is_recipe_flag_enabled(recipe_meta, "disable_image_pdf_fallback"):
+            image_urls = await _find_bulletin_image_urls(page)
+            if image_urls and await _download_images_as_single_pdf(image_urls, str(dest), page=page):
+                if _is_real_pdf(dest, key):
+                    try:
+                        _verify_bulletin_pdf(dest)
+                        return FetchResult(
+                            key=key,
+                            display_name=entry.display_name,
+                            status="ok",
+                            url=image_urls[0],
+                            file_path=dest,
+                            file_type="image_to_pdf",
+                        )
+                    except Exception as exc:
+                        last_err = str(exc)
+                dest.unlink(missing_ok=True)
+
+        if _is_recipe_flag_enabled(recipe_meta, "disable_html_render_fallback"):
+            if await _render_page_to_pdf(page, str(dest)) and _rendered_pdf_looks_usable(dest):
+                try:
+                    _verify_bulletin_pdf(dest)
+                    return FetchResult(
+                        key=key,
+                        display_name=entry.display_name,
+                        status="ok",
+                        url=page.url or scrape_url,
+                        file_path=dest,
+                        file_type="html_render",
+                    )
+                except Exception as exc:
+                    last_err = str(exc)
+            dest.unlink(missing_ok=True)
 
         return FetchResult(
             key=key,
@@ -748,7 +1035,12 @@ def _verify_bulletin_pdf(dest: Path) -> None:
     print(f"  Verifying pages... {page_count} pages ✓")
 
 
-async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
+async def _download_pdf(
+    url: str,
+    dest: Path,
+    browser: Browser,
+    timeout_ms: int = PAGE_LOAD_TIMEOUT_MS,
+) -> None:
     """Download a PDF via a headless page."""
     # Convert Google Drive viewer links to direct-download URLs
     url = _rewrite_gdrive_url(url)
@@ -758,7 +1050,7 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
         # Pre-download size check via HEAD request
         try:
             size_page = await context.new_page()
-            head_resp = await size_page.request.head(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+            head_resp = await size_page.request.head(url, timeout=timeout_ms)
             content_length = head_resp.headers.get("content-length")
             if content_length:
                 size_bytes = int(content_length)
@@ -777,10 +1069,10 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
         # Attempt 1: navigate and expect a file download (Content-Disposition: attachment)
         _nav_response = None
         try:
-            async with context.expect_download(timeout=PAGE_LOAD_TIMEOUT_MS) as dl_info:
+            async with context.expect_download(timeout=timeout_ms) as dl_info:
                 page = await context.new_page()
                 _nav_response = await page.goto(
-                    url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="commit"
+                    url, timeout=timeout_ms, wait_until="commit"
                 )
             download = await dl_info.value
             await download.save_as(dest)
@@ -802,7 +1094,7 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
 
         # Attempt 3: direct HTTP request fallback
         page = await context.new_page()
-        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+        response = await page.request.get(url, timeout=timeout_ms)
         if response.ok:
             body = await response.body()
             # Accept the body if it is a valid PDF regardless of reported content-type
@@ -826,12 +1118,17 @@ async def _download_pdf(url: str, dest: Path, browser: Browser) -> None:
             pass
 
 
-async def _download_docx_as_pdf(url: str, dest: Path, browser: Browser) -> None:
+async def _download_docx_as_pdf(
+    url: str,
+    dest: Path,
+    browser: Browser,
+    timeout_ms: int = PAGE_LOAD_TIMEOUT_MS,
+) -> None:
     """Download a .docx file and convert it to PDF via LibreOffice or python-docx."""
     context = await browser.new_context()
     try:
         page = await context.new_page()
-        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+        response = await page.request.get(url, timeout=timeout_ms)
         if not response.ok:
             raise RuntimeError(f"HTTP {response.status} downloading DOCX from {url}")
         docx_bytes = await response.body()
@@ -902,7 +1199,12 @@ async def _download_docx_as_pdf(url: str, dest: Path, browser: Browser) -> None:
         )
 
 
-async def _download_image_as_pdf(url: str, dest: Path, browser: Browser) -> None:
+async def _download_image_as_pdf(
+    url: str,
+    dest: Path,
+    browser: Browser,
+    timeout_ms: int = PAGE_LOAD_TIMEOUT_MS,
+) -> None:
     """Download a JPEG/PNG image and convert it to a single-page PDF."""
     from PIL import Image  # type: ignore[import]
     import io
@@ -910,7 +1212,7 @@ async def _download_image_as_pdf(url: str, dest: Path, browser: Browser) -> None
     context = await browser.new_context()
     try:
         page = await context.new_page()
-        response = await page.request.get(url, timeout=PAGE_LOAD_TIMEOUT_MS)
+        response = await page.request.get(url, timeout=timeout_ms)
         if not response.ok:
             raise RuntimeError(f"HTTP {response.status} downloading image from {url}")
         img_bytes = await response.body()
@@ -1028,19 +1330,24 @@ def _write_auto_healed_recipe(
 async def _extract_condensed_page_links(
     scrape_url: str,
     browser: Browser,
+    host_profile: dict | None = None,
 ) -> tuple[str, list[tuple[str, str]]]:
     context = await browser.new_context()
     page = await context.new_page()
+    host_profile = host_profile or _get_host_profile(scrape_url)
+    navigation_timeout_ms = int(host_profile.get("navigation_timeout_ms", PAGE_LOAD_TIMEOUT_MS))
+    wait_after_load_ms = int(host_profile.get("wait_after_load_ms", 1500))
     try:
         await page.goto(
             scrape_url.replace(" ", "%20"),
-            timeout=20_000,
+            timeout=navigation_timeout_ms,
             wait_until="domcontentloaded",
         )
         try:
-            await page.wait_for_load_state("networkidle", timeout=5_000)
+            await page.wait_for_load_state("networkidle", timeout=min(navigation_timeout_ms, 5_000))
         except PlaywrightTimeoutError:
             pass
+        await _page_wait(page, wait_after_load_ms)
         raw_links = await page.eval_on_selector_all(
             "a[href]",
             """
@@ -1162,9 +1469,14 @@ async def _try_mistral_auto_heal(
         return None
 
     print(f"  🤖 {entry.key}: attempting Mistral fallback after {failure_reason}")
+    host_profile = _get_host_profile(_recipe_start_url(entry, _load_recipe_metadata(recipe_path), target_url))
     for scrape_url in seed_urls:
         try:
-            page_url, links = await _extract_condensed_page_links(scrape_url, browser)
+            page_url, links = await _extract_condensed_page_links(
+                scrape_url,
+                browser,
+                host_profile=host_profile,
+            )
         except Exception as exc:
             print(f"  ↩️  {entry.key}: Mistral fallback page scan failed for {scrape_url}: {exc}")
             continue
@@ -1261,8 +1573,10 @@ async def _fetch_entry(
                 dest.unlink(missing_ok=True)
 
     recipe_path = recipe_path_for(key, PARISHES_DIR)
+    recipe_meta = _load_recipe_metadata(recipe_path) if recipe_path.exists() else {}
+    host_profile = _get_host_profile(_recipe_start_url(entry, recipe_meta, target_url))
+    navigation_timeout_ms = int(host_profile.get("navigation_timeout_ms", PAGE_LOAD_TIMEOUT_MS))
     if recipe_path.exists():
-        recipe_meta = _load_recipe_metadata(recipe_path)
         recipe_status = str(recipe_meta.get("status", "")).strip().lower()
         should_skip = bool(recipe_meta.get("skip")) or recipe_status in {"dead_url", "inactive"}
         needs_retraining = bool(recipe_meta.get("needs_retraining")) or recipe_status == "needs_retraining"
@@ -1354,7 +1668,12 @@ async def _fetch_entry(
         try:
             candidate_encoded = target_url.replace(" ", "%20")
             if entry.content_type == "image":
-                await _download_image_as_pdf(candidate_encoded, dest, browser)
+                await _download_image_as_pdf(
+                    candidate_encoded,
+                    dest,
+                    browser,
+                    timeout_ms=navigation_timeout_ms,
+                )
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
@@ -1362,7 +1681,12 @@ async def _fetch_entry(
                         file_path=dest, file_type="image_to_pdf",
                     )
             elif entry.content_type == "docx":
-                await _download_docx_as_pdf(candidate_encoded, dest, browser)
+                await _download_docx_as_pdf(
+                    candidate_encoded,
+                    dest,
+                    browser,
+                    timeout_ms=navigation_timeout_ms,
+                )
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
@@ -1370,7 +1694,12 @@ async def _fetch_entry(
                         file_path=dest, file_type="docx_to_pdf",
                     )
             else:
-                await _download_pdf(candidate_encoded, dest, browser)
+                await _download_pdf(
+                    candidate_encoded,
+                    dest,
+                    browser,
+                    timeout_ms=navigation_timeout_ms,
+                )
                 if _is_real_pdf(dest, key):
                     return FetchResult(
                         key=key, display_name=entry.display_name,
@@ -1393,7 +1722,12 @@ async def _fetch_entry(
             if new_url:
                 print(f"  ✨ New pattern detected! Downloading from new URL...")
                 try:
-                    await _download_pdf(new_url.replace(" ", "%20"), dest, browser)
+                    await _download_pdf(
+                        new_url.replace(" ", "%20"),
+                        dest,
+                        browser,
+                        timeout_ms=navigation_timeout_ms,
+                    )
                     if _is_real_pdf(dest, key):
                         save_pattern_change(key, target_url, new_url, target)
                         return FetchResult(
@@ -1424,7 +1758,15 @@ async def _fetch_entry(
 
     # Prediction failed, or entry is html_link: scrape bulletin pages.
     for scrape_url in _scrape_seed_urls(entry, target_url):
-        scraped = await _scrape_and_download(entry, target, scrape_url, dest, browser)
+        scraped = await _scrape_and_download(
+            entry,
+            target,
+            scrape_url,
+            dest,
+            browser,
+            recipe_meta=recipe_meta,
+            host_profile=host_profile,
+        )
         if scraped.status == "ok":
             return scraped
         last_err = scraped.error or last_err
@@ -1470,7 +1812,14 @@ async def fetch_parish(
 ) -> FetchResult:
     """Fetch one parish bulletin with retries and a total timeout."""
     last_error = ""
-    for attempt in range(_MAX_ATTEMPTS):
+    recipe_meta = _load_recipe_metadata(recipe_path_for(entry.key, PARISHES_DIR))
+    host_profile = _get_host_profile(
+        _recipe_start_url(entry, recipe_meta, entry.bulletin_page or entry.example_url)
+    )
+    max_retries = max(0, int(host_profile.get("max_retries", _MAX_ATTEMPTS - 1)))
+    retry_backoff_ms = max(0, int(host_profile.get("retry_backoff_ms", int(_RETRY_DELAY_S * 1000))))
+    total_attempts = max_retries + 1
+    for attempt in range(total_attempts):
         try:
             async with asyncio.timeout(TOTAL_TIMEOUT_S):
                 result = await _fetch_entry(
@@ -1488,12 +1837,12 @@ async def fetch_parish(
         except Exception as exc:
             last_error = str(exc)
 
-        if attempt < _MAX_ATTEMPTS - 1:
+        if attempt < total_attempts - 1:
             print(
                 f"  ↩️  Retrying {entry.key} "
-                f"(attempt {attempt + 2}/{_MAX_ATTEMPTS}): {last_error}"
+                f"(attempt {attempt + 2}/{total_attempts}): {last_error}"
             )
-            await asyncio.sleep(_RETRY_DELAY_S)
+            time.sleep(retry_backoff_ms / 1000)
 
     return FetchResult(
         key=entry.key, display_name=entry.display_name,
