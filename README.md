@@ -1,5 +1,7 @@
 # Parish Bulletin Harvester v2
 
+**👉 New here? Start with [WHAT_IS_THIS.md](WHAT_IS_THIS.md).**
+
 Downloads weekly Catholic parish bulletins by calculating URLs from known patterns,
 then stitches them into one A–Z mega PDF.
 
