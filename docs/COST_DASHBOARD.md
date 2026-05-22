@@ -31,7 +31,7 @@
 
 | Risk | When | What to do |
 |------|------|------------|
-| 🔴 Repository over 5 GB | At ~1000 parishes × ~500 KB × 52 weeks | Run the retention workflow — it archives old files into zips |
+| 🔴 Repository over 5 GB | At ~1000 parishes × ~500 KB × 52 weeks ≈ 26 GB/year raw, hitting 5 GB cap in ~1–2 weeks without retention | Run the retention workflow — it archives old files into zips |
 | 🟡 AI rate limits hit | If more than ~1,400 parishes run per day | The router falls back to the next free provider automatically |
 | 🟡 GitHub Pages over 100 GB/month | Very unlikely at this scale | No action needed yet |
 

@@ -167,7 +167,7 @@ class ExtractEventsTests(unittest.TestCase):
         mock.call_ai.side_effect = fake_call_ai
         long_text = "x" * (MAX_INPUT_CHARS + 5000)
         extract_events(long_text, "Parish", "p", "derry", ai_router=mock)
-        self.assertTrue(len(captured[0]) <= MAX_INPUT_CHARS + 500)  # prompt overhead
+        self.assertTrue(len(captured[0]) <= MAX_INPUT_CHARS + 500)  # 500 = safe upper bound for prompt template overhead
 
 
 class WriteEventsJsonTests(unittest.TestCase):

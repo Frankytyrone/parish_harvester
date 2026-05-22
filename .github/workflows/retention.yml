@@ -104,7 +104,7 @@ jobs:
           exit 1
 
       - name: Open storage cap warning issue
-        if: steps.retention.outcome != 'success' && steps.retention.conclusion == 'failure'
+        if: steps.retention.conclusion == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -353,9 +353,11 @@ def _event_to_vevent(event: dict, parish_key: str, dtstamp: str) -> list[str]:
 
     time_val = event.get("time_24h_or_null")
     if time_val:
-        # Convert HH:MM to HHMMSS for DTSTART
-        hhmm = str(time_val).replace(":", "")[:4]
-        dtstart_str = f"DTSTART:{dtstart}T{hhmm}00"
+        # Parse HH:MM, zero-pad each component, produce HHMMSS for iCalendar DTSTART
+        parts = str(time_val).split(":")
+        hh = parts[0].zfill(2) if parts else "00"
+        mm = parts[1].zfill(2) if len(parts) > 1 else "00"
+        dtstart_str = f"DTSTART:{dtstart}T{hh}{mm}00"
     else:
         dtstart_str = f"DTSTART;VALUE=DATE:{dtstart}"
 

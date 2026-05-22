@@ -105,7 +105,8 @@ class UpdateDashboardTests(unittest.TestCase):
             # Instead: patch _repo_size_bytes to return a high value.
             from unittest.mock import patch
 
-            large_bytes = int(5.0 * 1024**3 * 0.90)  # 90% of 5 GB
+            from harvester.cost_tracker import GITHUB_REPO_CAP_GB
+            large_bytes = int(GITHUB_REPO_CAP_GB * 1024**3 * 0.90)  # 90% of cap = 🔴
             with patch("harvester.cost_tracker._repo_size_bytes", return_value=large_bytes):
                 update_dashboard(root)
             content = (root / "docs" / "COST_DASHBOARD.md").read_text(encoding="utf-8")

@@ -79,9 +79,9 @@ def _github_actions_minutes() -> tuple[int | None, str]:
     """
     token = os.getenv("GITHUB_TOKEN", "").strip()
     repo = os.getenv("GITHUB_REPOSITORY", "").strip()
-    if not token or not repo:
-        return None, "GitHub API not accessible (no GITHUB_TOKEN). See https://github.com/settings/billing."
-    owner = repo.split("/")[0] if "/" in repo else repo
+    if not token or not repo or "/" not in repo:
+        return None, "GitHub API not accessible (no GITHUB_TOKEN or GITHUB_REPOSITORY). See https://github.com/settings/billing."
+    owner = repo.split("/")[0]
     url = f"https://api.github.com/users/{owner}/settings/billing/actions"
     req = request.Request(
         url,
