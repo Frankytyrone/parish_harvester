@@ -236,6 +236,7 @@ except Exception: print(v)")
 
       - name: Commit bulletins back to repo
         if: success()
+        continue-on-error: true
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -248,20 +249,27 @@ except Exception: print(v)")
           if [ -f mega_pdf/down_and_connor_mega_bulletin.pdf ]; then
             cp mega_pdf/down_and_connor_mega_bulletin.pdf docs/mega_pdf/down_and_connor_mega_bulletin.pdf
           fi
-          git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html docs/mega_pdf/ || true
-          git add -f parishes/consecutive_failures.json || true
-          git add -f parishes/stale_bulletins.json || true
-          if ! git diff --cached --quiet; then
-            # Pull latest from remote BEFORE committing to avoid rebase conflicts
-            git stash || true
-            git pull --rebase origin main
-            git stash pop || true
-            git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html docs/mega_pdf/ || true
-            git add -f parishes/consecutive_failures.json || true
-            git add -f parishes/stale_bulletins.json || true
-            git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
-            git push origin HEAD:main
+          git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html docs/mega_pdf/ 2>/dev/null || true
+          git add -f parishes/consecutive_failures.json parishes/stale_bulletins.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "ℹ️  No staged changes — skipping commit."
+            exit 0
           fi
+          git commit -m "chore: add harvested bulletins for $(date +%Y-%m-%d) [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "✅ Pushed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "⚠️  Push attempt ${attempt} failed; pulling --rebase and retrying…"
+            git pull --rebase origin main || {
+              echo "❌ Rebase failed; aborting."
+              git rebase --abort || true
+              exit 1
+            }
+          done
+          echo "❌ Could not push after 5 attempts."
+          exit 1
 
 
       - name: Prepare standalone Mega PDF artifact
@@ -374,12 +382,22 @@ except Exception: print(v)")
           else
             git add -A Bulletins/current
           fi
-          if ! git diff --cached --quiet; then
-            # Pull latest from remote BEFORE committing to avoid rebase conflicts
-            git stash || true
-            git pull --rebase origin main
-            git stash pop || true
-            git add -A Bulletins/current || true
-            git commit -m "chore: clean transient bulletin PDFs [skip ci]"
-            git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo "ℹ️  No staged cleanup changes — skipping commit."
+            exit 0
           fi
+          git commit -m "chore: clean transient bulletin PDFs [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "✅ Cleanup pushed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "⚠️  Cleanup push attempt ${attempt} failed; pulling --rebase and retrying…"
+            git pull --rebase origin main || {
+              echo "❌ Rebase failed during cleanup; aborting."
+              git rebase --abort || true
+              exit 1
+            }
+          done
+          echo "❌ Could not push cleanup commit after 5 attempts."
+          exit 1
