@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import shutil
 import sys
 import time
@@ -28,7 +29,7 @@ from harvester.config import (
 )
 from harvester.dashboard_generator import generate_dashboard
 from harvester.email_notifier import send_harvest_notification
-from harvester.fetcher import FetchResult, fetch_all, parse_evidence_file
+from harvester.fetcher import FetchResult, ParishEntry, fetch_all, parse_evidence_file
 from harvester.harvest_log import (
     log_result,
     print_summary,
@@ -36,6 +37,7 @@ from harvester.harvest_log import (
     update_stale_bulletins,
 )
 from harvester.manifest_builder import build_manifest
+from harvester.priority_queue import prioritise
 from harvester.report import generate_report
 from harvester.stitcher import stitch_mega_pdf
 from train import run_training
@@ -66,6 +68,26 @@ def _discover_dioceses(parishes_dir: Path) -> list[str]:
         p.stem.replace("_bulletin_urls", "")
         for p in parishes_dir.glob("*_bulletin_urls.txt")
     )
+
+
+def _prioritise_entries(
+    entries: list[ParishEntry],
+    failures_path: Path = Path("parishes/consecutive_failures.json"),
+) -> list[ParishEntry]:
+    if os.getenv("PARISH_HARVEST_NO_PRIORITY", "").strip() == "1":
+        return entries
+
+    ordered_keys = prioritise([entry.key for entry in entries], failures_path=failures_path)
+    by_key: dict[str, list[ParishEntry]] = {}
+    for entry in entries:
+        by_key.setdefault(entry.key, []).append(entry)
+
+    reordered: list[ParishEntry] = []
+    for key in ordered_keys:
+        bucket = by_key.get(key)
+        if bucket:
+            reordered.append(bucket.pop(0))
+    return reordered
 
 
 def parse_args() -> argparse.Namespace:
@@ -182,6 +204,7 @@ def main() -> int:
                 )
                 continue
 
+        entries = _prioritise_entries(entries)
         print(f"⛪ Parishes     : {len(entries)}")
         print("\n── Fetch ───────────────────────────────────────────────────")
         RAW_DIR.mkdir(parents=True, exist_ok=True)
