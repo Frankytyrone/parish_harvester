@@ -175,7 +175,6 @@ const CURRENT_BULLETINS_PATH_PREFIX = "Bulletins/current";
 const _pdParishDetailsCache = {}; // key -> details payload
 const PROBLEMS_REPORT_URL = "https://raw.githubusercontent.com/Frankytyrone/parish_harvester/main/Bulletins/report.json";
 const PROBLEMS_CONSECUTIVE_URL = "https://raw.githubusercontent.com/Frankytyrone/parish_harvester/main/parishes/consecutive_failures.json";
-let _problemsLoaded = false;
 
 // Replicate Python's _url_to_key logic
 function _pdUrlToKey(url, headerName = "") {
@@ -719,7 +718,6 @@ function _problemsRenderRows(rows) {
 }
 
 async function loadProblemsDashboard() {
-  if (_problemsLoaded) return;
   const warning = document.getElementById("problems-warning");
   const empty = document.getElementById("problems-empty");
   if (warning) warning.style.display = "none";
@@ -760,11 +758,9 @@ async function loadProblemsDashboard() {
       })),
     ];
     _problemsRenderRows(rows);
-    _problemsLoaded = true;
   } catch (_e) {
     if (warning) warning.style.display = "block";
     _problemsRenderRows([]);
-    _problemsLoaded = false;
   } finally {
     if (empty && !empty.textContent) {
       empty.textContent = "";

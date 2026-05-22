@@ -1612,7 +1612,7 @@ async def _fetch_entry(
     learned_playbook = learned_data.get("playbook", []) if isinstance(learned_data, dict) else []
     if _learned_recipe_is_eligible(learned_data, date.today()):
         learned_attempted = True
-        learned_strategy = str((learned_data or {}).get("last_strategy") or "learned_playbook").strip() or "learned_playbook"
+        learned_strategy = str((learned_data or {}).get("last_strategy", "learned_playbook")).strip() or "learned_playbook"
         try:
             replayed_path, replay_file_type, replay_url = await _replay_learned_playbook(
                 playbook=learned_playbook,
@@ -1647,6 +1647,7 @@ async def _fetch_entry(
 
     recipe_path = recipe_path_for(key, PARISHES_DIR)
     recipe_meta = _load_recipe_metadata(recipe_path) if recipe_path.exists() else {}
+    recipe_steps = recipe_meta.get("steps") if isinstance(recipe_meta, dict) else []
     host_profile = _get_host_profile(_recipe_start_url(entry, recipe_meta, target_url))
     navigation_timeout_ms = int(host_profile.get("navigation_timeout_ms", PAGE_LOAD_TIMEOUT_MS))
     if recipe_path.exists():
@@ -1682,7 +1683,7 @@ async def _fetch_entry(
                 browser=browser,
             )
             if replay_file_type == "html_link":
-                learned_recipes.record_success(key, replay_file_type, recipe_meta.get("steps") if isinstance(recipe_meta, dict) else [])
+                learned_recipes.record_success(key, replay_file_type, recipe_steps)
                 return FetchResult(
                     key=key,
                     display_name=entry.display_name,
@@ -1691,7 +1692,7 @@ async def _fetch_entry(
                     file_type="html_link",
                 )
             if _is_real_pdf(replayed_path, key):
-                learned_recipes.record_success(key, replay_file_type, recipe_meta.get("steps") if isinstance(recipe_meta, dict) else [])
+                learned_recipes.record_success(key, replay_file_type, recipe_steps)
                 return FetchResult(
                     key=key,
                     display_name=entry.display_name,

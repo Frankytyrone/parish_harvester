@@ -2654,7 +2654,7 @@
       showStatus(`🔍 Document detected in network: ${short}`, "info");
     });
     window.addEventListener("ph-retraining-hint", () => {
-      showStatus("Retraining: follow the steps on this page, then push the updated recipe.", "warn");
+      showStatus("Retraining: follow the steps on this page, then click '⬆ Push Recipe to GitHub'.", "warn");
     });
 
     // ── IDENTIFY PAGE ──────────────────────────────────────────────────────
