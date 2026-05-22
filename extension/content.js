@@ -2063,6 +2063,9 @@
     const wizardBtns = document.createElement("div");
     wizardBtns.style.cssText = "display:flex;flex-direction:column;gap:5px;";
 
+    const advancedHostname = _currentHostname();
+    const advancedStorageKey = advancedHostname ? `ph_advanced_open_${advancedHostname}` : "";
+
     const stuckLink = document.createElement("button");
     stuckLink.type = "button";
     stuckLink.style.cssText = [
@@ -2080,14 +2083,9 @@
     stuckLink.textContent = "I'm stuck — show all options";
     stuckLink.title = "Open the advanced section with all manual controls";
     stuckLink.addEventListener("click", () => {
-      const isHidden = advancedSection.style.display === "none";
-      advancedSection.style.display = isHidden ? "block" : "none";
-      if (isHidden) {
-        // Auto-expand the body so content is immediately visible
-        advOpen = true;
-        advancedBodyEl.style.display = "block";
-        advancedToggleEl.textContent = "▼";
-      }
+      advancedSection.open = true;
+      if (advancedStorageKey) void _storageSet({ [advancedStorageKey]: true });
+      advancedSection.scrollIntoView({ block: "nearest" });
     });
 
     const resetGuidedPanel = () => {
@@ -2566,62 +2564,55 @@
       }
     };
 
-    // Wizard buttons (Guided Mode — 3 simple choices)
-    wizardBtns.appendChild(
-      makeSmallBtn(
-        "📄 Get a PDF (recommended)",
-        "#16a34a",
-        () => markDownloadUrlSafe(window.location.href, showStatus, false),
-        "The bulletin is a PDF — record this URL as the bulletin file"
-      )
+    // Wizard buttons (Guided Mode — core controls first, in fixed order)
+    const pdfBtn = makeSmallBtn(
+      "📄 Get a PDF (recommended)",
+      "#16a34a",
+      () => markDownloadUrlSafe(window.location.href, showStatus, false),
+      "The bulletin is a PDF — record this URL as the bulletin file"
     );
-    wizardBtns.appendChild(
-      makeSmallBtn(
-        "🖼️ Get an image (newsletter screenshot)",
-        "#2563eb",
-        () => {
-          bar.dataset.phHidden = "true";
-          bar.style.display = "none";
-          startCrop();
-        },
-        "The bulletin is an image on screen — draw a rectangle to capture it"
-      )
+    const clickFirstBtn = makeSmallBtn(
+      "🔗 I need to click something first",
+      "#2563eb",
+      () => startPickLinkMode(showPickConfirmation, showStatus),
+      "Click a link or button to navigate to the bulletin"
     );
-    wizardBtns.appendChild(
-      makeSmallBtn(
-        "🖼️ Pick an image on this page",
-        "#2563eb",
-        () => {
-          pickedImages = [];
-          startPickImageMode(showPickImageConfirmation, showStatus);
-        },
-        "Click to hover-select an existing image on the page — no cropping needed"
-      )
+    const imageCropBtn = makeSmallBtn(
+      "🖼️ Get an image (newsletter screenshot)",
+      "#2563eb",
+      () => {
+        bar.dataset.phHidden = "true";
+        bar.style.display = "none";
+        startCrop();
+      },
+      "The bulletin is an image on screen — draw a rectangle to capture it"
     );
-    wizardBtns.appendChild(
-      makeSmallBtn(
-        "🔗 I need to click something first",
-        "#2563eb",
-        () => startPickLinkMode(showPickConfirmation, showStatus),
-        "Click a link or button to navigate to the bulletin"
-      )
+    const pickImageBtn = makeSmallBtn(
+      "🖼️ Pick an image on this page",
+      "#2563eb",
+      () => {
+        pickedImages = [];
+        startPickImageMode(showPickImageConfirmation, showStatus);
+      },
+      "Click to hover-select an existing image on the page — no cropping needed"
     );
-    wizardBtns.appendChild(
-      makeSmallBtn(
-        "🚫 No bulletin here (skip)",
-        "#6b7280",
-        () => {
-          if (typeof window.ph_mark_download_url === "function") {
-            try {
-              window.ph_mark_download_url({ url: "no_bulletin", type: "no_bulletin" });
-            } catch (_e) {}
-          }
-          addSessionStep("no_bulletin", "🚫 No bulletin — skipped");
-          showStatus("🚫 Marked as no bulletin. You can now close this tab or move on.");
-        },
-        "Record that this parish has no bulletin and skip it"
-      )
+    const noBulletinBtn = makeSmallBtn(
+      "🚫 No bulletin here (skip)",
+      "#6b7280",
+      () => {
+        if (typeof window.ph_mark_download_url === "function") {
+          try {
+            window.ph_mark_download_url({ url: "no_bulletin", type: "no_bulletin" });
+          } catch (_e) {}
+        }
+        addSessionStep("no_bulletin", "🚫 No bulletin — skipped");
+        showStatus("🚫 Marked as no bulletin. You can now close this tab or move on.");
+      },
+      "Record that this parish has no bulletin and skip it"
     );
+    wizardBtns.appendChild(pdfBtn);
+    wizardBtns.appendChild(clickFirstBtn);
+    wizardBtns.appendChild(imageCropBtn);
 
     guidedPanel.appendChild(wizardQ);
     guidedPanel.appendChild(wizardBtns);
@@ -2690,6 +2681,9 @@
     ].join(";");
 
     identifyBtn.addEventListener("click", () => {
+      if (!identifyResult.isConnected) {
+        guidedPanel.insertBefore(identifyResult, stuckLink);
+      }
       const result = detectPageType();
       identifyResult.style.display = "block";
       identifyResult.innerHTML = "";
@@ -2957,43 +2951,39 @@
 
     // ── ADVANCED SECTION ───────────────────────────────────────────────────
     // These buttons keep their original labels so existing tests still pass.
-    const advancedSection = document.createElement("div");
+    const advancedSection = document.createElement("details");
+    advancedSection.className = "ph-advanced-section";
     advancedSection.style.cssText = [
       "background:#1e293b",
       "border:1px solid #374151",
       "border-radius:6px",
       "overflow:hidden",
-      "display:none",
     ].join(";");
 
-    const advancedHeaderEl = document.createElement("div");
-    advancedHeaderEl.style.cssText = [
-      "display:flex",
-      "align-items:center",
-      "justify-content:space-between",
-      "padding:5px 8px",
+    const advancedSummary = document.createElement("summary");
+    advancedSummary.textContent = "▾ Advanced";
+    advancedSummary.setAttribute("aria-label", "Advanced options");
+    advancedSummary.style.cssText = [
+      "padding:6px 8px",
       "cursor:pointer",
+      "font-size:10px",
+      "font-weight:600",
+      "color:#9ca3af",
+      "list-style-position:inside",
     ].join(";");
-
-    const advancedTitleEl = document.createElement("span");
-    advancedTitleEl.style.cssText = "font-size:10px;font-weight:600;color:#9ca3af;";
-    advancedTitleEl.textContent = "⚙️ Advanced Options";
-
-    const advancedToggleEl = document.createElement("span");
-    advancedToggleEl.style.cssText = "font-size:10px;color:#6b7280;";
-    advancedToggleEl.textContent = "▶";
-
-    advancedHeaderEl.appendChild(advancedTitleEl);
-    advancedHeaderEl.appendChild(advancedToggleEl);
+    advancedSection.appendChild(advancedSummary);
 
     const advancedBodyEl = document.createElement("div");
-    advancedBodyEl.style.cssText = "padding:6px 8px;display:none;";
+    advancedBodyEl.style.cssText = "padding:6px 8px;border-top:1px solid #374151;";
 
-    let advOpen = false;
-    advancedHeaderEl.addEventListener("click", () => {
-      advOpen = !advOpen;
-      advancedBodyEl.style.display = advOpen ? "block" : "none";
-      advancedToggleEl.textContent = advOpen ? "▼" : "▶";
+    advancedSection.open = false;
+    if (advancedStorageKey) {
+      void _storageGet([advancedStorageKey]).then((saved) => {
+        advancedSection.open = saved[advancedStorageKey] === true;
+      });
+    }
+    advancedSection.addEventListener("toggle", () => {
+      if (advancedStorageKey) void _storageSet({ [advancedStorageKey]: !!advancedSection.open });
     });
 
     const row = document.createElement("div");
@@ -3037,7 +3027,10 @@
       })
     );
 
+    advancedBodyEl.appendChild(pickImageBtn);
     advancedBodyEl.appendChild(row);
+    noBulletinBtn.style.marginTop = "5px";
+    advancedBodyEl.appendChild(noBulletinBtn);
 
     // ── Iframe picker in Advanced ─────────────────────────────────────────
     const iframePickerBtn = makeBtn("📐 It's in a frame / viewer", () => {
@@ -3049,11 +3042,14 @@
         backBtn.style.marginBottom = "6px";
         guidedPanel.appendChild(backBtn);
         guidedPanel.appendChild(pickerPanel);
-        advancedSection.style.display = "none";
+        advancedSection.open = false;
+        if (advancedStorageKey) void _storageSet({ [advancedStorageKey]: false });
       }
     });
-    iframePickerBtn.style.marginTop = "5px";
-    advancedBodyEl.appendChild(iframePickerBtn);
+    wizardBtns.appendChild(iframePickerBtn);
+    wizardBtns.appendChild(identifyBtn);
+    guidedPanel.insertBefore(identifyResult, stuckLink);
+    iframePickerBtn.style.marginTop = "0";
 
     // ── Capture newsletter column (auto) ──────────────────────────────────
     const CONTENT_SELECTORS = [
@@ -3090,11 +3086,6 @@
       }, 5000);
     });
     advancedBodyEl.appendChild(captureAreaBtn);
-
-    // ── Identify page (moved from main body to Advanced) ──────────────────
-    identifyBtn.style.marginTop = "5px";
-    advancedBodyEl.appendChild(identifyBtn);
-    advancedBodyEl.appendChild(identifyResult);
 
     // ── AI Training Mode (Mistral) ────────────────────────────────────────
     const aiSection = document.createElement("div");
@@ -3482,7 +3473,7 @@
       ].join(";");
       driftBanner.appendChild(driftMsg);
       driftBanner.appendChild(updateStartUrlBtn);
-      pushSection.appendChild(driftBanner);
+      advancedBodyEl.appendChild(driftBanner);
 
       let driftRecipeKey = "";
       let driftRecipeObject = null;
@@ -3716,7 +3707,7 @@
         refreshStepCount();
         showStatus("🗑 Steps cleared.", "info");
       });
-      pushSection.appendChild(clearBtn);
+      advancedBodyEl.appendChild(clearBtn);
 
       updateStartUrlBtn.addEventListener("click", async () => {
         if (!driftRecipeKey || !driftRecipePath) return;

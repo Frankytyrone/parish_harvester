@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>OCR Bulletin Archive</title>
+  <link rel="stylesheet" href="../assets/site.css" />
   <style>
     body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f7faf9; color: #1a1a2e; }
     .page { max-width: 960px; margin: 0 auto; padding: 28px 20px 40px; }
@@ -21,9 +22,31 @@
     <a href="../index.html">← Back to dashboard</a>
     <h1>OCR Bulletin Archive</h1>
     <p>Newest generated bulletin viewer pages appear first.</p>
+    <label for="bulletin-search">Search archive</label>
+    <input id="bulletin-search" type="search" placeholder="Filter by parish or diocese…" />
+    <p id="bulletin-search-empty" hidden>No matching bulletins found.</p>
     <div class="archive">
       <ul><li><a href="down_and_connor-2026-05-22.html">Down &amp; Connor Diocese — 22/05/2026</a></li><li><a href="derry-2026-05-22.html">Derry Diocese — 22/05/2026</a></li><li><a href="down_and_connor-2026-05-21.html">Down &amp; Connor Diocese — 21/05/2026</a></li><li><a href="derry-2026-05-21.html">Derry Diocese — 21/05/2026</a></li><li><a href="down_and_connor-2026-05-20.html">Down &amp; Connor Diocese — 20/05/2026</a></li><li><a href="derry-2026-05-20.html">Derry Diocese — 20/05/2026</a></li></ul>
     </div>
   </div>
+  <script>
+    (() => {
+      const input = document.getElementById("bulletin-search");
+      const rows = Array.from(document.querySelectorAll(".archive li"));
+      const empty = document.getElementById("bulletin-search-empty");
+      if (!input || rows.length === 0) return;
+      input.addEventListener("input", () => {
+        const q = String(input.value || "").trim().toLowerCase();
+        let visible = 0;
+        rows.forEach((row) => {
+          const text = (row.textContent || "").toLowerCase();
+          const show = text.includes(q);
+          row.style.display = show ? "" : "none";
+          if (show) visible += 1;
+        });
+        if (empty) empty.hidden = visible > 0;
+      });
+    })();
+  </script>
 </body>
 </html>
