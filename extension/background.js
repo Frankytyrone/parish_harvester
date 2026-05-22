@@ -12,10 +12,10 @@ function _tabUrlIsScriptable(url) {
 async function _sendMessageToTab(tabId, message) {
   try {
     const response = await chrome.tabs.sendMessage(tabId, message);
-    if (response && typeof response === "object") {
+    if (response && typeof response === "object" && response.ok === true) {
       return response;
     }
-    return { ok: true };
+    return { ok: false, error: "no_explicit_ok_from_page" };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
@@ -63,7 +63,7 @@ async function sendToTab(tabId, message, options = {}) {
 
   const firstAttempt = await _sendMessageToTab(tabId, message);
   if (firstAttempt.ok) {
-    return { ...firstAttempt, route: "direct" };
+    return firstAttempt;
   }
 
   if (!allowInject) {
@@ -87,7 +87,7 @@ async function sendToTab(tabId, message, options = {}) {
 
   const secondAttempt = await _sendMessageToTab(tabId, message);
   if (secondAttempt.ok) {
-    return { ...secondAttempt, route: "reinject" };
+    return secondAttempt;
   }
 
   return {

@@ -4008,6 +4008,19 @@
       _logSaveCycle(type, request, response);
       return response;
     }
+    if (type === "mark_dead_url") {
+      const request = { url: "dead_url", type: "dead_url" };
+      const response = _recordBoundStep({
+        type,
+        bindingName: "ph_mark_download_url",
+        payload: request,
+        stepType: "mark_file",
+        stepLabel: "🔴 Dead URL",
+        unavailableReason: "Dead URL mark handler is unavailable on this page.",
+      });
+      _logSaveCycle(type, request, response);
+      return response;
+    }
     if (type === "mark_image") {
       const imageUrl = String(message.url || "").trim();
       if (!imageUrl) {
@@ -4230,22 +4243,47 @@
       marginBottom: "8px",
     });
     markBtn.addEventListener("click", () => {
-      // Signal to Playwright / train.py via the binding if available
-      if (typeof window.ph_mark_download_url === "function") {
-        try {
-          window.ph_mark_download_url({ url: "dead_url", type: "dead_url" });
-        } catch (_e) {}
-      }
-      // Also post a message the isolated world can pick up
-      window.postMessage(
-        { direction: "from-main", message: { type: "mark_dead_url" } },
-        "*"
-      );
-      heading.textContent = "✅ Marked as dead. You can close this tab.";
-      heading.style.color = "#86efac";
+      heading.textContent = "⏳ Marking as dead…";
+      heading.style.color = "#fde68a";
       markBtn.disabled = true;
       markBtn.style.opacity = "0.5";
-      sub.textContent = "The harvester will skip this parish in future runs.";
+
+      let settled = false;
+      const fail = (reason) => {
+        heading.textContent = `❌ Mark as dead failed: ${reason}`;
+        heading.style.color = "#fca5a5";
+        sub.textContent = "No changes were confirmed. Please retry.";
+        markBtn.disabled = false;
+        markBtn.style.opacity = "1";
+      };
+
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        fail("timeout_waiting_for_confirmation_5s");
+      }, 5000);
+
+      _safeSendMessage({ type: "mark_dead_url" }, (response, error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (error) {
+          fail(error);
+          return;
+        }
+        if (response && typeof response === "object" && response.ok === true) {
+          heading.textContent = "✅ Marked as dead. You can close this tab.";
+          heading.style.color = "#86efac";
+          sub.textContent = "The harvester will skip this parish in future runs.";
+          markBtn.disabled = true;
+          markBtn.style.opacity = "0.5";
+          return;
+        }
+        fail(
+          (response && typeof response === "object" && (response.reason || response.error)) ||
+          "no_explicit_ok_from_page"
+        );
+      });
     });
     overlay.appendChild(markBtn);
 
