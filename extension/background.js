@@ -349,7 +349,7 @@ function _canonicalDioceseSlug(value) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== "push_recipe") return false;
+  if (message?.type !== "push_recipe" && message?.type !== "new_parish") return false;
 
   (async () => {
     try {
@@ -359,6 +359,75 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return;
       }
 
+      // ── new_parish: create a minimal stub recipe file ────────────────────
+      if (message.type === "new_parish") {
+        const parish_key = String(message.parish_key || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+        const parish_name = String(message.parish_name || "").trim();
+        const diocese = _canonicalDioceseSlug(String(message.diocese || "").trim()) || "unknown";
+        const start_url = String(message.start_url || "").trim();
+
+        if (!parish_key) { sendResponse({ ok: false, error: "No parish_key provided." }); return; }
+        if (!diocese || diocese === "unknown") { sendResponse({ ok: false, error: "No diocese provided." }); return; }
+
+        const filePath = `parishes/recipes/${diocese}/${parish_key}.json`;
+        const apiBase  = `https://api.github.com/repos/${gh_repo}/contents/${filePath}`;
+        const headers  = {
+          Authorization: `token ${gh_pat}`,
+          Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        };
+
+        // Refuse to overwrite an existing recipe.
+        let existingSha = null;
+        try {
+          const getResp = await fetch(apiBase, { headers });
+          if (getResp.ok) {
+            const existing = await getResp.json();
+            existingSha = existing.sha || null;
+          }
+        } catch (_e) {}
+
+        if (existingSha) {
+          sendResponse({ ok: false, error: `Recipe already exists at ${filePath}. Use the Push Recipe button to update it.` });
+          return;
+        }
+
+        const stub = {
+          parish_key,
+          parish_name: parish_name || parish_key,
+          diocese,
+          start_url,
+          steps: [],
+          created_via: "toolbar_new_parish_wizard",
+          created_at: new Date().toISOString(),
+          recorded_date: new Date().toISOString().slice(0, 10),
+        };
+
+        const recipeJson = JSON.stringify(stub, null, 2);
+        const encoded    = btoa(unescape(encodeURIComponent(recipeJson)));
+
+        const putResp = await fetch(apiBase, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            message: `chore: add new parish stub ${parish_key} [${diocese}] via toolbar`,
+            content: encoded,
+          }),
+        });
+
+        if (!putResp.ok) {
+          sendResponse({ ok: false, error: await _githubApiError(putResp) });
+          return;
+        }
+
+        const result = await putResp.json();
+        const htmlUrl = result?.content?.html_url || `https://github.com/${gh_repo}/blob/main/${filePath}`;
+        sendResponse({ ok: true, url: htmlUrl, filePath });
+        return;
+      }
+
+      // ── push_recipe: existing handler ────────────────────────────────────
       const key = (message.parish_key || "")
         .trim()
         .toLowerCase()

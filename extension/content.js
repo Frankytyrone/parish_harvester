@@ -3032,6 +3032,258 @@
     noBulletinBtn.style.marginTop = "5px";
     advancedBodyEl.appendChild(noBulletinBtn);
 
+    // ── ➕ New Parish wizard ───────────────────────────────────────────────
+    // Adds a button (inside the Advanced fold) that opens a lightweight modal
+    // so Franky can register a new parish without leaving the page.
+    (() => {
+      const DIOCESE_CACHE_KEY = "ph_diocese_list_cache";
+      const DIOCESE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+      const FALLBACK_DIOCESES = ["derry", "down_and_connor"];
+
+      const _fetchDioceseList = async () => {
+        // Try cache first.
+        const cached = await _storageGet([DIOCESE_CACHE_KEY]);
+        const entry = cached[DIOCESE_CACHE_KEY];
+        if (entry && typeof entry === "object" && Array.isArray(entry.list) && Date.now() - entry.ts < DIOCESE_CACHE_TTL_MS) {
+          return entry.list;
+        }
+        // Fetch live from GitHub Contents API.
+        try {
+          const settings = await _storageGet(["gh_repo", "gh_pat"]);
+          const ghRepo = String(settings.gh_repo || "Frankytyrone/parish_harvester").trim();
+          const apiUrl = `https://api.github.com/repos/${ghRepo}/contents/parishes/recipes`;
+          const headers = { Accept: "application/vnd.github+json" };
+          const pat = String(settings.gh_pat || "").trim();
+          if (pat) headers.Authorization = `token ${pat}`;
+          const resp = await fetch(apiUrl, { headers });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const items = await resp.json();
+          const list = items
+            .filter((item) => item.type === "dir")
+            .map((item) => item.name)
+            .sort();
+          if (list.length > 0) {
+            await _storageSet({ [DIOCESE_CACHE_KEY]: { list, ts: Date.now() } });
+            return list;
+          }
+        } catch (_e) { /* fall through to hardcoded list */ }
+        return FALLBACK_DIOCESES;
+      };
+
+      const _toParishKey = (name) =>
+        name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+      const openNewParishModal = async () => {
+        // Remove any existing modal.
+        const existing = document.getElementById("ph-new-parish-modal");
+        if (existing) existing.remove();
+
+        // ── backdrop ──────────────────────────────────────────────────────
+        const backdrop = document.createElement("div");
+        backdrop.id = "ph-new-parish-modal";
+        Object.assign(backdrop.style, {
+          position: "fixed",
+          inset: "0",
+          zIndex: "2147483647",
+          background: "rgba(0,0,0,0.65)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "system-ui,sans-serif",
+        });
+
+        // ── panel ─────────────────────────────────────────────────────────
+        const panel = document.createElement("div");
+        Object.assign(panel.style, {
+          background: "#1e293b",
+          border: "1px solid #374151",
+          borderRadius: "10px",
+          padding: "16px",
+          width: "min(400px, 92vw)",
+          color: "#f9fafb",
+          fontSize: "12px",
+        });
+
+        const title = document.createElement("div");
+        title.style.cssText = "font-size:13px;font-weight:700;color:#86efac;margin-bottom:10px;";
+        title.textContent = "➕ Register New Parish";
+        panel.appendChild(title);
+
+        // Status message inside modal.
+        const modalStatus = document.createElement("div");
+        modalStatus.style.cssText = "min-height:18px;margin-bottom:8px;font-size:11px;color:#fde68a;";
+        panel.appendChild(modalStatus);
+        const setModalStatus = (msg, ok = false) => {
+          modalStatus.style.color = ok ? "#86efac" : "#fde68a";
+          modalStatus.textContent = msg;
+        };
+
+        const makeField = (labelText) => {
+          const wrap = document.createElement("div");
+          wrap.style.marginBottom = "8px";
+          const lbl = document.createElement("label");
+          lbl.style.cssText = "display:block;font-size:10px;color:#9ca3af;margin-bottom:3px;";
+          lbl.textContent = labelText;
+          wrap.appendChild(lbl);
+          return wrap;
+        };
+
+        const inputStyle = [
+          "width:100%",
+          "border:1px solid #374151",
+          "border-radius:4px",
+          "padding:5px 7px",
+          "background:#0f172a",
+          "color:#f9fafb",
+          "font-size:11px",
+          "box-sizing:border-box",
+          "font-family:inherit",
+        ].join(";");
+
+        // ── Diocese dropdown ──────────────────────────────────────────────
+        const dioceseWrap = makeField("Diocese");
+        const dioceseSelect = document.createElement("select");
+        dioceseSelect.style.cssText = inputStyle + ";cursor:pointer;";
+        const loadingOpt = document.createElement("option");
+        loadingOpt.value = "";
+        loadingOpt.textContent = "Loading…";
+        dioceseSelect.appendChild(loadingOpt);
+        dioceseWrap.appendChild(dioceseSelect);
+        panel.appendChild(dioceseWrap);
+
+        // Populate asynchronously.
+        _fetchDioceseList().then((list) => {
+          dioceseSelect.innerHTML = "";
+          const placeholder = document.createElement("option");
+          placeholder.value = "";
+          placeholder.textContent = "— select diocese —";
+          dioceseSelect.appendChild(placeholder);
+          for (const d of list) {
+            const opt = document.createElement("option");
+            opt.value = d;
+            opt.textContent = d.replace(/_/g, " ");
+            dioceseSelect.appendChild(opt);
+          }
+        });
+
+        // ── Parish name ───────────────────────────────────────────────────
+        const nameWrap = makeField("Parish name");
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.placeholder = "e.g. St Patrick's Magherafelt";
+        nameInput.style.cssText = inputStyle;
+        nameWrap.appendChild(nameInput);
+        panel.appendChild(nameWrap);
+
+        // Auto-suggest parish_key below the name field.
+        const keyHint = document.createElement("div");
+        keyHint.style.cssText = "font-size:9px;color:#6b7280;margin-top:2px;";
+        keyHint.textContent = "parish_key: (enter name above)";
+        nameWrap.appendChild(keyHint);
+        nameInput.addEventListener("input", () => {
+          const key = _toParishKey(nameInput.value);
+          keyHint.textContent = key ? `parish_key: ${key}` : "parish_key: (enter name above)";
+        });
+
+        // ── Start URL ─────────────────────────────────────────────────────
+        const urlWrap = makeField("Start URL");
+        const urlInput = document.createElement("input");
+        urlInput.type = "url";
+        urlInput.placeholder = "https://";
+        urlInput.style.cssText = inputStyle;
+        try { urlInput.value = window.location.href; } catch (_e) {}
+        urlWrap.appendChild(urlInput);
+        panel.appendChild(urlWrap);
+
+        // ── Buttons ───────────────────────────────────────────────────────
+        const btnRow = document.createElement("div");
+        btnRow.style.cssText = "display:flex;gap:8px;margin-top:10px;";
+
+        const submitBtn = document.createElement("button");
+        submitBtn.type = "button";
+        submitBtn.textContent = "➕ Create stub recipe";
+        submitBtn.style.cssText = [
+          "flex:1",
+          "border:none",
+          "border-radius:6px",
+          "padding:6px 10px",
+          "background:#16a34a",
+          "color:#fff",
+          "cursor:pointer",
+          "font-size:11px",
+          "font-family:inherit",
+        ].join(";");
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.style.cssText = [
+          "flex:1",
+          "border:1px solid #374151",
+          "border-radius:6px",
+          "padding:6px 10px",
+          "background:#374151",
+          "color:#d1d5db",
+          "cursor:pointer",
+          "font-size:11px",
+          "font-family:inherit",
+        ].join(";");
+
+        cancelBtn.addEventListener("click", () => backdrop.remove());
+        backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+        submitBtn.addEventListener("click", async () => {
+          const diocese = dioceseSelect.value.trim();
+          const rawName = nameInput.value.trim();
+          const startUrl = urlInput.value.trim();
+          const parish_key = _toParishKey(rawName);
+
+          if (!diocese) { setModalStatus("⚠ Please select a diocese."); return; }
+          if (!rawName) { setModalStatus("⚠ Please enter a parish name."); return; }
+          if (!parish_key) { setModalStatus("⚠ Parish key could not be generated — check the name."); return; }
+          if (!startUrl || !/^https?:\/\//i.test(startUrl)) {
+            setModalStatus("⚠ Please enter a valid https:// start URL."); return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = "⏳ Creating…";
+          setModalStatus("Sending to GitHub…");
+
+          _safeSendMessage(
+            {
+              type: "new_parish",
+              diocese,
+              parish_key,
+              parish_name: rawName,
+              start_url: startUrl,
+            },
+            (resp, err) => {
+              submitBtn.disabled = false;
+              submitBtn.textContent = "➕ Create stub recipe";
+              if (err || !resp?.ok) {
+                setModalStatus(`❌ ${resp?.error || err || "Unknown error"}`);
+              } else {
+                setModalStatus(`✅ Created! ${resp.filePath || ""}`, true);
+                setTimeout(() => backdrop.remove(), 2500);
+              }
+            }
+          );
+        });
+
+        btnRow.appendChild(submitBtn);
+        btnRow.appendChild(cancelBtn);
+        panel.appendChild(btnRow);
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
+        // Focus name field once diocese list loads.
+        setTimeout(() => nameInput.focus(), 50);
+      };
+
+      const newParishBtn = makeBtn("➕ New Parish", () => { void openNewParishModal(); });
+      row.appendChild(newParishBtn);
+    })();
+    // ── end New Parish wizard ──────────────────────────────────────────────
+
     // ── Iframe picker in Advanced ─────────────────────────────────────────
     const iframePickerBtn = makeBtn("📐 It's in a frame / viewer", () => {
       const pickerPanel = buildIframePickerPanel(showStatus);

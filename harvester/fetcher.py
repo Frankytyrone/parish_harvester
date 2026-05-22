@@ -1609,6 +1609,7 @@ async def _fetch_entry(
 
     learned_attempted = False
     learned_data = learned_recipes.load(key)
+    learned_diocese = str((learned_data or {}).get("diocese") or "").strip()
     learned_playbook = learned_data.get("playbook", []) if isinstance(learned_data, dict) else []
     if _learned_recipe_is_eligible(learned_data, date.today()):
         learned_attempted = True
@@ -1619,7 +1620,7 @@ async def _fetch_entry(
                 dest=dest,
                 browser=browser,
             )
-            learned_recipes.record_success(key, learned_strategy, learned_playbook)
+            learned_recipes.record_success(key, learned_strategy, learned_playbook, diocese=learned_diocese)
             if replay_file_type == "html_link":
                 return FetchResult(
                     key=key,
@@ -1637,10 +1638,10 @@ async def _fetch_entry(
                     file_path=replayed_path,
                     file_type=replay_file_type,
                 )
-            learned_recipes.record_failure(key)
+            learned_recipes.record_failure(key, diocese=learned_diocese)
         except Exception as exc:
             print(f"  ↩️  {key}: learned playbook failed: {exc}")
-            learned_recipes.record_failure(key)
+            learned_recipes.record_failure(key, diocese=learned_diocese)
         finally:
             if dest.exists() and not _is_real_pdf(dest, key):
                 dest.unlink(missing_ok=True)
@@ -1648,6 +1649,7 @@ async def _fetch_entry(
     recipe_path = recipe_path_for(key, PARISHES_DIR)
     recipe_meta = _load_recipe_metadata(recipe_path) if recipe_path.exists() else {}
     recipe_steps = recipe_meta.get("steps") if isinstance(recipe_meta, dict) else []
+    recipe_diocese = str((recipe_meta or {}).get("diocese") or "").strip()
     host_profile = _get_host_profile(_recipe_start_url(entry, recipe_meta, target_url))
     navigation_timeout_ms = int(host_profile.get("navigation_timeout_ms", PAGE_LOAD_TIMEOUT_MS))
     if recipe_path.exists():
@@ -1683,7 +1685,7 @@ async def _fetch_entry(
                 browser=browser,
             )
             if replay_file_type == "html_link":
-                learned_recipes.record_success(key, replay_file_type, recipe_steps)
+                learned_recipes.record_success(key, replay_file_type, recipe_steps, diocese=recipe_diocese)
                 return FetchResult(
                     key=key,
                     display_name=entry.display_name,
@@ -1692,7 +1694,7 @@ async def _fetch_entry(
                     file_type="html_link",
                 )
             if _is_real_pdf(replayed_path, key):
-                learned_recipes.record_success(key, replay_file_type, recipe_steps)
+                learned_recipes.record_success(key, replay_file_type, recipe_steps, diocese=recipe_diocese)
                 return FetchResult(
                     key=key,
                     display_name=entry.display_name,
