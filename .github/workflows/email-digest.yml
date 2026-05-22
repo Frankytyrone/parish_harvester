@@ -1,0 +1,89 @@
+name: Bulletin Email Digest
+
+# Required repository secrets:
+# - SMTP_SERVER
+# - SMTP_PORT
+# - SMTP_USERNAME
+# - SMTP_PASSWORD
+# - DIGEST_FROM
+# - DIGEST_TO
+on:
+  workflow_run:
+    workflows: ["Harvest Parish Bulletins"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send_digest:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check SMTP configuration
+        id: smtp_check
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DIGEST_FROM: ${{ secrets.DIGEST_FROM }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SMTP_SERVER}" ] || [ -z "${SMTP_PORT}" ] || [ -z "${SMTP_USERNAME}" ] || [ -z "${SMTP_PASSWORD}" ] || [ -z "${DIGEST_FROM}" ] || [ -z "${DIGEST_TO}" ]; then
+            echo "::warning::SMTP_* secrets not configured; skipping digest"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build digest HTML
+        if: steps.smtp_check.outputs.ready == 'true'
+        id: digest
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest_path = Path("docs/manifest.json")
+          if not manifest_path.exists():
+              html = "<p>No manifest found for this run.</p>"
+          else:
+              payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+              rows = []
+              for key, info in sorted(payload.get("dioceses", {}).items()):
+                  name = info.get("display_name") or key
+                  link = info.get("mega_pdf") or ""
+                  success = info.get("success_rate") or "n/a"
+                  rows.append(f"<li><strong>{name}</strong>: <a href='{link}'>{link}</a> — success rate {success}</li>")
+              if rows:
+                  html = "<h2>Bulletin of the Week</h2><ul>" + "".join(rows) + "</ul>"
+              else:
+                  html = "<p>No diocesan entries found in docs/manifest.json.</p>"
+
+          Path("email_digest.html").write_text(html, encoding="utf-8")
+          PY
+          {
+            echo "html_body<<EOF"
+            cat email_digest.html
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send digest email
+        if: steps.smtp_check.outputs.ready == 'true'
+        uses: dawidd6/action-send-mail@2cea9617b09d79a095af21254fbcb7ae95903dde # v3.12.0
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          from: ${{ secrets.DIGEST_FROM }}
+          to: ${{ secrets.DIGEST_TO }}
+          subject: Bulletin of the Week
+          html_body: ${{ steps.digest.outputs.html_body }}

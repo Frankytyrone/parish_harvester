@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parish reliability scores</title>
+  <link rel="stylesheet" href="../assets/site.css" />
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f8fbfb; color: #1a1a2e; }
+    main { max-width: 980px; margin: 0 auto; padding: 24px 16px 40px; }
+    h1 { margin: 0 0 8px; }
+    p.meta { margin: 0 0 20px; color: #4b5563; }
+    .warning { background: #fef9c3; border: 1px solid #facc15; color: #713f12; padding: 10px 12px; border-radius: 10px; margin: 0 0 18px; display: none; }
+    .list { display: grid; gap: 10px; }
+    .row { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid #d6ecea; border-radius: 12px; padding: 10px 12px; }
+    .parish { font-weight: 600; }
+    .badge { border-radius: 999px; padding: 3px 10px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .badge.green { background: #dcfce7; color: #166534; }
+    .badge.amber { background: #fef3c7; color: #92400e; }
+    .badge.red { background: #fee2e2; color: #991b1b; }
+    .badge.grey { background: #e5e7eb; color: #374151; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Parish reliability scores</h1>
+    <p class="meta" id="generated">Loading…</p>
+    <div class="warning" id="warning">⚠️ Could not load reliability data</div>
+    <div class="list" id="list"></div>
+  </main>
+  <script>
+    function prettyName(key) {
+      return key.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    async function loadBadges() {
+      const warning = document.getElementById("warning");
+      const list = document.getElementById("list");
+      const generated = document.getElementById("generated");
+
+      try {
+        const response = await fetch("../reliability.json", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("bad response");
+        }
+        const payload = await response.json();
+        const parishes = payload.parishes || {};
+        generated.textContent = `Generated: ${payload.generated_at || "unknown"}`;
+
+        Object.entries(parishes).forEach(([key, value]) => {
+          const tier = value && value.tier ? String(value.tier) : "grey";
+          const row = document.createElement("div");
+          row.className = "row";
+          row.innerHTML = `<span class="parish">${prettyName(key)}</span><span class="badge ${tier}">${tier}</span>`;
+          list.appendChild(row);
+        });
+      } catch (error) {
+        warning.style.display = "block";
+        generated.textContent = "Generated: unavailable";
+      }
+    }
+
+    loadBadges();
+  </script>
+</body>
+</html>
