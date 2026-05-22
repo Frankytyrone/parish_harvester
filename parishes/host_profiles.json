@@ -1,0 +1,23 @@
+{
+  "_comment": "Per-host fetch profiles. Hosts are matched case-insensitively against the recipe start_url hostname.",
+  "_default": {
+    "navigation_timeout_ms": 30000,
+    "wait_after_load_ms": 1500,
+    "max_retries": 2,
+    "retry_backoff_ms": 2000
+  },
+  "hosts": {
+    "ballyclareballygowan.com": {
+      "navigation_timeout_ms": 60000,
+      "max_retries": 3
+    },
+    "www.kilmoreandkillyleagh.com": {
+      "navigation_timeout_ms": 60000,
+      "max_retries": 3
+    },
+    "portstewartparish.website": {
+      "navigation_timeout_ms": 60000,
+      "max_retries": 3
+    }
+  }
+}

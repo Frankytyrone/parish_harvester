@@ -233,6 +233,15 @@ async def _download_image_url_as_pdf(page: Page, raw_url: str, dest: Path) -> tu
     return raw_url, "image_to_pdf"
 
 
+async def _print_page_to_pdf(page: Page, dest: Path) -> None:
+    pdf_bytes = await page.pdf(
+        format="A4",
+        print_background=True,
+        margin={"top": "10mm", "bottom": "10mm", "left": "10mm", "right": "10mm"},
+    )
+    dest.write_bytes(pdf_bytes)
+
+
 async def _find_pdfemb_url(page: Page) -> str | None:
     links = await page.eval_on_selector_all(PDFEMB_SELECTOR, PDFEMB_HREF_EXTRACT_JS)
     for href in links:
@@ -405,12 +414,7 @@ async def replay_recipe(
                     raise RecipeReplayError("Recipe print_to_pdf step missing URL")
                 if raw_pdf_url:
                     await page.goto(pdf_url, timeout=step_timeout_ms, wait_until="networkidle")
-                pdf_bytes = await page.pdf(
-                    format="A4",
-                    print_background=True,
-                    margin={"top": "10mm", "bottom": "10mm", "left": "10mm", "right": "10mm"},
-                )
-                dest.write_bytes(pdf_bytes)
+                await _print_page_to_pdf(page, dest)
                 return dest, "print_to_pdf", pdf_url
 
             if action == "crop_screenshot":
