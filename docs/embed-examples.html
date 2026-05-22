@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parish Harvester Embed Snippets</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #1a1a2e; }
+    h1 { margin-top: 0; }
+    section { margin: 0 0 28px; }
+    pre { background: #f4f7f7; border: 1px solid #d6ecea; border-radius: 8px; padding: 12px; overflow-x: auto; }
+    button { background: #1a6b6b; color: #fff; border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+    .links a { margin-right: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Copy/Paste Embed Snippets</h1>
+  <p class="links">
+    <a href="EMBEDDING.md">Back to EMBEDDING.md</a>
+    <a href="manifest.json">Open manifest.json</a>
+  </p>
+
+  <section>
+    <h2>Snippet A — Single mega PDF (simplest)</h2>
+    <pre><code id="snippet-a">&lt;iframe
+  src="https://frankytyrone.github.io/parish_harvester/mega_pdf/derry_mega_bulletin.pdf"
+  width="100%"
+  height="900"
+  style="border:0"
+  title="Derry mega bulletin"&gt;
+&lt;/iframe&gt;</code></pre>
+    <button data-copy="snippet-a">Copy</button>
+  </section>
+
+  <section>
+    <h2>Snippet B — PDF with download fallback</h2>
+    <pre><code id="snippet-b">&lt;object
+  data="https://frankytyrone.github.io/parish_harvester/mega_pdf/derry_mega_bulletin.pdf"
+  type="application/pdf"
+  width="100%"
+  height="900"&gt;
+  &lt;p&gt;
+    PDF preview not supported on this device/browser.
+    &lt;a href="https://frankytyrone.github.io/parish_harvester/mega_pdf/derry_mega_bulletin.pdf"&gt;Download the latest bulletin&lt;/a&gt;.
+  &lt;/p&gt;
+&lt;/object&gt;</code></pre>
+    <button data-copy="snippet-b">Copy</button>
+  </section>
+
+  <section>
+    <h2>Snippet C — OCR viewer embed</h2>
+    <pre><code id="snippet-c">&lt;iframe
+  src="https://frankytyrone.github.io/parish_harvester/bulletins/derry-latest.html"
+  width="100%"
+  height="1000"
+  style="border:0"
+  title="Derry OCR viewer"&gt;
+&lt;/iframe&gt;</code></pre>
+    <button data-copy="snippet-c">Copy</button>
+  </section>
+
+  <section>
+    <h2>Snippet D — Auto-updating link via the manifest</h2>
+    <pre><code id="snippet-d">&lt;a id="latest-bulletin-link" href="#"&gt;Loading latest bulletin…&lt;/a&gt;
+&lt;script&gt;
+fetch('https://frankytyrone.github.io/parish_harvester/manifest.json')
+  .then((r) =&gt; r.json())
+  .then((m) =&gt; {
+    const d = m.dioceses.derry_diocese;
+    if (!d || !d.mega_pdf) return;
+    const a = document.getElementById('latest-bulletin-link');
+    a.href = d.mega_pdf;
+    a.textContent = `Open latest ${d.display_name} bulletin (${m.target_date})`;
+  })
+  .catch(() =&gt; {
+    const a = document.getElementById('latest-bulletin-link');
+    a.textContent = 'Could not load bulletin link right now.';
+  });
+&lt;/script&gt;</code></pre>
+    <button data-copy="snippet-d">Copy</button>
+  </section>
+
+  <section>
+    <h2>Snippet E — Auto-updating iframe</h2>
+    <pre><code id="snippet-e">&lt;iframe id="latest-bulletin-frame" width="100%" height="900" style="border:0" title="Latest bulletin"&gt;&lt;/iframe&gt;
+&lt;script&gt;
+fetch('https://frankytyrone.github.io/parish_harvester/manifest.json')
+  .then((r) =&gt; r.json())
+  .then((m) =&gt; {
+    const d = m.dioceses.derry_diocese;
+    if (!d || !d.mega_pdf) return;
+    document.getElementById('latest-bulletin-frame').src = d.mega_pdf;
+  });
+&lt;/script&gt;</code></pre>
+    <button data-copy="snippet-e">Copy</button>
+  </section>
+
+  <section>
+    <h2>Snippet F — CDN URL alternative</h2>
+    <pre><code id="snippet-f">https://cdn.jsdelivr.net/gh/Frankytyrone/parish_harvester@main/mega_pdf/derry_mega_bulletin.pdf
+https://cdn.jsdelivr.net/gh/Frankytyrone/parish_harvester@main/mega_pdf/down_and_connor_mega_bulletin.pdf</code></pre>
+    <button data-copy="snippet-f">Copy</button>
+  </section>
+
+  <script>
+    document.querySelectorAll('button[data-copy]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const code = document.getElementById(button.dataset.copy);
+        await navigator.clipboard.writeText(code.textContent);
+        button.textContent = 'Copied!';
+        setTimeout(() => { button.textContent = 'Copy'; }, 1000);
+      });
+    });
+  </script>
+</body>
+</html>

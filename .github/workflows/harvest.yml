@@ -249,7 +249,7 @@ except Exception: print(v)")
           if [ -f mega_pdf/down_and_connor_mega_bulletin.pdf ]; then
             cp mega_pdf/down_and_connor_mega_bulletin.pdf docs/mega_pdf/down_and_connor_mega_bulletin.pdf
           fi
-          git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html docs/mega_pdf/ 2>/dev/null || true
+          git add -f Bulletins/report.json Bulletins/report.txt Bulletins/dashboard.html docs/mega_pdf/ docs/manifest.json 2>/dev/null || true
           git add -f parishes/consecutive_failures.json parishes/stale_bulletins.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "ℹ️  No staged changes — skipping commit."
