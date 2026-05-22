@@ -3,6 +3,10 @@
 Downloads weekly Catholic parish bulletins by calculating URLs from known patterns,
 then stitches them into one A–Z mega PDF.
 
+## Audits
+
+- [Deep audit — 22/05/2026](docs/audit/2026-05-22-deep-audit.md)
+
 ## How it works
 
 1. **Evidence file** (`parishes/{diocese}_bulletin_urls.txt`) records real, manually
