@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from harvester.weekly_diff import diff_bulletins
+from harvester.weekly_diff import MAX_LINES_PER_SIDE, diff_bulletins
 
 
 class WeeklyDiffTests(unittest.TestCase):
@@ -29,13 +29,16 @@ class WeeklyDiffTests(unittest.TestCase):
         )
 
     def test_diff_truncates_to_top_30_longest_lines(self) -> None:
-        this_week_lines = [f"Line number {i} with enough text length to pass the normalization filter and stay included." for i in range(45)]
+        this_week_lines = [
+            f"Line number {i} with enough text length to pass the normalization filter and stay included."
+            for i in range(MAX_LINES_PER_SIDE + 15)
+        ]
         last_week = ""
         this_week = "\n".join(this_week_lines)
 
         result = diff_bulletins(this_week, last_week)
 
-        self.assertEqual(30, len(result["added_lines"]))
+        self.assertEqual(MAX_LINES_PER_SIDE, len(result["added_lines"]))
         self.assertEqual([], result["removed_lines"])
         self.assertEqual("truncated_to_30_lines_per_side", result.get("note"))
 

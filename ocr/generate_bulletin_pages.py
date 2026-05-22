@@ -208,7 +208,11 @@ def _write_parish_reader_outputs(
                 time.sleep(0.5)
             summary_result = summarise_bulletin(ocr_text, parish_name, mistral_api_key)
             if summary_result is None:
-                error_reason = "missing_mistral_api_key" if not (mistral_api_key or "").strip() else "summary_generation_failed"
+                missing_api_key = not (mistral_api_key or "").strip()
+                if missing_api_key:
+                    error_reason = "missing_mistral_api_key"
+                else:
+                    error_reason = "summary_generation_failed"
                 summary_payload = {"bullets": None, "error": error_reason}
             else:
                 summary_payload = summary_result

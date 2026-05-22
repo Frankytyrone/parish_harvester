@@ -4,6 +4,7 @@ import difflib
 import re
 
 MAX_LINES_PER_SIDE = 30
+MIN_LINE_LENGTH = 20
 
 
 def _normalise_lines(text: str) -> list[str]:
@@ -12,7 +13,7 @@ def _normalise_lines(text: str) -> list[str]:
         line = re.sub(r"\s+", " ", raw.strip().lower()).strip()
         if not line:
             continue
-        if len(line) < 20:
+        if len(line) < MIN_LINE_LENGTH:
             continue
         normalized.append(line)
     return normalized

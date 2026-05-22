@@ -8,6 +8,7 @@ MISTRAL_SUMMARY_URL = "https://api.mistral.ai/v1/chat/completions"
 MISTRAL_MODEL = "mistral-small"
 MAX_INPUT_CHARS = 12_000
 TIMEOUT_SECONDS = 20
+EXPECTED_BULLET_COUNT = 3
 
 
 def _parse_bullets(content: str) -> list[str] | None:
@@ -19,7 +20,7 @@ def _parse_bullets(content: str) -> list[str] | None:
         if line[:1] in {"-", "*", "•"}:
             line = line[1:].strip()
         bullets.append(line)
-    if len(bullets) != 3:
+    if len(bullets) != EXPECTED_BULLET_COUNT:
         return None
     return bullets
 
