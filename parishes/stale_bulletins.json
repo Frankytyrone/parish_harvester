@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-21T15:38:15",
+  "generated_at": "2026-05-22T09:57:07",
   "stale": [
     {
       "key": "iskaheenparish",
       "display_name": "Iskaheen",
       "url": "https://i0.wp.com/www.iskaheenparish.com/wp-content/uploads/2026/05/2.jpg?fit=1024%2C708&ssl=1",
       "extracted_date": "2026-05-02",
-      "days_old": 19,
+      "days_old": 20,
       "reason": "date_in_url"
     },
     {
@@ -14,7 +14,7 @@
       "display_name": "Saul and Ballee",
       "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf",
       "extracted_date": "2026-05-10",
-      "days_old": 11,
+      "days_old": 12,
       "reason": "date_in_url"
     },
     {
@@ -22,7 +22,7 @@
       "display_name": "St Colmcilles",
       "url": "https://st-colmcilles.net/wp-content/uploads/2026/05/Parish-Bulletin-10052026.pdf",
       "extracted_date": "2026-05-10",
-      "days_old": 11,
+      "days_old": 12,
       "reason": "date_in_url"
     },
     {
@@ -30,7 +30,7 @@
       "display_name": "St Oliver Plunkett",
       "url": "https://stoliverplunkettparish.ie/wp-content/uploads/2026/01/25-Jan-26.pdf",
       "extracted_date": "2026-01-25",
-      "days_old": 116,
+      "days_old": 117,
       "reason": "date_in_url"
     }
   ],
@@ -90,12 +90,6 @@
       "reason": "no_date_in_url"
     },
     {
-      "key": "leckpatrickparish",
-      "display_name": "Leckpatrick",
-      "url": "https://www.leckpatrickparish.com/news.html",
-      "reason": "no_date_in_url"
-    },
-    {
       "key": "limavadyparish",
       "display_name": "Limavady",
       "url": "https://www.limavadyparish.org/onewebmedia/17-5-26.pdf",
@@ -110,7 +104,7 @@
     {
       "key": "malinparish",
       "display_name": "Malin",
-      "url": "http://malinparish.ie/index.php/bulletin/",
+      "url": "https://malinparish.ie/index.php/bulletin/",
       "reason": "no_date_in_url"
     },
     {
@@ -152,7 +146,7 @@
     {
       "key": "steelstownparish",
       "display_name": "Steelstown",
-      "url": "http://steelstownparish.com/news.html",
+      "url": "http://steelstownparish.com/pdf/PrayingForOneAnother.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -194,7 +188,7 @@
     {
       "key": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/?p=2912",
+      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
       "reason": "no_date_in_url"
     },
     {
@@ -224,7 +218,7 @@
     {
       "key": "ourladyqueenofpeacekilwee",
       "display_name": "Our Lady Queen of Peace",
-      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_7c95648bea124f62aea500a619c3dfe9.pdf",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/bulletins",
       "reason": "no_date_in_url"
     },
     {

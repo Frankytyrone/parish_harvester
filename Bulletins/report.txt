@@ -12,12 +12,12 @@ Downloaded bulletins:
   ✅ Carndonagh — carndonaghparish.pdf
   ✅ Castlederg — castledergparish.pdf
   ✅ Claudy — parishofclaudy.pdf
+  ✅ Clonleigh (Strabane Pastoral Area) — clonleighparish.pdf
   ✅ Culdaff — culdaffparish.pdf
   ✅ Culmoe — culmoreparish.pdf
   ✅ Dungiven — parishofdungiven.pdf
   ✅ Errigal — errigalparish.pdf
   ✅ Iskaheen — iskaheenparish.pdf
-  ✅ Leckpatrick — leckpatrickparish.pdf
   ✅ Limavady — limavadyparish.pdf
   ✅ Maghera (Derry) — magheraparishderry.pdf
   ✅ Malin — malinparish.pdf
@@ -75,7 +75,6 @@ Call log:
   - navigating to "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf", waiting until "domcontentloaded"
 
   ❌ Buncrana — Recipe replay failed: Recipe finished without downloading a document
-  ❌ Clonleigh (Strabane Pastoral Area) — Total timeout exceeded
   ❌ Clonmany — Recipe for Clonmany is outdated — the website may have changed. Re-train with: python main.py --train "Clonmany"
   ❌ DMA Parish (Claudy area) — Recipe replay failed: Recipe finished without downloading a document
   ❌ Drumquin — Recipe replay failed: Recipe finished without downloading a document
@@ -83,6 +82,7 @@ Call log:
   ❌ Greenlough — Recipe replay failed: Recipe finished without downloading a document
   ❌ Kilrea — Recipe replay failed: Recipe finished without downloading a document
   ❌ Lavey — Recipe replay failed: Recipe finished without downloading a document
+  ❌ Leckpatrick — Recipe replay failed: Recipe finished without downloading a document
   ❌ Three Patrons — No downloadable bulletin links found
   ❌ Aghyaran — Recipe returning wrong bulletin PDF (Aghyaran matched Moville); manual retraining required via toolbar.
   ❌ Ardstraw East — Recipe returning wrong PDF - needs manual retraining via toolbar
@@ -99,8 +99,8 @@ Call log:
   ❌ Portstewart — Total timeout exceeded
   ❌ St Agnes Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ Saint Anthony — Total timeout exceeded
-  ❌ St Gerards — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
-  ❌ St Patricks Belfast — Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation
+  ❌ St Gerards — Recipe replay failed: Recipe download step did not find a matching document URL
+  ❌ St Patricks Belfast — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ St Teresas — Recipe replay failed: Recipe download step did not find a matching document URL
   ❌ St Mary's Belfast — SSL certificate invalid (ERR_CERT_COMMON_NAME_INVALID).
   ❌ Christ the Redeemer — Recipe replay failed: Recipe download step did not find a matching document URL

@@ -43,6 +43,13 @@
       "file_type": "pdf"
     },
     {
+      "parish": "clonleighparish",
+      "display_name": "Clonleigh (Strabane Pastoral Area)",
+      "url": "https://clonleighparish.com/2026/05/15/9417/",
+      "file": "clonleighparish.pdf",
+      "file_type": "print_to_pdf"
+    },
+    {
       "parish": "culdaffparish",
       "display_name": "Culdaff",
       "url": "http://www.culdaffparish.com/news.html",
@@ -78,13 +85,6 @@
       "file_type": "image_to_pdf"
     },
     {
-      "parish": "leckpatrickparish",
-      "display_name": "Leckpatrick",
-      "url": "https://www.leckpatrickparish.com/news.html",
-      "file": "leckpatrickparish.pdf",
-      "file_type": "pdf"
-    },
-    {
       "parish": "limavadyparish",
       "display_name": "Limavady",
       "url": "https://www.limavadyparish.org/onewebmedia/17-5-26.pdf",
@@ -101,7 +101,7 @@
     {
       "parish": "malinparish",
       "display_name": "Malin",
-      "url": "http://malinparish.ie/index.php/bulletin/",
+      "url": "https://malinparish.ie/index.php/bulletin/",
       "file": "malinparish.pdf",
       "file_type": "pdf"
     },
@@ -178,7 +178,7 @@
     {
       "parish": "steelstownparish",
       "display_name": "Steelstown",
-      "url": "http://steelstownparish.com/news.html",
+      "url": "http://steelstownparish.com/pdf/PrayingForOneAnother.pdf",
       "file": "steelstownparish.pdf",
       "file_type": "pdf"
     },
@@ -234,7 +234,7 @@
     {
       "parish": "dunsfordandardglassparish",
       "display_name": "Dunsford and Ardglass",
-      "url": "https://www.dunsfordandardglassparish.com/?p=2912",
+      "url": "https://www.dunsfordandardglassparish.com/wp-content/uploads/2026/05/SUNDAY-17th-MAY-2026.pdf",
       "file": "dunsfordandardglassparish.pdf",
       "file_type": "pdf"
     },
@@ -276,7 +276,7 @@
     {
       "parish": "ourladyqueenofpeacekilwee",
       "display_name": "Our Lady Queen of Peace",
-      "url": "https://www.ourladyqueenofpeacekilwee.com/_files/ugd/024943_7c95648bea124f62aea500a619c3dfe9.pdf",
+      "url": "https://www.ourladyqueenofpeacekilwee.com/bulletins",
       "file": "ourladyqueenofpeacekilwee.pdf",
       "file_type": "pdf"
     },
@@ -415,12 +415,6 @@
       "error": "Recipe replay failed: Recipe finished without downloading a document"
     },
     {
-      "parish": "clonleighparish",
-      "display_name": "Clonleigh (Strabane Pastoral Area)",
-      "url": "https://clonleighparish.com/2026/05/16/strabane-pastoral-area-newsletter-for-sunday-17th-may-2026/",
-      "error": "Total timeout exceeded"
-    },
-    {
       "parish": "clonmanyparish",
       "display_name": "Clonmany",
       "url": "https://clonmanyparish.ie/wp-content/uploads/2026/05/2026-05-17.pdf",
@@ -460,6 +454,12 @@
       "parish": "laveyparish",
       "display_name": "Lavey",
       "url": "https://www.laveyparish.com/parishsecretary/laveyparishbulletin.pdf",
+      "error": "Recipe replay failed: Recipe finished without downloading a document"
+    },
+    {
+      "parish": "leckpatrickparish",
+      "display_name": "Leckpatrick",
+      "url": "https://www.leckpatrickparish.com/pdf/170526.pdf",
       "error": "Recipe replay failed: Recipe finished without downloading a document"
     },
     {
@@ -562,13 +562,13 @@
       "parish": "stgerardsparish",
       "display_name": "St Gerards",
       "url": "https://stgerardsparish.org/parish-news-events/",
-      "error": "Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "stpatricksbelfast",
       "display_name": "St Patricks Belfast",
       "url": "https://www.stpatricksbelfast.org/category/weekly-bulletins/",
-      "error": "Recipe replay failed: Page.eval_on_selector_all: Execution context was destroyed, most likely because of a navigation"
+      "error": "Recipe replay failed: Recipe download step did not find a matching document URL"
     },
     {
       "parish": "stteresasparish",
