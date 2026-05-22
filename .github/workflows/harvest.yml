@@ -153,6 +153,9 @@ jobs:
           if [ -f Bulletins/report.json ]; then
             DIOCESE="${{ github.event.inputs.diocese || 'all' }}"
             REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
+            REPORT_DATE_UK=$(python -c "import json,datetime; d=json.load(open('Bulletins/report.json')); v=d.get('target_date','unknown');\
+try: print(datetime.datetime.strptime(v,'%Y-%m-%d').strftime('%d/%m/%Y'))\
+except Exception: print(v)")
             DOWNLOADED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['downloaded'])")
             HTML_LINKS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['html_links'])")
             FAILED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['failed'])")
@@ -178,7 +181,7 @@ jobs:
           else:
               print('_None_')
           ")
-            BODY="## 📋 Bulletin Harvest Report — ${DIOCESE} — ${REPORT_DATE}
+            BODY="## 📋 Bulletin Harvest Report — ${DIOCESE} — ${REPORT_DATE_UK}
 
           **Diocese:** \`${DIOCESE}\`
 
@@ -198,7 +201,7 @@ jobs:
 
           [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
 
-            ISSUE_TITLE="📋 Bulletin Harvest Report — ${DIOCESE} — ${REPORT_DATE}"
+            ISSUE_TITLE="📋 Bulletin Harvest Report — ${DIOCESE} — ${REPORT_DATE_UK}"
 
             # Close superseded open reports for this same diocese only
             gh issue list \

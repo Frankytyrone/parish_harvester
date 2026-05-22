@@ -149,8 +149,7 @@ https://www.antrimparish.com
         self.assertEqual(manifest["action"]["default_title"], "Parish Trainer")
         self.assertEqual(manifest["action"]["default_popup"], "popup.html")
         self.assertIn('"world": "MAIN"', manifest_path.read_text(encoding="utf-8"))
-        self.assertIn("Mark Page as HTML", content_js)
-        self.assertIn("Mark Current URL as File", content_js)
+        self.assertIn("✨ Mark this element", content_js)
         self.assertIn("Crop Bulletin Image", content_js)
         self.assertIn("toggle_toolbar", content_js)
         self.assertIn("createToolbar", content_js)
@@ -234,8 +233,8 @@ https://www.antrimparish.com
         self.assertIn("_tryAutoShowToolbar", content_js)
         self.assertIn("chrome.runtime.onMessage.addListener", content_js)
         self.assertIn("ph_ping", content_js)
-        self.assertIn("sendResponse({ ok: handled })", content_js)
-        self.assertIn('if (message.type === "ph_ping") return true;', content_js)
+        self.assertIn("sendResponse(result)", content_js)
+        self.assertIn('if (message.type === "ph_ping") return { ok: true };', content_js)
         # Must print the confirmation message when toolbar is auto-shown
         self.assertIn("Parish Trainer toolbar ready", content_js)
 

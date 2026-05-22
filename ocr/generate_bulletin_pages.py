@@ -113,16 +113,24 @@ def _diocese_label(display_name: str) -> str:
     return display_name.replace(" Diocese", "").upper()
 
 
+def format_uk_date(iso_date: str) -> str:
+    match = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", str(iso_date or "").strip())
+    if not match:
+        return str(iso_date or "").strip()
+    return f"{match.group(3)}/{match.group(2)}/{match.group(1)}"
+
+
 def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: int, ocr_fragment: str, parish_links: list[tuple[str, str]]) -> str:
     pdf_href = f"../mega_pdf/{config.pdf_filename}"
     archive_href = "index.html"
     diocese_label = _diocese_label(config.display_name)
+    uk_bulletin_date = format_uk_date(bulletin_date)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{html.escape(config.display_name)} Bulletin Viewer — {html.escape(bulletin_date)}</title>
+  <title>{html.escape(config.display_name)} Bulletin Viewer — {html.escape(uk_bulletin_date)}</title>
   <style>
     * {{ box-sizing: border-box; }}
     body {{
@@ -171,13 +179,6 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       cursor: pointer;
     }}
     .search-clear[hidden] {{ display: none; }}
-    .header-actions {{
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 22px;
-    }}
     .pill-button {{
       min-height: 44px;
       border-radius: 999px;
@@ -190,6 +191,37 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
     }}
     .pill-button.primary {{ background: {TEAL}; color: #fff; border: 1px solid {TEAL}; }}
     .pill-button.secondary {{ background: #fff; color: {TEAL}; border: 2px solid {TEAL}; }}
+    .panel-tools {{
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }}
+    .panel-tools .pill-button {{ min-height: 36px; padding: 7px 14px; font-size: 0.9rem; }}
+    .ocr-search-tools {{
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }}
+    .ocr-search-tools button {{
+      border: 0;
+      border-radius: 999px;
+      background: {TEAL};
+      color: #fff;
+      font-weight: 700;
+      min-height: 34px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }}
+    .ocr-search-tools button:disabled {{ background: #9bbfbd; cursor: not-allowed; }}
+    .match-count {{
+      color: #4b5563;
+      font-size: 0.92rem;
+      min-width: 86px;
+      text-align: right;
+    }}
     .viewer-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }}
     .column-title {{ margin: 0 0 12px; color: {TEAL}; font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; }}
     .panel {{ background: #fff; border: 1px solid #d6ecea; border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(26, 107, 107, 0.08); }}
@@ -308,21 +340,20 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
     <header class="header">
       <p class="diocese-label">{html.escape(diocese_label)}</p>
       <h1>{html.escape(config.headline)}</h1>
-      <p class="meta">Generated for {html.escape(bulletin_date)}.</p>
+      <p class="meta">Generated for {html.escape(uk_bulletin_date)}.</p>
     </header>
     <div class="search-wrap">
       <input id="ocr-search" class="search-input" type="search" placeholder="🔍 Search OCR text..." aria-label="Search OCR text" />
       <button id="clear-search" class="search-clear" type="button" aria-label="Clear OCR search" hidden>×</button>
-    </div>
-    <div class="header-actions">
-      <a class="pill-button primary" href="{pdf_href}" target="_blank" rel="noopener noreferrer">⬇ Download PDF</a>
-      <a class="pill-button secondary" href="#ocr-panel">Jump to OCR Text</a>
     </div>
 
     <div class="viewer-grid">
       <section>
         <h2 class="column-title">Bulletins Original PDF Version</h2>
         <div class="panel">
+          <div class="panel-tools">
+            <a class="pill-button secondary" href="{pdf_href}" target="_blank" rel="noopener noreferrer">⬇ Download PDF</a>
+          </div>
           <div class="pdf-controls" data-controls="top">
             <button data-action="prev" type="button">← Previous</button>
             <span data-role="page-indicator">Page 1 of {page_count}</span>
@@ -342,6 +373,11 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       <section>
         <h2 class="column-title">Bulletins OCR Extracted Plain Text</h2>
         <div class="panel">
+          <div class="ocr-search-tools">
+            <span id="ocr-match-count" class="match-count">0 matches</span>
+            <button id="ocr-prev" type="button" disabled>← Prev</button>
+            <button id="ocr-next" type="button" disabled>Next →</button>
+          </div>
           <div id="ocr-panel">{ocr_fragment}</div>
           <div class="note-box">Note: The plain-text OCR version is auto-generated and may contain errors so it is always best to double check with the original PDF.</div>
         </div>
@@ -375,6 +411,9 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       const nextButtons = Array.from(document.querySelectorAll('button[data-action="next"]'));
       const ocrSearch = document.getElementById('ocr-search');
       const clearSearch = document.getElementById('clear-search');
+      const matchCount = document.getElementById('ocr-match-count');
+      const prevMatchBtn = document.getElementById('ocr-prev');
+      const nextMatchBtn = document.getElementById('ocr-next');
       const parishFilter = document.getElementById('parish-filter');
       const parishItems = Array.from(document.querySelectorAll('.parish-item'));
       const parishEmpty = document.getElementById('parish-empty');
@@ -385,6 +424,8 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       let pdfDoc = null;
       let isRendering = false;
       let pendingPage = null;
+      let ocrMatches = [];
+      let currentMatchIndex = -1;
 
       if (!pdfjs) {{
         return;
@@ -495,10 +536,35 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
         updateControls();
       }});
 
+      function scrollToMatch(idx) {{
+        if (!ocrMatches.length || idx < 0 || idx >= ocrMatches.length) return;
+        ocrMatches.forEach((mark) => mark.style.outline = '');
+        const target = ocrMatches[idx];
+        target.style.outline = '2px solid #0f5e5e';
+        target.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+      }}
+
+      function updateMatchUi() {{
+        if (!matchCount || !prevMatchBtn || !nextMatchBtn) return;
+        const total = ocrMatches.length;
+        if (!total) {{
+          matchCount.textContent = '0 matches';
+          prevMatchBtn.disabled = true;
+          nextMatchBtn.disabled = true;
+          return;
+        }}
+        matchCount.textContent = `${{currentMatchIndex + 1}} / ${{total}} matches`;
+        prevMatchBtn.disabled = false;
+        nextMatchBtn.disabled = false;
+      }}
+
       function applyOcrSearch(query) {{
         ocrPanel.innerHTML = originalOcrHtml;
+        ocrMatches = [];
+        currentMatchIndex = -1;
         if (!query) {{
           clearSearch.hidden = true;
+          updateMatchUi();
           return;
         }}
         clearSearch.hidden = false;
@@ -528,6 +594,7 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
             const mark = document.createElement('mark');
             mark.textContent = match[0];
             fragment.appendChild(mark);
+            ocrMatches.push(mark);
             lastIndex = match.index + match[0].length;
           }}
           if (lastIndex < text.length) {{
@@ -535,6 +602,11 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
           }}
           node.parentNode.replaceChild(fragment, node);
         }});
+        if (ocrMatches.length) {{
+          currentMatchIndex = 0;
+          scrollToMatch(currentMatchIndex);
+        }}
+        updateMatchUi();
       }}
 
       ocrSearch.addEventListener('input', function (event) {{
@@ -544,6 +616,18 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
         ocrSearch.value = '';
         applyOcrSearch('');
         ocrSearch.focus();
+      }});
+      prevMatchBtn.addEventListener('click', function () {{
+        if (!ocrMatches.length) return;
+        currentMatchIndex = (currentMatchIndex - 1 + ocrMatches.length) % ocrMatches.length;
+        updateMatchUi();
+        scrollToMatch(currentMatchIndex);
+      }});
+      nextMatchBtn.addEventListener('click', function () {{
+        if (!ocrMatches.length) return;
+        currentMatchIndex = (currentMatchIndex + 1) % ocrMatches.length;
+        updateMatchUi();
+        scrollToMatch(currentMatchIndex);
       }});
 
       parishFilter.addEventListener('input', function (event) {{
@@ -562,6 +646,7 @@ def render_viewer_page(config: DioceseConfig, bulletin_date: str, page_count: in
       }});
 
       updateControls();
+      updateMatchUi();
     }})();
   </script>
 </body>
@@ -601,7 +686,7 @@ def write_bulletins_index(entries: list[ViewerEntry]) -> None:
     for entry in entries:
         config = DIOCESES[entry.diocese]
         items.append(
-            f"<li><a href=\"{entry.path.name}\">{html.escape(config.display_name)} — {html.escape(entry.date)}</a></li>"
+            f"<li><a href=\"{entry.path.name}\">{html.escape(config.display_name)} — {html.escape(format_uk_date(entry.date))}</a></li>"
         )
     if not items:
         items.append("<li>No OCR bulletin viewer pages have been generated yet.</li>")
@@ -650,7 +735,7 @@ def write_root_index(entries: list[ViewerEntry]) -> None:
     for diocese in DIOCESES.values():
         latest = latest_by_diocese.get(diocese.key)
         ocr_href = f"bulletins/{latest.path.name}" if latest else "bulletins/index.html"
-        ocr_label = latest.date if latest else "Archive"
+        ocr_label = format_uk_date(latest.date) if latest else "Archive"
         cards.append(
             f"""
         <article class="card">

@@ -40,6 +40,15 @@ from harvester.stitcher import stitch_mega_pdf
 from train import run_training
 
 
+def format_uk_date(iso_date: str) -> str:
+    raw = str(iso_date or "").strip()
+    try:
+        parsed = datetime.strptime(raw, "%Y-%m-%d")
+    except ValueError:
+        return raw
+    return parsed.strftime("%d/%m/%Y")
+
+
 def _silence_playwright_shutdown(
     loop: asyncio.AbstractEventLoop, context: dict
 ) -> None:
@@ -131,7 +140,7 @@ def main() -> int:
     else:
         target = target_sunday()
 
-    print(f"🗓️  Target date  : {target}")
+    print(f"🗓️  Target date  : {format_uk_date(target.isoformat())}")
 
     # Determine which dioceses to run
     if args.diocese == "all":

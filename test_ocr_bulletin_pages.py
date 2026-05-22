@@ -7,12 +7,17 @@ from pathlib import Path
 from ocr.generate_bulletin_pages import (
     DioceseConfig,
     extract_ocr_fragment,
+    format_uk_date,
     parse_parish_links,
     render_viewer_page,
 )
 
 
 class OcrBulletinPageTests(unittest.TestCase):
+    def test_format_uk_date(self) -> None:
+        self.assertEqual(format_uk_date("2026-05-21"), "21/05/2026")
+        self.assertEqual(format_uk_date("bad-date"), "bad-date")
+
     def test_parse_parish_links_uses_first_url_after_header(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             evidence = Path(tmpdir) / "bulletin_urls.txt"
@@ -70,6 +75,11 @@ class OcrBulletinPageTests(unittest.TestCase):
             self.assertIn("../mega_pdf/test_mega_bulletin.pdf", html_output)
             self.assertIn("PARISHES WITH WORKING BULLETIN LINKS", html_output.upper())
             self.assertIn("https://example.com/one", html_output)
+            self.assertIn("Generated for 19/05/2026.", html_output)
+            self.assertIn("id=\"ocr-match-count\"", html_output)
+            self.assertIn("id=\"ocr-prev\"", html_output)
+            self.assertIn("id=\"ocr-next\"", html_output)
+            self.assertNotIn("Jump to OCR Text", html_output)
 
 
 if __name__ == "__main__":
