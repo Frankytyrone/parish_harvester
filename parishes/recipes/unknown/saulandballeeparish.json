@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "saulandballeeparish",
+  "display_name": "Saulandballeeparish",
+  "diocese": "",
+  "start_url": "https://www.saulandballeeparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.saulandballeeparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Bulletin\")",
+      "href": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-24-05-2026.pdf",
+      "text": "Bulletin"
+    }
+  ],
+  "recorded_date": "2026-05-23"
+}
