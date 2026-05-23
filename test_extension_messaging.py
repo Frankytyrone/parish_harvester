@@ -7,6 +7,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent
 CONTENT_JS = REPO_ROOT / "extension" / "content.js"
 SIDEPANEL_JS = REPO_ROOT / "extension" / "sidepanel.js"
+POPUP_HTML = REPO_ROOT / "extension" / "popup.html"
+POPUP_JS = REPO_ROOT / "extension" / "popup.js"
+SIDEPANEL_HTML = REPO_ROOT / "extension" / "sidepanel.html"
 
 
 class ExtensionMessagingTests(unittest.TestCase):
@@ -51,6 +54,18 @@ class ExtensionMessagingTests(unittest.TestCase):
             self.assertIn(label, content)
         self.assertIn('document.createElement("details")', content)
         self.assertIn('advancedSummary.textContent = "▾ Advanced";', content)
+
+    def test_gemini_settings_and_ai_help_hooks_exist(self) -> None:
+        popup_html = POPUP_HTML.read_text(encoding="utf-8")
+        popup_js = POPUP_JS.read_text(encoding="utf-8")
+        sidepanel_html = SIDEPANEL_HTML.read_text(encoding="utf-8")
+        sidepanel_js = SIDEPANEL_JS.read_text(encoding="utf-8")
+
+        self.assertIn('id="gemini-api-key"', popup_html)
+        self.assertIn("gemini_api_key", popup_js)
+        self.assertIn('id="tab-ai"', sidepanel_html)
+        self.assertIn("askGemini", sidepanel_js)
+        self.assertIn("gatherPageContext", sidepanel_js)
 
 
 if __name__ == "__main__":

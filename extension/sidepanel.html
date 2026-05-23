@@ -214,6 +214,94 @@
         font-size: 9px;
         background: #b45309;
       }
+      .ai-note {
+        margin: 0 0 8px;
+        font-size: 10px;
+        line-height: 1.45;
+        color: #cbd5e1;
+      }
+      .ai-banner {
+        display: none;
+        margin-bottom: 8px;
+        padding: 7px 8px;
+        border-radius: 6px;
+        border: 1px solid #14532d;
+        background: #052e16;
+        color: #bbf7d0;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+      .ai-banner-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .ai-banner-actions button {
+        width: auto;
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+      #ai-missing-key {
+        display: none;
+        margin-bottom: 8px;
+        padding: 7px 8px;
+        border-radius: 6px;
+        border: 1px solid #854d0e;
+        background: #451a03;
+        color: #fde68a;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+      #ai-chat {
+        min-height: 220px;
+        max-height: 340px;
+        overflow-y: auto;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .ai-msg {
+        margin-bottom: 8px;
+        padding: 7px 8px;
+        border-radius: 8px;
+        font-size: 10px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .ai-msg.user {
+        background: #1d4ed8;
+        color: #eff6ff;
+        margin-left: 20px;
+      }
+      .ai-msg.assistant {
+        background: #1e293b;
+        color: #e5e7eb;
+        margin-right: 20px;
+      }
+      .ai-msg.system {
+        background: #111827;
+        border: 1px dashed #334155;
+        color: #9ca3af;
+      }
+      .ai-controls {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      #ai-input {
+        width: 100%;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        padding: 8px 9px;
+        background: #0f172a;
+        color: #f9fafb;
+        font-size: 11px;
+        font-family: inherit;
+      }
+      #ai-analyse {
+        background: #0f766e;
+      }
     </style>
   </head>
   <body>
@@ -225,6 +313,7 @@
       <div class="sp-tabs">
         <button id="tab-trainer" class="sp-tab active" type="button">🛠️ Trainer</button>
         <button id="tab-problems" class="sp-tab" type="button">🚨 Problems</button>
+        <button id="tab-ai" class="sp-tab" type="button">🤖 AI Help</button>
       </div>
 
       <div id="panel-trainer" class="sp-panel active">
@@ -261,6 +350,10 @@
           <input id="gh-pat" type="password" placeholder="ghp_…" style="width:100%;border:1px solid #374151;border-radius:4px;padding:4px 6px;background:#0f172a;color:#f9fafb;font-size:10px;margin-bottom:5px;box-sizing:border-box;font-family:inherit;" />
           <label style="font-size:10px;color:#93c5fd;display:block;margin-bottom:2px;">Repository (owner/repo)</label>
           <input id="gh-repo" type="text" placeholder="Frankytyrone/parish_harvester" style="width:100%;border:1px solid #374151;border-radius:4px;padding:4px 6px;background:#0f172a;color:#f9fafb;font-size:10px;margin-bottom:5px;box-sizing:border-box;font-family:inherit;" />
+          <label style="font-size:10px;color:#93c5fd;display:block;margin-bottom:2px;">Mistral API Key</label>
+          <input id="mistral-api-key" type="password" placeholder="Paste your Mistral API key" style="width:100%;border:1px solid #374151;border-radius:4px;padding:4px 6px;background:#0f172a;color:#f9fafb;font-size:10px;margin-bottom:5px;box-sizing:border-box;font-family:inherit;" />
+          <label style="font-size:10px;color:#93c5fd;display:block;margin-bottom:2px;">Gemini API Key</label>
+          <input id="gemini-api-key" type="password" placeholder="Paste your Gemini API key" style="width:100%;border:1px solid #374151;border-radius:4px;padding:4px 6px;background:#0f172a;color:#f9fafb;font-size:10px;margin-bottom:5px;box-sizing:border-box;font-family:inherit;" />
           <button id="gh-save" type="button" class="green">💾 Save settings</button>
           <p id="gh-save-status" class="note" style="margin-top:4px;"></p>
         </div>
@@ -313,6 +406,26 @@
             </table>
           </div>
           <div id="problems-empty" class="problems-empty">Loading…</div>
+        </div>
+      </div>
+
+      <div id="panel-ai" class="sp-panel">
+        <div class="section">
+          <p class="ai-note">Powered by Gemini (free). Remembers this site.</p>
+          <div id="ai-memory-banner" class="ai-banner">
+            <div id="ai-memory-text"></div>
+            <div class="ai-banner-actions">
+              <button id="ai-memory-yes" type="button" class="green">Yes ✅</button>
+              <button id="ai-memory-no" type="button" class="grey">No ❌</button>
+            </div>
+          </div>
+          <div id="ai-missing-key">⚙️ Add your Gemini API key in Settings to use AI Help.</div>
+          <div id="ai-chat"></div>
+          <div class="ai-controls">
+            <input id="ai-input" type="text" placeholder="Ask about this page…" />
+            <button id="ai-send" type="button">Send</button>
+          </div>
+          <button id="ai-analyse" type="button" style="margin-top:8px;">🔍 Analyse this page</button>
         </div>
       </div>
     </div>

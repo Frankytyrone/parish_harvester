@@ -20,12 +20,24 @@ class LandingPageTests(unittest.TestCase):
 
             (recipes / "derry").mkdir(parents=True, exist_ok=True)
             (recipes / "down_and_connor").mkdir(parents=True, exist_ok=True)
+            (root / "parishes").mkdir(parents=True, exist_ok=True)
             (recipes / "derry" / "ardmoreparish.json").write_text(
                 json.dumps({"parish_key": "ardmoreparish", "parish_name": "Ardmore", "start_url": "https://example.com/a"}),
                 encoding="utf-8",
             )
             (recipes / "down_and_connor" / "antrimparish.json").write_text(
                 json.dumps({"parish_key": "antrimparish", "parish_name": "Antrim", "start_url": "https://example.com/b"}),
+                encoding="utf-8",
+            )
+            (root / "parishes" / "raphoe_diocese_bulletin_urls.txt").write_text(
+                "\n".join(
+                    [
+                        "# --- Raphoe town ---",
+                        "# key: drive-raphoe-town",
+                        "# page: https://drive.google.com/file/d/abc/view",
+                        "https://drive.usercontent.google.com/download?id=abc&export=download",
+                    ]
+                ),
                 encoding="utf-8",
             )
 
@@ -55,19 +67,22 @@ class LandingPageTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            old = (site_builder.RECIPES_DIR, site_builder.BULLETINS_DIR, site_builder.RELIABILITY_PATH)
+            old = (site_builder.RECIPES_DIR, site_builder.BULLETINS_DIR, site_builder.RELIABILITY_PATH, site_builder.REPO_ROOT)
             site_builder.RECIPES_DIR = recipes
             site_builder.BULLETINS_DIR = bulletins
             site_builder.RELIABILITY_PATH = docs / "reliability.json"
+            site_builder.REPO_ROOT = root
             try:
                 site_builder.run(report_path=report, docs_dir=docs)
             finally:
-                site_builder.RECIPES_DIR, site_builder.BULLETINS_DIR, site_builder.RELIABILITY_PATH = old
+                site_builder.RECIPES_DIR, site_builder.BULLETINS_DIR, site_builder.RELIABILITY_PATH, site_builder.REPO_ROOT = old
 
             index_html = (docs / "index.html").read_text(encoding="utf-8")
             self.assertEqual(index_html.count("Open →"), 26)
             self.assertIn("Derry", index_html)
             self.assertIn("Down and Connor", index_html)
+            self.assertIn("Raphoe Diocese", index_html)
+            self.assertIn("Raphoe town", index_html)
             self.assertIn("🟢", index_html)
             self.assertIn("🔴", index_html)
 

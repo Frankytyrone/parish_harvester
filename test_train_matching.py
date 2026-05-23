@@ -180,11 +180,13 @@ https://www.antrimparish.com
         )
         self.assertIn('id="ext-version"', popup_html)
         self.assertIn('id="mistral-api-key"', popup_html)
+        self.assertIn('id="gemini-api-key"', popup_html)
         self.assertIn('id="diag-section"', popup_html)
         self.assertIn('id="run-diag"', popup_html)
         self.assertIn('id="diag-results"', popup_html)
         self.assertIn("chrome.runtime.getManifest()", popup_js)
         self.assertIn("mistral_api_key", popup_js)
+        self.assertIn("gemini_api_key", popup_js)
         self.assertIn('dispatchToActiveTab({ type: "ping" })', popup_js)
         self.assertIn('dispatchToActiveTab({ type: "ph_ping" })', popup_js)
 
@@ -197,6 +199,13 @@ https://www.antrimparish.com
         self.assertIn("pd-diocese-accordion", sidepanel_html)
         self.assertIn("_pdBuildParishDetails", sidepanel_js)
         self.assertIn("pd-subfolder", sidepanel_js)
+        self.assertIn('id="tab-ai"', sidepanel_html)
+        self.assertIn('id="ai-chat"', sidepanel_html)
+        self.assertIn("askGemini", sidepanel_js)
+        self.assertIn("gatherPageContext", sidepanel_js)
+        self.assertIn("ph_ai_memory_", sidepanel_js)
+        self.assertIn('"Raphoe Diocese"', sidepanel_js)
+        self.assertIn("parishes/recipes/raphoe/${key}.json", sidepanel_js)
 
     def test_training_uses_persistent_context_with_extension_args(self) -> None:
         train_source = (Path(__file__).resolve().parent / "train.py").read_text(encoding="utf-8")
