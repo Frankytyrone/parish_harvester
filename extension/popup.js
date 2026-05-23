@@ -17,7 +17,7 @@ function formatDispatchError(result) {
     return "Page script bridge failed to load. Refresh the page and try again.";
   }
   if (result.reason === "receiver_unavailable") {
-    return "Page bridge not responding. Refresh the tab and try again.";
+    return "Page bridge not responding. Refresh the tab, or click the toolbar icon again, then retry.";
   }
   if (result.reason === "tab_not_found") {
     return "Could not access active tab.";
@@ -58,7 +58,11 @@ async function dispatchToActiveTab(message) {
 }
 
 async function sendToActiveTab(message) {
-  const result = await dispatchToActiveTab(message);
+  let result = await dispatchToActiveTab(message);
+  if (!result?.ok && result.reason === "receiver_unavailable") {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    result = await dispatchToActiveTab(message);
+  }
   if (!result?.ok) {
     if (result.reason === "runtime_error") {
       setStatusText(`Could not communicate with extension background: ${result.error}`);

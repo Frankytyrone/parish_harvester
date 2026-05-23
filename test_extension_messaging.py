@@ -10,6 +10,8 @@ SIDEPANEL_JS = REPO_ROOT / "extension" / "sidepanel.js"
 POPUP_HTML = REPO_ROOT / "extension" / "popup.html"
 POPUP_JS = REPO_ROOT / "extension" / "popup.js"
 SIDEPANEL_HTML = REPO_ROOT / "extension" / "sidepanel.html"
+AI_HELP_JS = REPO_ROOT / "extension" / "ai_help.js"
+MANIFEST_JSON = REPO_ROOT / "extension" / "manifest.json"
 
 
 class ExtensionMessagingTests(unittest.TestCase):
@@ -60,12 +62,29 @@ class ExtensionMessagingTests(unittest.TestCase):
         popup_js = POPUP_JS.read_text(encoding="utf-8")
         sidepanel_html = SIDEPANEL_HTML.read_text(encoding="utf-8")
         sidepanel_js = SIDEPANEL_JS.read_text(encoding="utf-8")
+        content_js = CONTENT_JS.read_text(encoding="utf-8")
+        ai_help_js = AI_HELP_JS.read_text(encoding="utf-8")
+        manifest_json = MANIFEST_JSON.read_text(encoding="utf-8")
 
         self.assertIn('id="gemini-api-key"', popup_html)
         self.assertIn("gemini_api_key", popup_js)
         self.assertIn('id="tab-ai"', sidepanel_html)
         self.assertIn("askGemini", sidepanel_js)
         self.assertIn("gatherPageContext", sidepanel_js)
+        self.assertIn("<script src=\"ai_help.js\"></script>", sidepanel_html)
+        self.assertIn("globalThis.PhAiHelp", ai_help_js)
+        self.assertIn("gatherPageContextFromCurrentPage", ai_help_js)
+        self.assertIn("saveHostMemory", ai_help_js)
+        self.assertIn('ai_help.js",', manifest_json)
+        self.assertIn("const _aiShared = () => globalThis.PhAiHelp || null;", content_js)
+        self.assertIn("🤖 AI Help", content_js)
+        self.assertIn("chrome.runtime.getManifest().version", content_js)
+
+    def test_popup_retries_page_bridge_once_before_error(self) -> None:
+        popup_js = POPUP_JS.read_text(encoding="utf-8")
+        self.assertIn("setTimeout(resolve, 500)", popup_js)
+        self.assertIn('result.reason === "receiver_unavailable"', popup_js)
+        self.assertIn("click the toolbar icon again", popup_js)
 
 
 if __name__ == "__main__":
