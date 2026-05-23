@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -85,6 +86,32 @@ class ExtensionMessagingTests(unittest.TestCase):
         self.assertIn("setTimeout(resolve, 500)", popup_js)
         self.assertIn('result.reason === "receiver_unavailable"', popup_js)
         self.assertIn("click the toolbar icon again", popup_js)
+
+    def test_content_js_avoids_literal_innerhtml_assignments(self) -> None:
+        content_js = CONTENT_JS.read_text(encoding="utf-8")
+        self.assertIsNone(re.search(r"\.innerHTML\s*=\s*[\"'`]", content_js))
+
+    def test_ai_help_get_best_tab_skips_internal_urls_and_uses_normal_window_fallback(self) -> None:
+        ai_help_js = AI_HELP_JS.read_text(encoding="utf-8")
+        self.assertIn("async function getBestTab()", ai_help_js)
+        self.assertIn('"chrome-extension://"', ai_help_js)
+        self.assertIn("last_focused_normal_window", ai_help_js)
+        self.assertIn('throw new Error("no_target_tab")', ai_help_js)
+
+    def test_popup_diagnostics_dump_includes_extended_debug_lines(self) -> None:
+        popup_html = POPUP_HTML.read_text(encoding="utf-8")
+        popup_js = POPUP_JS.read_text(encoding="utf-8")
+        self.assertIn("📋 Copy diagnostic info (paste to AI)", popup_html)
+        self.assertIn("Browser user-agent:", popup_js)
+        self.assertIn("Active tab URL:", popup_js)
+        self.assertIn("Active tab is real http(s) page:", popup_js)
+        self.assertIn("GitHub PAT present:", popup_js)
+        self.assertIn("GitHub repo configured:", popup_js)
+        self.assertIn("Mistral key present:", popup_js)
+        self.assertIn("Gemini key present:", popup_js)
+        self.assertIn("Last 10 ph_ai_memory_* keys:", popup_js)
+        self.assertIn("Recent AI Help log entries (last 5):", popup_js)
+        self.assertIn("Paste this whole block to your AI assistant.", popup_js)
 
 
 if __name__ == "__main__":

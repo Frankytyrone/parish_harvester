@@ -64,6 +64,34 @@
     });
   const _aiStorageKeyForHostname = (hostname) => `ph_ai_samples_${hostname || "unknown"}`;
   const _aiShared = () => globalThis.PhAiHelp || null;
+  const _clearElement = (el) => {
+    if (!el) return;
+    while (el.firstChild) el.removeChild(el.firstChild);
+  };
+  const _installTrustedTypesPolicy = () => {
+    const shared = _aiShared();
+    try {
+      if (globalThis.__phTrustedTypesPolicy) {
+        shared?.logAiHelpEvent?.({ attempt: "trusted_types_policy_install", succeeded: true, errorMessage: "reused" });
+        return;
+      }
+      if (window.trustedTypes?.createPolicy) {
+        globalThis.__phTrustedTypesPolicy = window.trustedTypes.createPolicy("parish-trainer", {
+          createHTML: (value) => String(value || ""),
+        });
+        shared?.logAiHelpEvent?.({ attempt: "trusted_types_policy_install", succeeded: true, errorMessage: "created" });
+      } else {
+        shared?.logAiHelpEvent?.({ attempt: "trusted_types_policy_install", succeeded: true, errorMessage: "not_supported" });
+      }
+    } catch (error) {
+      shared?.logAiHelpEvent?.({
+        attempt: "trusted_types_policy_install",
+        succeeded: false,
+        errorMessage: String(error?.message || error || "install_failed"),
+      });
+    }
+  };
+  _installTrustedTypesPolicy();
 
   // ── Safe message bridge ───────────────────────────────────────────────────
   // content.js runs in the MAIN world where chrome.runtime can be undefined
@@ -913,7 +941,7 @@
 
   const _renderSessionSteps = () => {
     if (!_stepsListEl) return;
-    _stepsListEl.innerHTML = "";
+    _clearElement(_stepsListEl);
     if (recipeSteps.length === 0) {
       const empty = document.createElement("div");
       empty.style.cssText = "opacity:0.55;font-size:10px;padding:2px 0;";
@@ -2099,7 +2127,7 @@
     });
 
     const resetGuidedPanel = () => {
-      guidedPanel.innerHTML = "";
+      _clearElement(guidedPanel);
       guidedPanel.appendChild(wizardQ);
       guidedPanel.appendChild(wizardBtns);
       guidedPanel.appendChild(stuckLink);
@@ -2125,7 +2153,7 @@
         immediateStandaloneSaved = true;
       }
 
-      guidedPanel.innerHTML = "";
+      _clearElement(guidedPanel);
 
       const confirmQ = document.createElement("div");
       confirmQ.style.cssText = "font-weight:600;color:#93c5fd;margin-bottom:6px;font-size:11px;";
@@ -2248,7 +2276,7 @@
 
     // Show a "please choose" panel when the top candidate is ambiguous.
     const showPickMultipleChoice = (candidates, hasAnyDate) => {
-      guidedPanel.innerHTML = "";
+      _clearElement(guidedPanel);
 
       const heading = document.createElement("div");
       heading.style.cssText = "font-weight:600;color:#fbbf24;margin-bottom:6px;font-size:11px;";
@@ -2429,7 +2457,7 @@
         return toSafeImageUrl(pickedSource);
       })();
 
-      guidedPanel.innerHTML = "";
+      _clearElement(guidedPanel);
 
       const heading = document.createElement("div");
       heading.style.cssText =
@@ -2641,7 +2669,7 @@
     window.addEventListener("ph-start-pick-iframe", () => {
       const pickerPanel = buildIframePickerPanel(showStatus);
       if (pickerPanel) {
-        guidedPanel.innerHTML = "";
+        _clearElement(guidedPanel);
         const backBtn = makeSmallBtn("← Back", "#374151", resetGuidedPanel);
         backBtn.style.width = "auto";
         backBtn.style.marginBottom = "6px";
@@ -2696,7 +2724,7 @@
       }
       const result = detectPageType();
       identifyResult.style.display = "block";
-      identifyResult.innerHTML = "";
+      _clearElement(identifyResult);
 
       const emojiSpan = document.createElement("span");
       emojiSpan.style.cssText = "font-size:15px;";
@@ -2779,7 +2807,7 @@
               }
               return;
             }
-            identifyResult.innerHTML = "";
+            _clearElement(identifyResult);
             const heading = document.createElement("div");
             heading.style.cssText =
               "font-weight:600;color:#93c5fd;margin-bottom:5px;font-size:10px;";
@@ -3163,7 +3191,7 @@
 
         // Populate asynchronously.
         _fetchDioceseList().then((list) => {
-          dioceseSelect.innerHTML = "";
+          _clearElement(dioceseSelect);
           const placeholder = document.createElement("option");
           placeholder.value = "";
           placeholder.textContent = "— select diocese —";
@@ -3298,7 +3326,7 @@
     const iframePickerBtn = makeBtn("📐 It's in a frame / viewer", () => {
       const pickerPanel = buildIframePickerPanel(showStatus);
       if (pickerPanel) {
-        guidedPanel.innerHTML = "";
+        _clearElement(guidedPanel);
         const backBtn = makeSmallBtn("← Back", "#374151", resetGuidedPanel);
         backBtn.style.width = "auto";
         backBtn.style.marginBottom = "6px";
@@ -3484,7 +3512,7 @@
         const match = content.match(/https?:\/\/[^\s"'<>]+/i);
         const predictedUrl = match ? match[0] : "";
         if (!predictedUrl) throw new Error("No URL returned by AI.");
-        aiResultBox.innerHTML = "";
+        _clearElement(aiResultBox);
         aiResultBox.style.display = "block";
         const predText = document.createElement("div");
         predText.style.cssText = "word-break:break-all;margin-bottom:6px;color:#d1d5db;";
@@ -3588,7 +3616,7 @@
       while (aiState.messages.length > 10) aiState.messages.shift();
     };
     const aiRenderMessages = () => {
-      aiChat.innerHTML = "";
+      _clearElement(aiChat);
       if (aiState.messages.length === 0) {
         const empty = document.createElement("div");
         empty.textContent = "Ask what kind of bulletin this is, or click Analyse this page.";
@@ -3649,6 +3677,8 @@
       aiRenderMemoryBanner();
     };
     const aiHandleSend = async (autoMode = false) => {
+      const shared = _aiShared();
+      const attempt = autoMode ? "toolbar_ai_analyse" : "toolbar_ai_send";
       const userMessage = autoMode
         ? "Please analyse this page and tell me what type of bulletin it is and the exact toolbar steps."
         : String(aiInput.value || "").trim();
@@ -3668,7 +3698,7 @@
       if (!autoMode) aiInput.value = "";
 
       try {
-        const shared = _aiShared();
+        shared?.logAiHelpEvent?.({ attempt, succeeded: true, errorMessage: "started" });
         if (!shared?.askGemini || !shared?.gatherPageContextFromCurrentPage) throw new Error("AI helper unavailable.");
         const pageContext = await shared.gatherPageContextFromCurrentPage();
         await aiLoadMemory(String(pageContext.hostname || ""));
@@ -3693,6 +3723,7 @@
           aiState.currentMemory = saved;
           aiRenderMemoryBanner();
         }
+        shared?.logAiHelpEvent?.({ attempt, succeeded: true, errorMessage: "completed" });
       } catch (error) {
         if (autoMode && aiState.messages.length > 0 && aiState.messages[aiState.messages.length - 1].role === "system") {
           aiState.messages.pop();
@@ -3700,11 +3731,17 @@
         }
         if (String(error?.message || error) === "missing_api_key") {
           aiMissingKey.style.display = "block";
-          aiAddMessage("system", "Add your Gemini API key in side panel Settings first.");
+          aiAddMessage("system", "Add your Gemini API key in Settings, then try again.");
+          showStatus("Add your Gemini API key in Settings, then try again.", "warn");
+        } else if (String(error?.message || error) === "no_target_tab") {
+          aiAddMessage("system", "Open the parish website in a normal tab, then click Analyse this page.");
+          showStatus("Open the parish website in a normal tab, then click Analyse this page.", "warn");
         } else {
-          aiAddMessage("system", "AI unavailable right now. Please try again.");
-          showStatus(`AI unavailable. ${String(error?.message || error)}`, "error");
+          const message = String(error?.message || error || "AI unavailable right now.");
+          aiAddMessage("system", message);
+          showStatus(message, "error");
         }
+        shared?.logAiHelpEvent?.({ attempt, succeeded: false, errorMessage: String(error?.message || error || "unknown_error") });
       } finally {
         aiToggleDisabled(false);
       }
@@ -4195,7 +4232,7 @@
       clearBtn.addEventListener("click", () => {
         clearStandaloneRecipe();
         recipeSteps = [];
-        if (_stepsListEl) _stepsListEl.innerHTML = "";
+        if (_stepsListEl) _clearElement(_stepsListEl);
         refreshStepCount();
         showStatus("🗑 Steps cleared.", "info");
       });
@@ -4602,6 +4639,11 @@
 
   if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type === "get_ai_help_logs") {
+        const shared = _aiShared();
+        sendResponse({ ok: true, entries: shared?.getRecentAiHelpLogs?.(Number(message.limit) || 5) || [] });
+        return true;
+      }
       if (message?.type === "get_standalone_steps") {
         sendResponse({ ok: true, count: _standaloneRecipeSteps().length });
         return true;
