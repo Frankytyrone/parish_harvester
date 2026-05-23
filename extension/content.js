@@ -93,9 +93,10 @@
   _installTrustedTypesPolicy();
 
   // ── Safe message bridge ───────────────────────────────────────────────────
-  // content.js runs in the MAIN world where chrome.runtime can be undefined
-  // (e.g. after an extension reload).  _safeSendMessage tries the direct API
-  // first and falls back to the window.postMessage ↔ isolated.js bridge.
+  // content.js now runs in the ISOLATED world so chrome.runtime is always
+  // available.  _safeSendMessage uses the direct API and falls back to the
+  // window.postMessage ↔ isolated.js bridge only if chrome.runtime becomes
+  // unavailable (e.g. after an extension reload mid-session).
   // callback(response, errorString) — errorString is non-null on failure.
   const _safeSendMessage = (message, callback) => {
     const TIMEOUT_MS = 15000;

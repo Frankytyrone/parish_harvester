@@ -25,13 +25,8 @@ async function _injectTrainerScripts(tabId) {
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
-      files: ["isolated.js"],
+      files: ["ai_help.js", "isolated.js", "content.js"],
       world: "ISOLATED",
-    });
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["content.js"],
-      world: "MAIN",
     });
     return { ok: true };
   } catch (err) {
