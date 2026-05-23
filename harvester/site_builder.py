@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import html
 import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
+from harvester.fetcher import parse_evidence_file
 from harvester.page_renderer import render_diocese_page
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -16,6 +18,11 @@ BULLETINS_DIR = DOCS_DIR / "bulletins"
 LIVE_DIOCESES = {"raphoe", "derry", "down-and-connor"}
 RELIABILITY_PATH = DOCS_DIR / "reliability.json"
 REPORT_PATH = REPO_ROOT / "Bulletins" / "report.json"
+EVIDENCE_DIOCESE_KEYS = {
+    "derry": "derry_diocese",
+    "down-and-connor": "down_and_connor",
+    "raphoe": "raphoe_diocese",
+}
 
 _CANONICAL_DIOCESES = [
     "Armagh",
@@ -81,6 +88,22 @@ def _recipe_files(diocese_key: str) -> list[Path]:
 
 
 def _parish_links(diocese_key: str) -> list[dict[str, str]]:
+    evidence_key = EVIDENCE_DIOCESE_KEYS.get(diocese_key)
+    if evidence_key:
+        try:
+            entries = parse_evidence_file(evidence_key, REPO_ROOT / "parishes")
+        except Exception:
+            entries = []
+        if entries:
+            return [
+                {
+                    "name": entry.display_name,
+                    "url": entry.bulletin_page or entry.example_url,
+                }
+                for entry in entries
+                if (entry.bulletin_page or entry.example_url)
+            ]
+
     links: list[dict[str, str]] = []
     for path in _recipe_files(diocese_key):
         try:
@@ -178,6 +201,23 @@ def _ocr_text_from_viewer(path: Path | None) -> str:
 
 
 def _placeholder_page(diocese: DioceseCard, out_path: Path) -> None:
+    parish_links = _parish_links(diocese.key)
+    parish_styles = ""
+    parish_markup = ""
+    if parish_links:
+        parish_styles = """
+    .parish-section { margin-top: 16px; background: #fff; border: 1px solid #d6ecea; border-radius: 12px; padding: 18px; }
+    .parish-section h2 { margin: 0 0 10px; color: #1a6b6b; font-size: 1rem; text-transform: uppercase; }
+    .parish-list { margin: 0; padding-left: 20px; columns: 2; }
+    .parish-list li { margin: 6px 0; }
+    .parish-list a { color: #1a6b6b; text-decoration: none; }
+    .parish-list a:hover { text-decoration: underline; }
+"""
+        parish_markup = f"""
+    <section class=\"parish-section\">
+      <h2>{diocese.name.upper()} PARISH LINKS</h2>
+      {_render_placeholder_parish_links(parish_links)}
+    </section>"""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         f"""<!DOCTYPE html>
@@ -192,6 +232,7 @@ def _placeholder_page(diocese: DioceseCard, out_path: Path) -> None:
     .wrap {{ max-width: 920px; margin: 0 auto; padding: 22px 16px; }}
     .headline {{ margin: 0 0 16px; background: #1a6b6b; color: #fff; padding: 14px 16px; text-transform: uppercase; }}
     .card {{ background: #fff; border: 1px solid #d6ecea; border-radius: 12px; padding: 18px; }}
+{parish_styles}
   </style>
 </head>
 <body>
@@ -200,6 +241,7 @@ def _placeholder_page(diocese: DioceseCard, out_path: Path) -> None:
     <section class=\"card\">
       <p>We're still collecting bulletins for this diocese. Check back next Sunday.</p>
     </section>
+{parish_markup}
   </main>
 </body>
 </html>
@@ -230,6 +272,19 @@ def _status_dot(avg_success_rate: float | None) -> str:
 
 
 def _landing_page(rows: list[dict[str, str]]) -> str:
+    live_sections = "".join(
+        (
+            "<section class=\"live-diocese\">"
+            f"<div class=\"live-diocese-head\"><h2>{html_name} Diocese</h2>"
+            f"<a href=\"dioceses/{row['key']}/\">Open big bulletin →</a></div>"
+            "<p class=\"live-diocese-note\">Parish links below come from the bulletin evidence file.</p>"
+            f"{_render_placeholder_parish_links(_parish_links(row['key']))}"
+            "</section>"
+        )
+        for row in rows
+        if row["key"] in LIVE_DIOCESES and _parish_links(row["key"])
+        for html_name in [row["name"]]
+    )
     cards_html = "".join(
         (
             "<article class=\"diocese-card\">"
@@ -260,6 +315,16 @@ def _landing_page(rows: list[dict[str, str]]) -> str:
     .diocese-card a {{ color: #1a6b6b; font-weight: 700; text-decoration: none; }}
     .diocese-card a:hover {{ text-decoration: underline; }}
     .content {{ padding: 20px 16px 10px; }}
+    .live-diocese {{ margin-top: 20px; background: #fff; border: 1px solid #d6ecea; border-radius: 12px; padding: 16px; }}
+    .live-diocese-head {{ display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }}
+    .live-diocese-head h2 {{ margin: 0; color: #1a6b6b; }}
+    .live-diocese-head a {{ color: #1a6b6b; font-weight: 700; text-decoration: none; }}
+    .live-diocese-head a:hover {{ text-decoration: underline; }}
+    .live-diocese-note {{ margin: 8px 0 12px; color: #4b5563; }}
+    .parish-list {{ margin: 0; padding-left: 18px; columns: 3; }}
+    .parish-list li {{ margin: 6px 0; }}
+    .parish-list a {{ color: #1a6b6b; text-decoration: none; }}
+    .parish-list a:hover {{ text-decoration: underline; }}
     .footer {{ border-top: 1px solid #d6ecea; margin-top: 18px; padding: 14px 16px 24px; color: #4b5563; font-size: 0.95rem; }}
     .footer a {{ color: #1a6b6b; text-decoration: none; }}
     .footer a:hover {{ text-decoration: underline; }}
@@ -275,6 +340,7 @@ def _landing_page(rows: list[dict[str, str]]) -> str:
   </header>
   <main class=\"content\">
     <section class=\"grid\">{cards_html}</section>
+    {live_sections}
   </main>
   <footer class=\"footer\">
     <p><a href=\"bulletins/index.html\">Browse the full OCR bulletin archive</a></p>
@@ -314,6 +380,16 @@ def _subscribe_page(dioceses: list[DioceseCard]) -> str:
 </body>
 </html>
 """
+
+
+def _render_placeholder_parish_links(parish_links: list[dict[str, str]]) -> str:
+    if not parish_links:
+        return "<p>No parish links available yet.</p>"
+    items = "".join(
+        f'<li><a href="{html.escape(link["url"], quote=True)}">{html.escape(link["name"])}</a></li>'
+        for link in sorted(parish_links, key=lambda item: item["name"].lower())
+    )
+    return f'<ul class="parish-list">{items}</ul>'
 
 
 def run(report_path: Path = REPORT_PATH, docs_dir: Path = DOCS_DIR) -> None:

@@ -16,6 +16,10 @@ const _spPanels = {
     tab: document.getElementById("tab-problems"),
     panel: document.getElementById("panel-problems"),
   },
+  ai: {
+    tab: document.getElementById("tab-ai"),
+    panel: document.getElementById("panel-ai"),
+  },
 };
 
 function _spShowPanel(name) {
@@ -26,6 +30,444 @@ function _spShowPanel(name) {
   }
   if (name === "problems") {
     void loadProblemsDashboard();
+  }
+  if (name === "ai") {
+    void _aiInitPanel();
+  }
+}
+
+const _spStorageGet = (keys) => new Promise((resolve) => {
+  chrome.storage.local.get(keys, (result) => resolve(result || {}));
+});
+
+const _spStorageSet = (payload) => new Promise((resolve) => {
+  chrome.storage.local.set(payload, () => resolve(!chrome.runtime?.lastError));
+});
+
+const _aiMessages = [];
+let _aiLastHostname = "";
+let _aiCurrentMemory = null;
+let _aiLastPageContext = null;
+let _aiPanelReady = false;
+
+const AI_SYSTEM_PROMPT = `You are an assistant inside a Catholic parish bulletin harvesting Chrome extension.
+The user is non-technical. Be brief, warm, and practical.
+
+Your job is to look at information about the current web page and tell the user:
+1. What type of bulletin this page has (PDF, image, HTML, iframe, Google Drive, Facebook, none found)
+2. Whether there are any issues (no SSL = http://, page still loading, login required, Facebook blocks automation)
+3. The exact steps to capture the bulletin using the Parish Trainer toolbar buttons
+
+Toolbar buttons available:
+- "Get a PDF (recommended)" — for direct PDF links
+- "I need to click something first" — for pages where you must click a link to reveal the PDF
+- "Get an image (newsletter screenshot)" — for image bulletins (JPEG/PNG)
+- "It's in a frame / viewer" — for iframes containing PDFs
+- "Help me identify this page" — runs auto-detection
+
+Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honestly.`;
+
+function _tabLooksScriptable(tab) {
+  return /^https?:\/\//i.test(String(tab?.url || ""));
+}
+
+async function _spGetBestPageTab() {
+  const preferred = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  for (const tab of preferred) {
+    if (_tabLooksScriptable(tab)) return tab;
+  }
+  const activeTabs = await chrome.tabs.query({ active: true });
+  for (const tab of activeTabs) {
+    if (_tabLooksScriptable(tab)) return tab;
+  }
+  return null;
+}
+
+function _aiChatEl() {
+  return document.getElementById("ai-chat");
+}
+
+function _aiTrimMessages() {
+  while (_aiMessages.length > 10) _aiMessages.shift();
+}
+
+function _aiAddMessage(role, text) {
+  _aiMessages.push({ role, text: String(text || "") });
+  _aiTrimMessages();
+  _aiRenderMessages();
+}
+
+function _aiRenderMessages() {
+  const chat = _aiChatEl();
+  if (!chat) return;
+  chat.innerHTML = "";
+  if (_aiMessages.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "ai-msg system";
+    empty.textContent = "Ask what kind of bulletin this is, or click Analyse this page.";
+    chat.appendChild(empty);
+  } else {
+    _aiMessages.forEach((message) => {
+      const bubble = document.createElement("div");
+      bubble.className = `ai-msg ${message.role}`;
+      bubble.textContent = message.text;
+      chat.appendChild(bubble);
+    });
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function _aiMemoryKey(hostname) {
+  return `ph_ai_memory_${hostname || "unknown"}`;
+}
+
+function _aiToggleDisabled(disabled) {
+  const input = document.getElementById("ai-input");
+  const send = document.getElementById("ai-send");
+  const analyse = document.getElementById("ai-analyse");
+  if (input) input.disabled = disabled;
+  if (send) send.disabled = disabled;
+  if (analyse) analyse.disabled = disabled;
+}
+
+function _aiLooksLikeBulletinImage(src, textHint = "") {
+  const lowerSrc = String(src || "").toLowerCase();
+  const lowerHint = String(textHint || "").toLowerCase();
+  return (
+    /\.(jpe?g|png|webp)(?:$|[?#])/i.test(lowerSrc) ||
+    /bulletin|newsletter|parish|weekly/.test(lowerSrc) ||
+    /bulletin|newsletter/.test(lowerHint)
+  );
+}
+
+function _aiClassifyPageContext(pageContext) {
+  const ctx = pageContext || {};
+  const iframeSrcs = Array.isArray(ctx.iframes) ? ctx.iframes : [];
+  const pdfLinks = Array.isArray(ctx.pdfLinks) ? ctx.pdfLinks : [];
+  const imageLinks = Array.isArray(ctx.images) ? ctx.images : [];
+  const directPdf = /\.pdf(?:$|[?#])/i.test(String(ctx.url || ""));
+  const iframePdf = iframeSrcs.some((src) => /\.pdf(?:$|[?#])/i.test(src) || /drive\.google|docs\.google|viewer/i.test(src));
+  const isDrive = Boolean(ctx.hasGoogleDrive || /drive\.google|drive\.usercontent\.google\.com/i.test(String(ctx.url || "")));
+  const isFacebook = Boolean(ctx.hasFacebook || /facebook\.com/i.test(String(ctx.url || "")));
+  const isMcn = Boolean(ctx.hasMcnLive || /mcn\.live/i.test(String(ctx.url || "")));
+  const hasImages = imageLinks.length > 0;
+  const warnings = [];
+
+  if (ctx.isHttp) warnings.push("This page has no SSL (http://), so it may load slowly or be blocked.");
+  if (ctx.readyState && ctx.readyState !== "complete") warnings.push("This page still looks like it is loading.");
+  if (Number(ctx.loadingIframeCount || 0) > 0) warnings.push('Some iframes still look like they are loading — wait 30 seconds and ask again.');
+  if (isFacebook) warnings.push("Facebook blocks automation, so this may need to be done manually.");
+  if (isMcn) warnings.push("MCN Live is a camera stream, so there may be no bulletin file to capture automatically.");
+
+  if (isFacebook) {
+    return {
+      type: "Facebook page",
+      stepsSummary: "Open the Facebook post or photo manually. If you only get text, use print to PDF or copy the text.",
+      warnings,
+    };
+  }
+  if (isMcn) {
+    return {
+      type: "MCN Live camera page",
+      stepsSummary: "This is usually just a livestream page. Look for a separate bulletin link on the parish site, or save the page link only.",
+      warnings,
+    };
+  }
+  if (isDrive) {
+    return {
+      type: "Google Drive link",
+      stepsSummary: "Open the Drive file or folder first. If it opens a PDF file, use Get a PDF. If it is only a folder, choose the bulletin file manually first.",
+      warnings,
+    };
+  }
+  if (directPdf || pdfLinks.length > 0) {
+    return {
+      type: "Direct PDF link",
+      stepsSummary: pdfLinks.length > 0
+        ? 'Click "Get a PDF (recommended)". If the PDF only appears after another click, click "I need to click something first" first.'
+        : 'This page is already a PDF, so click "Get a PDF (recommended)".',
+      warnings,
+    };
+  }
+  if (iframePdf || iframeSrcs.length > 0) {
+    return {
+      type: "PDF hidden inside an iframe",
+      stepsSummary: 'Click "It\'s in a frame / viewer". If nothing appears yet, wait for the frame to finish loading and try again.',
+      warnings,
+    };
+  }
+  if (hasImages) {
+    return {
+      type: "Image bulletin",
+      stepsSummary: 'Use "Get an image (newsletter screenshot)". If there are several pages, capture each bulletin image you need.',
+      warnings,
+    };
+  }
+  return {
+    type: "HTML page with no PDF found",
+    stepsSummary: 'Use "Help me identify this page" first. If there is still no PDF, print the page to PDF or capture the text manually.',
+    warnings,
+  };
+}
+
+async function gatherPageContext() {
+  const tab = await _spGetBestPageTab();
+  if (!tab?.id) {
+    throw new Error("Open the parish website in a normal tab first.");
+  }
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => {
+      const absolutize = (value) => {
+        try {
+          return new URL(value, window.location.href).href;
+        } catch (_e) {
+          return "";
+        }
+      };
+      const hrefs = Array.from(document.querySelectorAll("a[href]")).map((a) => absolutize(a.getAttribute("href") || ""));
+      const iframes = Array.from(document.querySelectorAll("iframe")).map((frame) => ({
+        src: absolutize(frame.getAttribute("src") || frame.src || ""),
+        loading: String(frame.getAttribute("src") || frame.src || "").trim() === "",
+      }));
+      const images = Array.from(document.querySelectorAll("img")).map((img) => ({
+        src: absolutize(img.getAttribute("src") || img.src || ""),
+        hint: [img.getAttribute("alt"), img.getAttribute("title"), img.className].filter(Boolean).join(" "),
+      }));
+      return {
+        url: window.location.href,
+        title: document.title || "",
+        hostname: window.location.hostname || "",
+        isHttp: window.location.protocol === "http:",
+        readyState: document.readyState || "",
+        iframes: iframes.map((item) => item.src).filter(Boolean),
+        loadingIframeCount: iframes.filter((item) => item.loading || !item.src).length,
+        pdfLinks: hrefs.filter((href) => /\.pdf(?:$|[?#])/i.test(href)).slice(0, 10),
+        images: images
+          .filter((img) => {
+            const lowerSrc = String(img.src || "").toLowerCase();
+            const lowerHint = String(img.hint || "").toLowerCase();
+            return /\.(jpe?g|png|webp)(?:$|[?#])/i.test(lowerSrc) || /bulletin|newsletter/.test(lowerSrc) || /bulletin|newsletter/.test(lowerHint);
+          })
+          .map((img) => img.src)
+          .filter(Boolean)
+          .slice(0, 5),
+        hasGoogleDrive: hrefs.some((href) => /drive\.google\.com/i.test(href)),
+        hasFacebook: hrefs.some((href) => /facebook\.com/i.test(href)),
+        hasMcnLive: hrefs.some((href) => /mcn\.live/i.test(href)),
+        bodyText: String(document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 2000),
+      };
+    },
+  });
+  const context = results?.[0]?.result || null;
+  if (!context || !context.url) {
+    throw new Error("Could not read this page yet. Refresh the page and try again.");
+  }
+  _aiLastPageContext = context;
+  return context;
+}
+
+async function askGemini(userMessage, pageContext) {
+  const settings = await _spStorageGet(["gemini_api_key"]);
+  const apiKey = String(settings.gemini_api_key || "").trim();
+  if (!apiKey) {
+    throw new Error("missing_api_key");
+  }
+
+  const memoryText = _aiCurrentMemory
+    ? `Last saved memory for this host: ${_aiCurrentMemory.type} — ${_aiCurrentMemory.steps_summary}. Confirmed: ${_aiCurrentMemory.confirmed ? "yes" : "no"}.`
+    : "No saved memory for this host yet.";
+  const summary = _aiClassifyPageContext(pageContext);
+  const history = _aiMessages.slice(-6).map((message) => `${message.role}: ${message.text}`).join("\n");
+  const prompt = [
+    AI_SYSTEM_PROMPT,
+    "",
+    memoryText,
+    `Likely bulletin type from page scan: ${summary.type}.`,
+    `Likely capture steps: ${summary.stepsSummary}`,
+    summary.warnings.length ? `Warnings: ${summary.warnings.join(" ")}` : "Warnings: none obvious.",
+    "",
+    "Page context:",
+    JSON.stringify(pageContext, null, 2),
+    "",
+    history ? `Recent chat:\n${history}\n` : "",
+    `User question: ${userMessage}`,
+  ].filter(Boolean).join("\n");
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 300,
+      },
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(String(data?.error?.message || `HTTP ${response.status}`));
+  }
+  const text = ((data?.candidates || [])[0]?.content?.parts || [])
+    .map((part) => String(part?.text || ""))
+    .join("\n")
+    .trim();
+  if (!text) {
+    throw new Error("Gemini returned an empty reply.");
+  }
+  return text;
+}
+
+async function _aiSaveMemory(hostname, pageContext) {
+  const summary = _aiClassifyPageContext(pageContext);
+  if (!hostname || !summary?.type || /no PDF found/i.test(summary.type) && !pageContext?.pdfLinks?.length && !pageContext?.iframes?.length && !pageContext?.images?.length && !pageContext?.hasGoogleDrive && !pageContext?.hasFacebook && !pageContext?.hasMcnLive) {
+    return;
+  }
+  const payload = {
+    type: summary.type,
+    steps_summary: summary.stepsSummary,
+    last_used: new Date().toISOString(),
+    confirmed: false,
+  };
+  await _spStorageSet({ [_aiMemoryKey(hostname)]: payload });
+  _aiCurrentMemory = payload;
+  _aiRenderMemoryBanner();
+}
+
+function _aiRenderMemoryBanner() {
+  const banner = document.getElementById("ai-memory-banner");
+  const text = document.getElementById("ai-memory-text");
+  if (!banner || !text) return;
+  if (!_aiCurrentMemory || !_aiLastHostname) {
+    banner.style.display = "none";
+    text.textContent = "";
+    return;
+  }
+  text.textContent = `💾 Last time: ${_aiCurrentMemory.type} — ${_aiCurrentMemory.steps_summary}. Did that still work?`;
+  banner.style.display = "block";
+}
+
+async function _aiLoadMemory(hostname) {
+  _aiLastHostname = hostname || "";
+  if (!hostname) {
+    _aiCurrentMemory = null;
+    _aiRenderMemoryBanner();
+    return;
+  }
+  const stored = await _spStorageGet([_aiMemoryKey(hostname)]);
+  _aiCurrentMemory = stored[_aiMemoryKey(hostname)] || null;
+  _aiRenderMemoryBanner();
+}
+
+async function _aiHandleSend(autoMode = false) {
+  const input = document.getElementById("ai-input");
+  const userMessage = autoMode
+    ? "Please analyse this page and tell me what type of bulletin it is and the exact toolbar steps."
+    : String(input?.value || "").trim();
+  if (!userMessage) return;
+
+  const missingKey = document.getElementById("ai-missing-key");
+  const settings = await _spStorageGet(["gemini_api_key"]);
+  if (!String(settings.gemini_api_key || "").trim()) {
+    if (missingKey) missingKey.style.display = "block";
+    setStatus("⚠️ Add your Gemini API key in Settings first.", "err");
+    return;
+  }
+  if (missingKey) missingKey.style.display = "none";
+
+  _aiToggleDisabled(true);
+  if (!autoMode) {
+    _aiAddMessage("user", userMessage);
+  } else {
+    _aiAddMessage("system", "🔍 Analysing this page…");
+  }
+  if (input && !autoMode) input.value = "";
+
+  try {
+    const pageContext = await gatherPageContext();
+    await _aiLoadMemory(String(pageContext.hostname || ""));
+    const reply = await askGemini(userMessage, pageContext);
+    if (autoMode && _aiMessages.length > 0 && _aiMessages[_aiMessages.length - 1].role === "system") {
+      _aiMessages.pop();
+    }
+    _aiAddMessage("assistant", reply);
+    setStatus("✅ AI reply ready.", "ok");
+    await _aiSaveMemory(String(pageContext.hostname || ""), pageContext);
+  } catch (error) {
+    if (autoMode && _aiMessages.length > 0 && _aiMessages[_aiMessages.length - 1].role === "system") {
+      _aiMessages.pop();
+      _aiRenderMessages();
+    }
+    if (String(error?.message || error) === "missing_api_key") {
+      const missing = document.getElementById("ai-missing-key");
+      if (missing) missing.style.display = "block";
+      _aiAddMessage("system", "⚙️ Add your Gemini API key in Settings to use AI Help.");
+      setStatus("AI unavailable, check your API key.", "err");
+    } else {
+      _aiAddMessage("system", "AI unavailable, check your API key.");
+      setStatus(`AI unavailable, check your API key. ${String(error?.message || error)}`, "err");
+    }
+  } finally {
+    _aiToggleDisabled(false);
+  }
+}
+
+async function _aiInitPanel() {
+  if (!_aiPanelReady) {
+    const sendBtn = document.getElementById("ai-send");
+    const analyseBtn = document.getElementById("ai-analyse");
+    const input = document.getElementById("ai-input");
+    const yesBtn = document.getElementById("ai-memory-yes");
+    const noBtn = document.getElementById("ai-memory-no");
+    if (sendBtn) sendBtn.addEventListener("click", () => { void _aiHandleSend(false); });
+    if (analyseBtn) analyseBtn.addEventListener("click", () => { void _aiHandleSend(true); });
+    if (input) {
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          void _aiHandleSend(false);
+        }
+      });
+    }
+    if (yesBtn) {
+      yesBtn.addEventListener("click", async () => {
+        if (!_aiLastHostname || !_aiCurrentMemory) return;
+        _aiCurrentMemory = { ..._aiCurrentMemory, confirmed: true, last_used: new Date().toISOString() };
+        await _spStorageSet({ [_aiMemoryKey(_aiLastHostname)]: _aiCurrentMemory });
+        _aiAddMessage("assistant", `Great — use the same steps as last time: ${_aiCurrentMemory.steps_summary}`);
+        _aiRenderMemoryBanner();
+      });
+    }
+    if (noBtn) {
+      noBtn.addEventListener("click", async () => {
+        if (_aiLastHostname) {
+          await chrome.storage.local.remove(_aiMemoryKey(_aiLastHostname));
+        }
+        _aiCurrentMemory = null;
+        _aiRenderMemoryBanner();
+        void _aiHandleSend(true);
+      });
+    }
+    _aiPanelReady = true;
+    _aiRenderMessages();
+  }
+
+  const settings = await _spStorageGet(["gemini_api_key"]);
+  const missing = document.getElementById("ai-missing-key");
+  if (missing) {
+    missing.style.display = String(settings.gemini_api_key || "").trim() ? "none" : "block";
+  }
+  try {
+    const pageContext = await gatherPageContext();
+    await _aiLoadMemory(String(pageContext.hostname || ""));
+  } catch (_error) {
+    await _aiLoadMemory("");
   }
 }
 
@@ -122,31 +564,42 @@ document.getElementById("crop-btn").addEventListener("click", async () => {
 // ── GitHub Settings ────────────────────────────────────────────────────────
 
 // Load saved settings on open
-chrome.storage.local.get(["gh_pat", "gh_repo"], (r) => {
+chrome.storage.local.get(["gh_pat", "gh_repo", "mistral_api_key", "gemini_api_key"], (r) => {
   const patInput  = document.getElementById("gh-pat");
   const repoInput = document.getElementById("gh-repo");
+  const mistralInput = document.getElementById("mistral-api-key");
+  const geminiInput = document.getElementById("gemini-api-key");
   if (patInput  && r.gh_pat)  patInput.value  = r.gh_pat;
   if (repoInput && r.gh_repo) repoInput.value = r.gh_repo;
+  if (mistralInput && r.mistral_api_key) mistralInput.value = r.mistral_api_key;
+  if (geminiInput && r.gemini_api_key) geminiInput.value = r.gemini_api_key;
 });
 
 document.getElementById("gh-save").addEventListener("click", () => {
   const pat  = (document.getElementById("gh-pat").value  || "").trim();
   const repo = (document.getElementById("gh-repo").value || "").trim();
+  const mistralApiKey = (document.getElementById("mistral-api-key").value || "").trim();
+  const geminiApiKey = (document.getElementById("gemini-api-key").value || "").trim();
   const status = document.getElementById("gh-save-status");
-  if (!pat || !repo) {
-    status.textContent = "❌ Both PAT and repository are required.";
-    status.style.color = "#fca5a5";
-    return;
-  }
-  chrome.storage.local.set({ gh_pat: pat, gh_repo: repo }, () => {
+  chrome.storage.local.set({
+    gh_pat: pat,
+    gh_repo: repo,
+    mistral_api_key: mistralApiKey,
+    gemini_api_key: geminiApiKey,
+  }, () => {
     if (chrome.runtime.lastError) {
       status.textContent = `❌ Save failed: ${chrome.runtime.lastError.message}`;
       status.style.color = "#fca5a5";
       setTimeout(() => { status.textContent = ""; }, 4000);
       return;
     }
-    status.textContent = "✅ Settings saved.";
-    status.style.color = "#86efac";
+    if (!pat || !repo) {
+      status.textContent = "⚠️ Saved. Add GitHub PAT + repo to enable recipe push.";
+      status.style.color = "#fde68a";
+    } else {
+      status.textContent = "✅ Settings saved.";
+      status.style.color = "#86efac";
+    }
     setTimeout(() => { status.textContent = ""; }, 3000);
   });
 });
@@ -165,6 +618,7 @@ document.getElementById("gh-save").addEventListener("click", () => {
 const PD_EVIDENCE_FILES = {
   "Derry Diocese":         "parishes/derry_diocese_bulletin_urls.txt",
   "Down & Connor Diocese": "parishes/down_and_connor_bulletin_urls.txt",
+  "Raphoe Diocese":        "parishes/raphoe_diocese_bulletin_urls.txt",
 };
 const MEGA_EXCLUDES_PATH = "parishes/mega_excludes.json";
 const MANUAL_OVERRIDES_PATH = "parishes/manual_overrides.json";
@@ -391,6 +845,7 @@ function _pdDioceseSlug(dioceseName) {
   const slug = m[1];
   if (slug === "derry_diocese") return "derry";
   if (slug === "down_and_connor_diocese") return "down_and_connor";
+  if (slug === "raphoe_diocese") return "raphoe";
   return slug;
 }
 
@@ -612,6 +1067,7 @@ async function _pdCheckRecipe(key) {
   const candidates = [
     `parishes/recipes/derry/${key}.json`,
     `parishes/recipes/down_and_connor/${key}.json`,
+    `parishes/recipes/raphoe/${key}.json`,
     `parishes/recipes/${key}.json`,
     `parishes/recipes/unknown/${key}.json`,
   ];
@@ -1322,6 +1778,7 @@ document.getElementById("stale-banner-toggle").addEventListener("click", functio
 
 _spPanels.trainer.tab.addEventListener("click", () => _spShowPanel("trainer"));
 _spPanels.problems.tab.addEventListener("click", () => _spShowPanel("problems"));
+_spPanels.ai.tab.addEventListener("click", () => _spShowPanel("ai"));
 void loadProblemsDashboard();
 
 // ── Crop done notification ─────────────────────────────────────────────────

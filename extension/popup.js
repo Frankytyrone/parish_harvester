@@ -80,21 +80,29 @@ document.getElementById("open-operator").addEventListener("click", () => {
 
 // ── GitHub Settings ────────────────────────────────────────────────────────
 
-chrome.storage.local.get(["gh_pat", "gh_repo", "mistral_api_key"], (r) => {
+chrome.storage.local.get(["gh_pat", "gh_repo", "mistral_api_key", "gemini_api_key"], (r) => {
   const patInput  = document.getElementById("gh-pat");
   const repoInput = document.getElementById("gh-repo");
   const mistralInput = document.getElementById("mistral-api-key");
+  const geminiInput = document.getElementById("gemini-api-key");
   if (patInput  && r.gh_pat)  patInput.value  = r.gh_pat;
   if (repoInput && r.gh_repo) repoInput.value = r.gh_repo;
   if (mistralInput && r.mistral_api_key) mistralInput.value = r.mistral_api_key;
+  if (geminiInput && r.gemini_api_key) geminiInput.value = r.gemini_api_key;
 });
 
 document.getElementById("gh-save").addEventListener("click", () => {
   const pat  = (document.getElementById("gh-pat").value  || "").trim();
   const repo = (document.getElementById("gh-repo").value || "").trim();
   const mistralApiKey = (document.getElementById("mistral-api-key").value || "").trim();
+  const geminiApiKey = (document.getElementById("gemini-api-key").value || "").trim();
   const ghStatusEl = document.getElementById("gh-save-status");
-  chrome.storage.local.set({ gh_pat: pat, gh_repo: repo, mistral_api_key: mistralApiKey }, () => {
+  chrome.storage.local.set({
+    gh_pat: pat,
+    gh_repo: repo,
+    mistral_api_key: mistralApiKey,
+    gemini_api_key: geminiApiKey,
+  }, () => {
     if (chrome.runtime.lastError) {
       ghStatusEl.textContent = `❌ Save failed: ${chrome.runtime.lastError.message}`;
       ghStatusEl.style.color = "#fca5a5";

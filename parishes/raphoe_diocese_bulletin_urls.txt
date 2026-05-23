@@ -1,0 +1,153 @@
+# ============================================================
+# Raphoe Diocese — Known Bulletin URL Evidence Log
+# ============================================================
+# Purpose: This file records REAL, manually verified bulletin URLs
+# found on each parish website. The harvester code reads this file
+# to predict where this week's bulletin will be located.
+#
+# FORMAT:
+#   One URL per line. Blank lines and lines starting with # are ignored.
+#   Group entries by parish name. Most recent bulletin first.
+# ============================================================
+
+# --- Ardara ---
+# page: http://ardara.ie/news/
+# html_link: parish news page — no direct PDF confirmed yet
+http://ardara.ie/news/
+
+# --- Annagry ---
+# page: https://annagryparish.ie/newsletter-2/
+# html_link: newsletter page — click through to bulletin first
+https://annagryparish.ie/newsletter-2/
+
+# --- Dungloe ---
+# key: dungloe
+# page: https://www.facebook.com/donalquinn1959
+# html_link: Facebook — cannot automate, link only
+https://www.facebook.com/donalquinn1959
+
+# --- Burt ---
+# key: drive-1rjeey-ayy
+# page: https://drive.google.com/drive/folders/1RjeEY_AYy62pRNWmVmDeINfHVqkPyCsw
+# html_link: Google Drive folder — cannot automate, link only
+https://drive.google.com/drive/folders/1RjeEY_AYy62pRNWmVmDeINfHVqkPyCsw
+
+# --- Carrigart ---
+# key: carrigart
+# page: https://www.facebook.com/profile.php?id=100079250566866
+# html_link: Facebook — cannot automate, link only
+https://www.facebook.com/profile.php?id=100079250566866
+
+# --- St Eunan's Cathedral Letterkenny ---
+# key: steunanscathedral
+# page: https://www.steunanscathedral.ie/newsletter/
+# html_link: newsletter page — click through to bulletin first
+https://www.steunanscathedral.ie/newsletter/
+
+# --- Bodoney ---
+# key: holy-cross-church
+# page: https://mcn.live/Camera/holy-cross-church
+# html_link: MCN Live camera stream — cannot automate, link only
+https://mcn.live/Camera/holy-cross-church
+
+# --- Naomh Fionán ---
+# key: naomhfionan
+# page: https://naomhfionan.com/nuachtlitir/
+# html_link: newsletter page — click through to bulletin first
+https://naomhfionan.com/nuachtlitir/
+
+# --- Glenswilly ---
+# key: drive-1kna8f6t54
+# page: https://drive.google.com/file/d/1KnA8F6t54NmbyeitUGgtfWxN2IqFMDOa/view
+# Pattern F: STATIC URL — Google Drive direct download
+https://drive.usercontent.google.com/download?id=1KnA8F6t54NmbyeitUGgtfWxN2IqFMDOa&export=download
+
+# --- Glenfin ---
+# key: glenfin-parish
+# page: https://www.glenfin-parish.com/#sbp-bulletin
+# html_link: bulletin is linked from the parish page
+https://www.glenfin-parish.com/#sbp-bulletin
+
+# --- Stranorlar area ---
+# key: drive-14alaxt4mv
+# page: https://drive.google.com/file/d/14aLAxt4mv7eYBvYx2GGthpsQnLrsysmK/view
+# Pattern F: STATIC URL — Google Drive direct download
+https://drive.usercontent.google.com/download?id=14aLAxt4mv7eYBvYx2GGthpsQnLrsysmK&export=download
+
+# --- Gort a' Choirce ---
+# key: gort-a-choirce
+# page: https://www.parishpress.net/wp-content/uploads/parish-bulletins/donegal/raphoe/gort-a-choirce/bulletin.pdf?t=1771000171
+# Pattern F: STATIC URL — parish PDF overwritten in place
+https://www.parishpress.net/wp-content/uploads/parish-bulletins/donegal/raphoe/gort-a-choirce/bulletin.pdf?t=1771000171
+
+# --- Inver ---
+# key: inverparish
+# page: https://www.inverparish.com/parish-newsletter.html
+# html_link: parish newsletter page — no direct PDF confirmed yet
+https://www.inverparish.com/parish-newsletter.html
+
+# --- Killybegs area ---
+# key: drive-1m6sogz3de
+# page: https://drive.google.com/file/d/1m6sOGz3dECWvbbpXCnRGdHG77yWiLXxR/view
+# Pattern F: STATIC URL — Google Drive direct download
+https://drive.usercontent.google.com/download?id=1m6sOGz3dECWvbbpXCnRGdHG77yWiLXxR&export=download
+
+# --- Kilbarron ---
+# key: kilbarron
+# page: https://www.kilbarron.org/bulletin
+# html_link: bulletin page — click through to bulletin first
+https://www.kilbarron.org/bulletin
+
+# --- Kilcar ---
+# key: st-carthas-church-kilcar-f94-h2y5
+# page: https://www.mcn.live/Camera/st-carthas-church-kilcar,-f94-h2y5
+# html_link: MCN Live camera stream — cannot automate, link only
+https://www.mcn.live/Camera/st-carthas-church-kilcar,-f94-h2y5
+
+# --- Killybegs ---
+# key: st-mary-of-the-visitation-church-killybegs
+# page: https://mcn.live/Camera/st-mary-of-the-visitation-church-killybegs
+# html_link: MCN Live camera stream — cannot automate, link only
+https://mcn.live/Camera/st-mary-of-the-visitation-church-killybegs
+
+# --- Kincasslagh ---
+# key: kincasslagh
+# page: https://www.kincasslagh.ie/?post_type=kbp_bulletins
+# html_link: bulletin page — click through to bulletin first
+https://www.kincasslagh.ie/?post_type=kbp_bulletins
+
+# --- Milford and Rathmullan ---
+# key: milfordrathmullanparishes
+# page: https://milfordrathmullanparishes.ie/bulletins/
+# html_link: bulletin page — click through to bulletin first
+https://milfordrathmullanparishes.ie/bulletins/
+
+# --- Newtownkilllea ---
+# key: newtownkilleaparish
+# page: https://newtownkilleaparish.ie/bulletin/
+# html_link: bulletin page — click through to bulletin first
+https://newtownkilleaparish.ie/bulletin/
+
+# --- Raphoe town ---
+# key: drive-1jmslbrliw
+# page: https://drive.google.com/file/d/1jmslbrliw1BTtdrxHbqpUbhQEf6wXHy5/view
+# Pattern F: STATIC URL — Google Drive direct download
+https://drive.usercontent.google.com/download?id=1jmslbrliw1BTtdrxHbqpUbhQEf6wXHy5&export=download
+
+# --- Stranorlar ---
+# key: stranorlarparish
+# page: https://www.stranorlarparish.ie/our-parish/
+# html_link: parish page — click through to bulletin first
+https://www.stranorlarparish.ie/our-parish/
+
+# --- Tawnawilly ---
+# key: tawnawillyparish
+# page: https://tawnawillyparish.ie/bulletin/
+# html_link: bulletin page — click through to bulletin first
+https://tawnawillyparish.ie/bulletin/
+
+# --- Donegal town ---
+# key: drive-1hh7w-ew0v
+# page: https://drive.google.com/file/d/1Hh7w-Ew0vLJUFMihFiVzVJGhjeYposIH/view
+# Pattern F: STATIC URL — Google Drive direct download
+https://drive.usercontent.google.com/download?id=1Hh7w-Ew0vLJUFMihFiVzVJGhjeYposIH&export=download
