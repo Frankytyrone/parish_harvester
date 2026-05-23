@@ -158,7 +158,7 @@ function _maskGeminiKey(value) {
   return `${key.slice(0, 4)}…${key.slice(-4)}`;
 }
 
-function _clipLinesTo4kb(lines) {
+function _clipLinesTo4000Chars(lines) {
   const safeLines = [];
   let used = 0;
   for (const line of lines) {
@@ -230,7 +230,7 @@ async function runDiagnostics() {
     }
   }
 
-  const dumpLines = _clipLinesTo4kb([
+  const dumpLines = _clipLinesTo4000Chars([
     "Parish Trainer diagnostic dump",
     "============================",
     versionLine,

@@ -15,7 +15,7 @@ Toolbar buttons available:
 - "Help me identify this page" — runs auto-detection
 
 Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honestly.`;
-  const BLOCKED_TAB_URL_PREFIXES = ["chrome://", "chrome-extension://", "brave://", "edge://", "about:"];
+  const BLOCKED_TAB_URL_PREFIXES = ["chrome://", "chrome-extension://", "brave://", "edge://", "about:", "devtools://", "view-source:"];
   const AI_HELP_LOG_LIMIT = 30;
   const _aiHelpLogs = [];
 
