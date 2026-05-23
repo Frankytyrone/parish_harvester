@@ -63,6 +63,7 @@
       }
     });
   const _aiStorageKeyForHostname = (hostname) => `ph_ai_samples_${hostname || "unknown"}`;
+  const _aiShared = () => globalThis.PhAiHelp || null;
 
   // ── Safe message bridge ───────────────────────────────────────────────────
   // content.js runs in the MAIN world where chrome.runtime can be undefined
@@ -1876,6 +1877,15 @@
     title.style.cssText = "font-weight:600;font-size:11px;opacity:0.9;white-space:nowrap;";
     header.appendChild(title);
 
+    const versionBadge = document.createElement("span");
+    versionBadge.style.cssText = "color:#93c5fd;font-size:10px;white-space:nowrap;";
+    try {
+      versionBadge.textContent = `v${chrome.runtime.getManifest().version}`;
+    } catch (_e) {
+      versionBadge.textContent = "";
+    }
+    header.appendChild(versionBadge);
+
     const guidedBadge = document.createElement("span");
     guidedBadge.textContent = "Guided ✓";
     guidedBadge.title = "Guided Mode ON — follow the steps below";
@@ -3507,6 +3517,236 @@
 
     advancedSection.appendChild(advancedBodyEl);
     body.appendChild(advancedSection);
+
+    // ── AI Help (Gemini) ───────────────────────────────────────────────────
+    const aiHelpSection = document.createElement("details");
+    aiHelpSection.style.cssText = [
+      "background:#1e293b",
+      "border:1px solid #374151",
+      "border-radius:6px",
+      "overflow:hidden",
+    ].join(";");
+    const aiHelpSummary = document.createElement("summary");
+    aiHelpSummary.textContent = "🤖 AI Help";
+    aiHelpSummary.style.cssText = [
+      "padding:6px 8px",
+      "cursor:pointer",
+      "font-size:10px",
+      "font-weight:600",
+      "color:#93c5fd",
+      "list-style-position:inside",
+    ].join(";");
+    const aiHelpBody = document.createElement("div");
+    aiHelpBody.style.cssText = "padding:7px 8px;border-top:1px solid #374151;";
+
+    const aiState = { messages: [], lastHostname: "", currentMemory: null, panelReady: false };
+    const aiChat = document.createElement("div");
+    aiChat.style.cssText = "min-height:120px;max-height:220px;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px;";
+    const aiNote = document.createElement("p");
+    aiNote.textContent = "Powered by Gemini (free). Remembers this site.";
+    aiNote.style.cssText = "margin:0 0 8px;font-size:10px;line-height:1.45;color:#cbd5e1;";
+    const aiMemoryBanner = document.createElement("div");
+    aiMemoryBanner.style.cssText = "display:none;margin-bottom:8px;padding:7px 8px;border-radius:6px;border:1px solid #14532d;background:#052e16;color:#bbf7d0;font-size:10px;line-height:1.45;";
+    const aiMemoryText = document.createElement("div");
+    const aiMemoryActions = document.createElement("div");
+    aiMemoryActions.style.cssText = "display:flex;gap:6px;margin-top:6px;";
+    const aiMemoryYes = makeSmallBtn("Yes ✅", "#16a34a", () => {});
+    const aiMemoryNo = makeSmallBtn("No ❌", "#374151", () => {});
+    aiMemoryYes.style.cssText += "width:auto;padding:4px 8px;font-size:10px;";
+    aiMemoryNo.style.cssText += "width:auto;padding:4px 8px;font-size:10px;";
+    aiMemoryActions.appendChild(aiMemoryYes);
+    aiMemoryActions.appendChild(aiMemoryNo);
+    aiMemoryBanner.appendChild(aiMemoryText);
+    aiMemoryBanner.appendChild(aiMemoryActions);
+
+    const aiMissingKey = document.createElement("div");
+    aiMissingKey.textContent = "Add your Gemini API key in side panel Settings first, then paste your key from https://aistudio.google.com/app/apikey.";
+    aiMissingKey.style.cssText = "display:none;margin-bottom:8px;padding:7px 8px;border-radius:6px;border:1px solid #854d0e;background:#451a03;color:#fde68a;font-size:10px;line-height:1.45;";
+    const aiControls = document.createElement("div");
+    aiControls.style.cssText = "display:flex;gap:6px;margin-top:8px;";
+    const aiInput = document.createElement("input");
+    aiInput.type = "text";
+    aiInput.placeholder = "Ask about this page…";
+    aiInput.style.cssText = "width:100%;border:1px solid #374151;border-radius:6px;padding:8px 9px;background:#0f172a;color:#f9fafb;font-size:11px;font-family:inherit;";
+    const aiSend = makeSmallBtn("Send", "#2563eb", () => {});
+    aiSend.style.cssText += "width:auto;padding:7px 10px;";
+    const aiAnalyse = makeSmallBtn("🔍 Analyse this page", "#0f766e", () => {});
+    aiAnalyse.style.cssText += "margin-top:8px;";
+    aiControls.appendChild(aiInput);
+    aiControls.appendChild(aiSend);
+    aiHelpBody.appendChild(aiNote);
+    aiHelpBody.appendChild(aiMemoryBanner);
+    aiHelpBody.appendChild(aiMissingKey);
+    aiHelpBody.appendChild(aiChat);
+    aiHelpBody.appendChild(aiControls);
+    aiHelpBody.appendChild(aiAnalyse);
+    aiHelpSection.appendChild(aiHelpSummary);
+    aiHelpSection.appendChild(aiHelpBody);
+    body.appendChild(aiHelpSection);
+
+    const aiTrimMessages = () => {
+      while (aiState.messages.length > 10) aiState.messages.shift();
+    };
+    const aiRenderMessages = () => {
+      aiChat.innerHTML = "";
+      if (aiState.messages.length === 0) {
+        const empty = document.createElement("div");
+        empty.textContent = "Ask what kind of bulletin this is, or click Analyse this page.";
+        empty.style.cssText = "background:#111827;border:1px dashed #334155;color:#9ca3af;border-radius:8px;padding:7px 8px;font-size:10px;line-height:1.5;";
+        aiChat.appendChild(empty);
+      } else {
+        aiState.messages.forEach((message) => {
+          const bubble = document.createElement("div");
+          bubble.textContent = message.text;
+          bubble.style.cssText = [
+            "margin-bottom:8px",
+            "padding:7px 8px",
+            "border-radius:8px",
+            "font-size:10px",
+            "line-height:1.5",
+            "white-space:pre-wrap",
+            message.role === "user"
+              ? "background:#1d4ed8;color:#eff6ff;margin-left:20px;"
+              : message.role === "assistant"
+                ? "background:#1e293b;color:#e5e7eb;margin-right:20px;"
+                : "background:#111827;border:1px dashed #334155;color:#9ca3af;",
+          ].join("");
+          aiChat.appendChild(bubble);
+        });
+      }
+      aiChat.scrollTop = aiChat.scrollHeight;
+    };
+    const aiAddMessage = (role, text) => {
+      aiState.messages.push({ role, text: String(text || "") });
+      aiTrimMessages();
+      aiRenderMessages();
+    };
+    const aiToggleDisabled = (disabled) => {
+      aiInput.disabled = disabled;
+      aiSend.disabled = disabled;
+      aiAnalyse.disabled = disabled;
+    };
+    const aiRenderMemoryBanner = () => {
+      if (!aiState.currentMemory || !aiState.lastHostname) {
+        aiMemoryBanner.style.display = "none";
+        aiMemoryText.textContent = "";
+        return;
+      }
+      aiMemoryText.textContent = `💾 Last time: ${aiState.currentMemory.type} — ${aiState.currentMemory.steps_summary}. Did that still work?`;
+      aiMemoryBanner.style.display = "block";
+    };
+    const aiLoadMemory = async (hostname) => {
+      aiState.lastHostname = hostname || "";
+      if (!hostname) {
+        aiState.currentMemory = null;
+        aiRenderMemoryBanner();
+        return;
+      }
+      const shared = _aiShared();
+      const key = shared?.memoryKey ? shared.memoryKey(hostname) : `ph_ai_memory_${hostname || "unknown"}`;
+      const stored = await _storageGet([key]);
+      aiState.currentMemory = stored[key] || null;
+      aiRenderMemoryBanner();
+    };
+    const aiHandleSend = async (autoMode = false) => {
+      const userMessage = autoMode
+        ? "Please analyse this page and tell me what type of bulletin it is and the exact toolbar steps."
+        : String(aiInput.value || "").trim();
+      if (!userMessage) return;
+
+      const settings = await _storageGet(["gemini_api_key"]);
+      if (!String(settings.gemini_api_key || "").trim()) {
+        aiMissingKey.style.display = "block";
+        showStatus("⚠️ Add Gemini key in side panel Settings first.", "warn");
+        return;
+      }
+      aiMissingKey.style.display = "none";
+
+      aiToggleDisabled(true);
+      if (!autoMode) aiAddMessage("user", userMessage);
+      else aiAddMessage("system", "🔍 Analysing this page…");
+      if (!autoMode) aiInput.value = "";
+
+      try {
+        const shared = _aiShared();
+        if (!shared?.askGemini || !shared?.gatherPageContextFromCurrentPage) throw new Error("AI helper unavailable.");
+        const pageContext = await shared.gatherPageContextFromCurrentPage();
+        await aiLoadMemory(String(pageContext.hostname || ""));
+        const reply = await shared.askGemini({
+          userMessage,
+          pageContext,
+          messages: aiState.messages,
+          currentMemory: aiState.currentMemory,
+          storageGet: _storageGet,
+        });
+        if (autoMode && aiState.messages.length > 0 && aiState.messages[aiState.messages.length - 1].role === "system") {
+          aiState.messages.pop();
+        }
+        aiAddMessage("assistant", reply);
+        showStatus("✅ AI reply ready.");
+        const saved = await shared.saveHostMemory({
+          hostname: String(pageContext.hostname || ""),
+          pageContext,
+          storageSet: _storageSet,
+        });
+        if (saved) {
+          aiState.currentMemory = saved;
+          aiRenderMemoryBanner();
+        }
+      } catch (error) {
+        if (autoMode && aiState.messages.length > 0 && aiState.messages[aiState.messages.length - 1].role === "system") {
+          aiState.messages.pop();
+          aiRenderMessages();
+        }
+        if (String(error?.message || error) === "missing_api_key") {
+          aiMissingKey.style.display = "block";
+          aiAddMessage("system", "Add your Gemini API key in side panel Settings first.");
+        } else {
+          aiAddMessage("system", "AI unavailable right now. Please try again.");
+          showStatus(`AI unavailable. ${String(error?.message || error)}`, "error");
+        }
+      } finally {
+        aiToggleDisabled(false);
+      }
+    };
+
+    if (!aiState.panelReady) {
+      aiSend.addEventListener("click", () => { void aiHandleSend(false); });
+      aiAnalyse.addEventListener("click", () => { void aiHandleSend(true); });
+      aiInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          void aiHandleSend(false);
+        }
+      });
+      aiMemoryYes.addEventListener("click", async () => {
+        if (!aiState.lastHostname || !aiState.currentMemory) return;
+        aiState.currentMemory = { ...aiState.currentMemory, confirmed: true, last_used: new Date().toISOString() };
+        await _storageSet({ [(_aiShared()?.memoryKey || ((h) => `ph_ai_memory_${h || "unknown"}`))(aiState.lastHostname)]: aiState.currentMemory });
+        aiAddMessage("assistant", `Great — use the same steps as last time: ${aiState.currentMemory.steps_summary}`);
+        aiRenderMemoryBanner();
+      });
+      aiMemoryNo.addEventListener("click", async () => {
+        const keyFn = _aiShared()?.memoryKey || ((h) => `ph_ai_memory_${h || "unknown"}`);
+        const memoryKey = keyFn(aiState.lastHostname);
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          await new Promise((resolve) => chrome.storage.local.remove(memoryKey, resolve));
+        }
+        aiState.currentMemory = null;
+        aiRenderMemoryBanner();
+        void aiHandleSend(true);
+      });
+      aiState.panelReady = true;
+      aiRenderMessages();
+      const sharedInit = _aiShared();
+      if (sharedInit?.gatherPageContextFromCurrentPage) {
+        void sharedInit.gatherPageContextFromCurrentPage()
+          .then((ctx) => aiLoadMemory(String(ctx.hostname || "")))
+          .catch(() => aiLoadMemory(""));
+      } else {
+        void aiLoadMemory("");
+      }
+    }
 
     // ── Push Recipe to GitHub (standalone mode) ───────────────────────────
     // Only rendered when the Playwright bindings are absent.  Uses the
