@@ -1,0 +1,15 @@
+{
+  "parish_key": "tawnawillyparish",
+  "parish_name": "Tawnawillyparish",
+  "display_name": "Tawnawillyparish",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://tawnawillyparish.ie/bulletin/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://tawnawillyparish.ie/bulletin/"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

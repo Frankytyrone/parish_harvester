@@ -1,0 +1,15 @@
+{
+  "parish_key": "st-carthas-church-kilcar-f94-h2y5",
+  "parish_name": "St Carthas Church Kilcar F94 H2y5",
+  "display_name": "St Carthas Church Kilcar F94 H2y5",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://www.mcn.live/Camera/st-carthas-church-kilcar,-f94-h2y5",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.mcn.live/Camera/st-carthas-church-kilcar,-f94-h2y5"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

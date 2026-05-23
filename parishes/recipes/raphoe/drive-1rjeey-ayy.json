@@ -1,0 +1,15 @@
+{
+  "parish_key": "drive-1rjeey-ayy",
+  "parish_name": "Drive 1rjeey Ayy",
+  "display_name": "Drive 1rjeey Ayy",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://drive.google.com/drive/folders/1RjeEY_AYy62pRNWmVmDeINfHVqkPyCsw",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://drive.google.com/drive/folders/1RjeEY_AYy62pRNWmVmDeINfHVqkPyCsw"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

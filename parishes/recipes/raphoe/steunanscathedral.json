@@ -1,0 +1,15 @@
+{
+  "parish_key": "steunanscathedral",
+  "parish_name": "Steunanscathedral",
+  "display_name": "Steunanscathedral",
+  "recorded_date": "2026-05-22",
+  "start_url": "https://www.steunanscathedral.ie/newsletter/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.steunanscathedral.ie/newsletter/"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}

@@ -1,0 +1,15 @@
+{
+  "parish_key": "ardara",
+  "parish_name": "Ardara",
+  "display_name": "Ardara",
+  "recorded_date": "2026-05-22",
+  "start_url": "http://ardara.ie/news/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "http://ardara.ie/news/"
+    }
+  ],
+  "version": 1,
+  "diocese": "raphoe"
+}
