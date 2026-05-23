@@ -153,9 +153,7 @@ jobs:
           if [ -f Bulletins/report.json ]; then
             DIOCESE="${{ github.event.inputs.diocese || 'all' }}"
             REPORT_DATE=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d.get('target_date','unknown'))")
-            REPORT_DATE_UK=$(python -c "import json,datetime; d=json.load(open('Bulletins/report.json')); v=d.get('target_date','unknown');\
-try: print(datetime.datetime.strptime(v,'%Y-%m-%d').strftime('%d/%m/%Y'))\
-except Exception: print(v)")
+            REPORT_DATE_UK=$(python -c "import json; d=json.load(open('Bulletins/report.json')); v=d.get('target_date','unknown'); parts=v.split('-'); print('/'.join([parts[2],parts[1],parts[0]]) if len(parts)==3 else v)")
             DOWNLOADED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['downloaded'])")
             HTML_LINKS=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['html_links'])")
             FAILED=$(python -c "import json; d=json.load(open('Bulletins/report.json')); print(d['summary']['failed'])")
@@ -166,8 +164,8 @@ except Exception: print(v)")
           if ffs:
               lines = []
               for f in ffs:
-                  lines.append(f\"- **{f['display_name']}** ({f.get('url','')})  \")
-                  lines.append(f\"  _Reason: {f.get('error','unknown')}_\")
+                  lines.append('- **' + f['display_name'] + '** (' + f.get('url','') + ')  ')
+                  lines.append('  _Reason: ' + f.get('error','unknown') + '_')
               print('\n'.join(lines))
           else:
               print('_None_ \U0001f389')
@@ -177,7 +175,7 @@ except Exception: print(v)")
           d = json.load(open('Bulletins/report.json'))
           hls = d.get('html_links', [])
           if hls:
-              print('\n'.join(f\"- **{h['display_name']}**: [{h['url']}]({h['url']})\" for h in hls))
+              print('\n'.join('- **' + h['display_name'] + '**: [' + h['url'] + '](' + h['url'] + ')' for h in hls))
           else:
               print('_None_')
           ")
