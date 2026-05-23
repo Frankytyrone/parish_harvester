@@ -162,12 +162,19 @@ function _clipLinesTo4000Chars(lines) {
   // Keep the copied dump comfortably under ~4 KB for easy paste into chat tools.
   const safeLines = [];
   let used = 0;
+  let truncated = false;
   for (const line of lines) {
     const next = String(line || "");
     const delta = next.length + 1;
-    if (used + delta > 4000) break;
+    if (used + delta > 4000) {
+      truncated = true;
+      break;
+    }
     safeLines.push(next);
     used += delta;
+  }
+  if (truncated && safeLines.length > 0) {
+    safeLines.push("... (output truncated)");
   }
   return safeLines;
 }
@@ -273,9 +280,8 @@ if (diagCopyBtn) {
   diagCopyBtn.addEventListener("click", () => {
     const text = _diagTextLines.join("\n");
     navigator.clipboard.writeText(text).then(() => {
-      const orig = diagCopyBtn.textContent;
       diagCopyBtn.textContent = "✅ Copied!";
-      setTimeout(() => { diagCopyBtn.textContent = orig; }, 2000);
+      setTimeout(() => { diagCopyBtn.textContent = _diagCopyButtonLabel; }, 2000);
     }).catch((_e) => {
       console.error("Parish Trainer: clipboard copy failed:", _e);
       diagCopyBtn.textContent = "❌ Copy failed";
