@@ -65,8 +65,7 @@
   const _aiStorageKeyForHostname = (hostname) => `ph_ai_samples_${hostname || "unknown"}`;
   const _aiShared = () => globalThis.PhAiHelp || null;
   const _clearElement = (el) => {
-    if (!el) return;
-    while (el.firstChild) el.removeChild(el.firstChild);
+    if (el) el.replaceChildren();
   };
   const _installTrustedTypesPolicy = () => {
     const shared = _aiShared();

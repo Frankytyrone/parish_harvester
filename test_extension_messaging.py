@@ -89,7 +89,7 @@ class ExtensionMessagingTests(unittest.TestCase):
 
     def test_content_js_avoids_literal_innerhtml_assignments(self) -> None:
         content_js = CONTENT_JS.read_text(encoding="utf-8")
-        self.assertIsNone(re.search(r"\.innerHTML\s*=\s*[\"'`]", content_js))
+        self.assertIsNone(re.search(r"\.innerHTML\s*=", content_js))
 
     def test_ai_help_get_best_tab_skips_internal_urls_and_uses_normal_window_fallback(self) -> None:
         ai_help_js = AI_HELP_JS.read_text(encoding="utf-8")

@@ -135,9 +135,16 @@ function _aiClassifyPageContext(pageContext) {
 async function gatherPageContext() {
   const shared = _aiShared();
   if (!shared?.gatherPageContextFromBestTab && !shared?.gatherPageContextFromCurrentPage) throw new Error("AI page scanner unavailable.");
-  const context = shared.gatherPageContextFromCurrentPage
-    ? await shared.gatherPageContextFromCurrentPage()
-    : await shared.gatherPageContextFromBestTab(shared.getBestTab || _spGetBestPageTab);
+  if (shared.gatherPageContextFromCurrentPage) {
+    try {
+      const context = await shared.gatherPageContextFromCurrentPage();
+      _aiLastPageContext = context;
+      return context;
+    } catch (error) {
+      if (String(error?.message || error) !== "no_target_tab" || !shared.gatherPageContextFromBestTab) throw error;
+    }
+  }
+  const context = await shared.gatherPageContextFromBestTab(shared.getBestTab || _spGetBestPageTab);
   _aiLastPageContext = context;
   return context;
 }

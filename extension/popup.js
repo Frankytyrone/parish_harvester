@@ -154,11 +154,12 @@ function _updateDiagRow(row, icon, text) {
 function _maskGeminiKey(value) {
   const key = String(value || "").trim();
   if (!key) return "no";
-  if (key.length <= 8) return `${key.slice(0, 1)}…${key.slice(-1)}`;
+  if (key.length <= 8) return "****";
   return `${key.slice(0, 4)}…${key.slice(-4)}`;
 }
 
 function _clipLinesTo4000Chars(lines) {
+  // Keep the copied dump comfortably under ~4 KB for easy paste into chat tools.
   const safeLines = [];
   let used = 0;
   for (const line of lines) {

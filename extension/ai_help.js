@@ -16,6 +16,11 @@ Toolbar buttons available:
 
 Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honestly.`;
   const BLOCKED_TAB_URL_PREFIXES = ["chrome://", "chrome-extension://", "brave://", "edge://", "about:", "devtools://", "view-source:"];
+  const SCRIPT_BLOCK_ERROR_PATTERNS = [
+    "cannot access contents of url",
+    "extensions gallery cannot be scripted",
+    "cannot access a chrome:// url",
+  ];
   const AI_HELP_LOG_LIMIT = 30;
   const _aiHelpLogs = [];
 
@@ -31,6 +36,15 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
 
   function logAiHelpEvent(entry = {}) {
     _logAiHelpEvent(entry.attempt, entry.succeeded, entry.errorMessage || entry.error);
+  }
+
+  function _safeUrlForLog(url) {
+    try {
+      const parsed = new URL(String(url || ""));
+      return `${parsed.origin}${parsed.pathname}`.slice(0, 160);
+    } catch (_e) {
+      return "";
+    }
   }
 
   function getRecentAiHelpLogs(limit = 5) {
@@ -219,7 +233,7 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
 
   async function gatherPageContextFromCurrentPage() {
     if (_isScriptablePageUrl(window.location.href)) {
-      _logAiHelpEvent("gatherPageContextFromCurrentPage active_page", true, window.location.href);
+      _logAiHelpEvent("gatherPageContextFromCurrentPage active_page", true, _safeUrlForLog(window.location.href));
       return assertContext(probeCurrentPageContext());
     }
     const tab = await getBestTab();
@@ -239,11 +253,12 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
         func: probeCurrentPageContext,
       });
       const context = assertContext(results?.[0]?.result || null);
-      _logAiHelpEvent("gatherPageContextFromTabId executeScript", true, String(context.url || ""));
+      _logAiHelpEvent("gatherPageContextFromTabId executeScript", true, _safeUrlForLog(context.url || ""));
       return context;
     } catch (error) {
       const message = String(error?.message || error || "");
-      if (/cannot access contents of url|extensions gallery cannot be scripted|cannot be scripted/i.test(message)) {
+      const lower = message.toLowerCase();
+      if (SCRIPT_BLOCK_ERROR_PATTERNS.some((pattern) => lower.includes(pattern))) {
         _logAiHelpEvent("gatherPageContextFromTabId no_target_tab", false, message);
         throw new Error("no_target_tab");
       }
@@ -309,7 +324,7 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
       `User question: ${userMessage}`,
     ].filter(Boolean).join("\n");
 
-    _logAiHelpEvent("askGemini fetch_start", true, `context:${String(pageContext?.url || "")}`);
+    _logAiHelpEvent("askGemini fetch_start", true, `context:${_safeUrlForLog(pageContext?.url || "")}`);
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(resolvedApiKey)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
