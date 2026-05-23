@@ -15,6 +15,90 @@ Toolbar buttons available:
 - "Help me identify this page" — runs auto-detection
 
 Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honestly.`;
+  const BLOCKED_TAB_URL_PREFIXES = ["chrome://", "chrome-extension://", "brave://", "edge://", "about:", "devtools://", "view-source:"];
+  const SCRIPT_BLOCK_ERROR_PATTERNS = [
+    "cannot access contents of url",
+    "extensions gallery cannot be scripted",
+    "cannot access a chrome:// url",
+  ];
+  const AI_HELP_LOG_LIMIT = 30;
+  const _aiHelpLogs = [];
+
+  function _logAiHelpEvent(attempt, succeeded, errorMessage = "") {
+    _aiHelpLogs.push({
+      timestamp: new Date().toISOString(),
+      attempt: String(attempt || "unknown").slice(0, 120),
+      succeeded: Boolean(succeeded),
+      errorMessage: String(errorMessage || "").slice(0, 240),
+    });
+    while (_aiHelpLogs.length > AI_HELP_LOG_LIMIT) _aiHelpLogs.shift();
+  }
+
+  function logAiHelpEvent(entry = {}) {
+    _logAiHelpEvent(entry.attempt, entry.succeeded, entry.errorMessage || entry.error);
+  }
+
+  function _safeUrlForLog(url) {
+    try {
+      const parsed = new URL(String(url || ""));
+      return `${parsed.origin}${parsed.pathname}`.slice(0, 160);
+    } catch (_e) {
+      return "";
+    }
+  }
+
+  function getRecentAiHelpLogs(limit = 5) {
+    const n = Number(limit) > 0 ? Number(limit) : 5;
+    return _aiHelpLogs.slice(-n);
+  }
+
+  function _isBlockedTabUrl(url) {
+    const value = String(url || "").trim().toLowerCase();
+    if (!value) return true;
+    return BLOCKED_TAB_URL_PREFIXES.some((prefix) => value.startsWith(prefix));
+  }
+
+  function _isScriptablePageUrl(url) {
+    const value = String(url || "").trim();
+    if (!value || _isBlockedTabUrl(value)) return false;
+    return /^https?:\/\//i.test(value);
+  }
+
+  function _tabLooksScriptable(tab) {
+    return _isScriptablePageUrl(tab?.url);
+  }
+
+  async function getBestTab() {
+    const activeLastFocused = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    for (const tab of activeLastFocused) {
+      if (_tabLooksScriptable(tab)) {
+        _logAiHelpEvent("getBestTab active_last_focused", true, String(tab.url || ""));
+        return tab;
+      }
+    }
+
+    const allWindows = await chrome.windows.getAll({ populate: true });
+    const normalWindows = (Array.isArray(allWindows) ? allWindows : []).filter((win) => win?.type === "normal");
+    const orderedWindows = normalWindows.slice().sort((a, b) => Number(Boolean(b?.focused)) - Number(Boolean(a?.focused)));
+    for (const win of orderedWindows) {
+      const activeTab = (Array.isArray(win?.tabs) ? win.tabs : []).find((tab) => tab?.active) || null;
+      if (_tabLooksScriptable(activeTab)) {
+        _logAiHelpEvent("getBestTab last_focused_normal_window", true, String(activeTab.url || ""));
+        return activeTab;
+      }
+    }
+
+    const activeAnyWindow = await chrome.tabs.query({ active: true });
+    for (const tab of activeAnyWindow) {
+      if (_tabLooksScriptable(tab)) {
+        _logAiHelpEvent("getBestTab active_any_window", true, String(tab.url || ""));
+        return tab;
+      }
+    }
+
+    _logAiHelpEvent("getBestTab no_target_tab", false, "no_target_tab");
+    return null;
+  }
 
   function memoryKey(hostname) {
     return `ph_ai_memory_${hostname || "unknown"}`;
@@ -148,22 +232,45 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
   }
 
   async function gatherPageContextFromCurrentPage() {
-    return assertContext(probeCurrentPageContext());
+    if (_isScriptablePageUrl(window.location.href)) {
+      _logAiHelpEvent("gatherPageContextFromCurrentPage active_page", true, _safeUrlForLog(window.location.href));
+      return assertContext(probeCurrentPageContext());
+    }
+    const tab = await getBestTab();
+    if (!tab?.id) {
+      _logAiHelpEvent("gatherPageContextFromCurrentPage no_target_tab", false, "no_target_tab");
+      throw new Error("no_target_tab");
+    }
+    return gatherPageContextFromTabId(tab.id);
   }
 
   async function gatherPageContextFromTabId(tabId) {
-    if (!tabId) throw new Error("Open the parish website in a normal tab first.");
+    if (!tabId) throw new Error("no_target_tab");
     if (!chrome?.scripting?.executeScript) throw new Error("Page scanner unavailable.");
-    const results = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: probeCurrentPageContext,
-    });
-    return assertContext(results?.[0]?.result || null);
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: probeCurrentPageContext,
+      });
+      const context = assertContext(results?.[0]?.result || null);
+      _logAiHelpEvent("gatherPageContextFromTabId executeScript", true, _safeUrlForLog(context.url || ""));
+      return context;
+    } catch (error) {
+      const message = String(error?.message || error || "");
+      const lower = message.toLowerCase();
+      if (SCRIPT_BLOCK_ERROR_PATTERNS.some((pattern) => lower.includes(pattern))) {
+        _logAiHelpEvent("gatherPageContextFromTabId no_target_tab", false, message);
+        throw new Error("no_target_tab");
+      }
+      _logAiHelpEvent("gatherPageContextFromTabId executeScript_failed", false, message);
+      throw error;
+    }
   }
 
   async function gatherPageContextFromBestTab(getBestTab) {
-    const tab = await getBestTab();
-    if (!tab?.id) throw new Error("Open the parish website in a normal tab first.");
+    const resolver = typeof getBestTab === "function" ? getBestTab : globalThis.PhAiHelp?.getBestTab;
+    const tab = resolver ? await resolver() : null;
+    if (!tab?.id) throw new Error("no_target_tab");
     return gatherPageContextFromTabId(tab.id);
   }
 
@@ -192,7 +299,10 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
   async function askGemini({ userMessage, pageContext, messages = [], currentMemory = null, storageGet, apiKey = "" }) {
     const settings = await _storageGet(["gemini_api_key"], storageGet);
     const resolvedApiKey = String(apiKey || settings.gemini_api_key || "").trim();
-    if (!resolvedApiKey) throw new Error("missing_api_key");
+    if (!resolvedApiKey) {
+      _logAiHelpEvent("askGemini missing_api_key", false, "missing_api_key");
+      throw new Error("missing_api_key");
+    }
 
     const memoryText = currentMemory
       ? `Last saved memory for this host: ${currentMemory.type} — ${currentMemory.steps_summary}. Confirmed: ${currentMemory.confirmed ? "yes" : "no"}.`
@@ -214,6 +324,7 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
       `User question: ${userMessage}`,
     ].filter(Boolean).join("\n");
 
+    _logAiHelpEvent("askGemini fetch_start", true, `context:${_safeUrlForLog(pageContext?.url || "")}`);
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(resolvedApiKey)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -225,15 +336,28 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
         },
       }),
     });
-    const data = await response.json().catch(() => ({}));
+    const rawBody = await response.text().catch(() => "");
+    const data = (() => {
+      try {
+        return rawBody ? JSON.parse(rawBody) : {};
+      } catch (_e) {
+        return {};
+      }
+    })();
     if (!response.ok) {
+      const bodyPreview = String(rawBody || "").replace(/\s+/g, " ").trim().slice(0, 80);
+      _logAiHelpEvent("askGemini fetch_failed", false, `HTTP ${response.status} ${bodyPreview}`);
       throw new Error(String(data?.error?.message || `HTTP ${response.status}`));
     }
+    _logAiHelpEvent("askGemini fetch_ok", true, `HTTP ${response.status}`);
     const text = ((data?.candidates || [])[0]?.content?.parts || [])
       .map((part) => String(part?.text || ""))
       .join("\n")
       .trim();
-    if (!text) throw new Error("Gemini returned an empty reply.");
+    if (!text) {
+      _logAiHelpEvent("askGemini empty_reply", false, "Gemini returned an empty reply.");
+      throw new Error("Gemini returned an empty reply.");
+    }
     return text;
   }
 
@@ -265,6 +389,10 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
   globalThis.PhAiHelp = {
     memoryKey,
     classifyPageContext,
+    getBestTab,
+    isScriptablePageUrl: _isScriptablePageUrl,
+    logAiHelpEvent,
+    getRecentAiHelpLogs,
     gatherPageContextFromCurrentPage,
     gatherPageContextFromBestTab,
     askGemini,

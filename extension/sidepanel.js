@@ -53,6 +53,9 @@ let _aiLastPageContext = null;
 let _aiPanelReady = false;
 
 const _aiShared = () => globalThis.PhAiHelp || null;
+const _clearElement = (el) => {
+  if (el) el.replaceChildren();
+};
 
 function _tabLooksScriptable(tab) {
   return /^https?:\/\//i.test(String(tab?.url || ""));
@@ -87,7 +90,7 @@ function _aiAddMessage(role, text) {
 function _aiRenderMessages() {
   const chat = _aiChatEl();
   if (!chat) return;
-  chat.innerHTML = "";
+  _clearElement(chat);
   if (_aiMessages.length === 0) {
     const empty = document.createElement("div");
     empty.className = "ai-msg system";
@@ -131,8 +134,17 @@ function _aiClassifyPageContext(pageContext) {
 
 async function gatherPageContext() {
   const shared = _aiShared();
-  if (!shared?.gatherPageContextFromBestTab) throw new Error("AI page scanner unavailable.");
-  const context = await shared.gatherPageContextFromBestTab(_spGetBestPageTab);
+  if (!shared?.gatherPageContextFromBestTab && !shared?.gatherPageContextFromCurrentPage) throw new Error("AI page scanner unavailable.");
+  if (shared.gatherPageContextFromCurrentPage) {
+    try {
+      const context = await shared.gatherPageContextFromCurrentPage();
+      _aiLastPageContext = context;
+      return context;
+    } catch (error) {
+      if (String(error?.message || error) !== "no_target_tab" || !shared.gatherPageContextFromBestTab) throw error;
+    }
+  }
+  const context = await shared.gatherPageContextFromBestTab(shared.getBestTab || _spGetBestPageTab);
   _aiLastPageContext = context;
   return context;
 }
@@ -188,6 +200,8 @@ async function _aiLoadMemory(hostname) {
 }
 
 async function _aiHandleSend(autoMode = false) {
+  const shared = _aiShared();
+  const attempt = autoMode ? "sidepanel_ai_analyse" : "sidepanel_ai_send";
   const input = document.getElementById("ai-input");
   const userMessage = autoMode
     ? "Please analyse this page and tell me what type of bulletin it is and the exact toolbar steps."
@@ -212,6 +226,7 @@ async function _aiHandleSend(autoMode = false) {
   if (input && !autoMode) input.value = "";
 
   try {
+    shared?.logAiHelpEvent?.({ attempt, succeeded: true, errorMessage: "started" });
     const pageContext = await gatherPageContext();
     await _aiLoadMemory(String(pageContext.hostname || ""));
     const reply = await askGemini(userMessage, pageContext);
@@ -221,6 +236,7 @@ async function _aiHandleSend(autoMode = false) {
     _aiAddMessage("assistant", reply);
     setStatus("✅ AI reply ready.", "ok");
     await _aiSaveMemory(String(pageContext.hostname || ""), pageContext);
+    shared?.logAiHelpEvent?.({ attempt, succeeded: true, errorMessage: "completed" });
   } catch (error) {
     if (autoMode && _aiMessages.length > 0 && _aiMessages[_aiMessages.length - 1].role === "system") {
       _aiMessages.pop();
@@ -229,12 +245,17 @@ async function _aiHandleSend(autoMode = false) {
     if (String(error?.message || error) === "missing_api_key") {
       const missing = document.getElementById("ai-missing-key");
       if (missing) missing.style.display = "block";
-      _aiAddMessage("system", "⚙️ Add your Gemini API key in Settings to use AI Help.");
-      setStatus("AI unavailable, check your API key.", "err");
+      _aiAddMessage("system", "Add your Gemini API key in Settings, then try again.");
+      setStatus("Add your Gemini API key in Settings, then try again.", "err");
+    } else if (String(error?.message || error) === "no_target_tab") {
+      _aiAddMessage("system", "Open the parish website in a normal tab, then click Analyse this page.");
+      setStatus("Open the parish website in a normal tab, then click Analyse this page.", "err");
     } else {
-      _aiAddMessage("system", "AI unavailable, check your API key.");
-      setStatus(`AI unavailable, check your API key. ${String(error?.message || error)}`, "err");
+      const message = String(error?.message || error || "Unknown AI error.");
+      _aiAddMessage("system", message);
+      setStatus(message, "err");
     }
+    shared?.logAiHelpEvent?.({ attempt, succeeded: false, errorMessage: String(error?.message || error || "unknown_error") });
   } finally {
     _aiToggleDisabled(false);
   }
@@ -788,11 +809,15 @@ async function _pdBuildParishDetails(parish) {
 }
 
 function _pdRenderSubfolder(container, details) {
-  container.innerHTML = "";
+  _clearElement(container);
 
   const rowUrl = document.createElement("div");
   rowUrl.className = "pd-subfolder-row";
-  rowUrl.innerHTML = `<span class="pd-subfolder-label">Current bulletin URL:</span> `;
+  const rowUrlLabel = document.createElement("span");
+  rowUrlLabel.className = "pd-subfolder-label";
+  rowUrlLabel.textContent = "Current bulletin URL:";
+  rowUrl.appendChild(rowUrlLabel);
+  rowUrl.appendChild(document.createTextNode(" "));
   if (details.currentUrl) {
     const link = document.createElement("a");
     link.className = "pd-subfolder-url";
@@ -811,7 +836,11 @@ function _pdRenderSubfolder(container, details) {
 
   const rowChanges = document.createElement("div");
   rowChanges.className = "pd-subfolder-row";
-  rowChanges.innerHTML = `<span class="pd-subfolder-label">Confirmed changes:</span> `;
+  const rowChangesLabel = document.createElement("span");
+  rowChangesLabel.className = "pd-subfolder-label";
+  rowChangesLabel.textContent = "Confirmed changes:";
+  rowChanges.appendChild(rowChangesLabel);
+  rowChanges.appendChild(document.createTextNode(" "));
   if (details.changes.length > 0) {
     const list = document.createElement("ul");
     list.className = "pd-subfolder-list";
@@ -831,12 +860,28 @@ function _pdRenderSubfolder(container, details) {
 
   const rowRepo = document.createElement("div");
   rowRepo.className = "pd-subfolder-row";
-  rowRepo.innerHTML = `<span class="pd-subfolder-label">Last updated in harvester repo:</span> <span class="pd-subfolder-time">${_pdFormatTime(details.lastUpdatedRepoIso)}</span>`;
+  const rowRepoLabel = document.createElement("span");
+  rowRepoLabel.className = "pd-subfolder-label";
+  rowRepoLabel.textContent = "Last updated in harvester repo:";
+  const rowRepoTime = document.createElement("span");
+  rowRepoTime.className = "pd-subfolder-time";
+  rowRepoTime.textContent = _pdFormatTime(details.lastUpdatedRepoIso);
+  rowRepo.appendChild(rowRepoLabel);
+  rowRepo.appendChild(document.createTextNode(" "));
+  rowRepo.appendChild(rowRepoTime);
   container.appendChild(rowRepo);
 
   const rowMega = document.createElement("div");
   rowMega.className = "pd-subfolder-row";
-  rowMega.innerHTML = `<span class="pd-subfolder-label">Last included in mega bulletin:</span> <span class="pd-subfolder-time">${_pdFormatTime(details.lastIncludedIso)}</span>`;
+  const rowMegaLabel = document.createElement("span");
+  rowMegaLabel.className = "pd-subfolder-label";
+  rowMegaLabel.textContent = "Last included in mega bulletin:";
+  const rowMegaTime = document.createElement("span");
+  rowMegaTime.className = "pd-subfolder-time";
+  rowMegaTime.textContent = _pdFormatTime(details.lastIncludedIso);
+  rowMega.appendChild(rowMegaLabel);
+  rowMega.appendChild(document.createTextNode(" "));
+  rowMega.appendChild(rowMegaTime);
   container.appendChild(rowMega);
 }
 
@@ -936,7 +981,7 @@ function _problemsRenderRows(rows) {
   const tbody = document.getElementById("problems-body");
   const empty = document.getElementById("problems-empty");
   if (!tbody || !empty) return;
-  tbody.innerHTML = "";
+  _clearElement(tbody);
   if (!rows.length) {
     empty.textContent = "No current problem rows.";
     return;
@@ -1060,7 +1105,7 @@ const _PD_DOT_TITLES = { "🟢": "Recipe trained", "🟡": "Needs training", "�
 
 function _pdRenderAll(searchTerm, excludes) {
   const container = document.getElementById("parish-dir-content");
-  container.innerHTML = "";
+  _clearElement(container);
   const lc = (searchTerm || "").toLowerCase();
 
   const byDiocese = {};
@@ -1136,7 +1181,7 @@ function _pdUpdateStaleBannerUi(staleBulletins) {
     text.textContent = `⚠️ ${stale.length} bulletin(s) are stale — click Show to review`;
     toggleBtn.style.background = "#991b1b";
 
-    list.innerHTML = "";
+    _clearElement(list);
     const formatDaysOld = (days) => `${days} day${days === 1 ? "" : "s"}`;
     for (const item of stale) {
       const row = document.createElement("div");
@@ -1170,7 +1215,7 @@ function _pdUpdateStaleBannerUi(staleBulletins) {
     banner.style.color = "#bfdbfe";
     text.textContent = `ℹ️ ${unknown.length} bulletins have unknown dates`;
     toggleBtn.style.background = "#1d4ed8";
-    list.innerHTML = "";
+    _clearElement(list);
     for (const item of unknown) {
       const row = document.createElement("div");
       row.style.cssText = "padding:3px 0;font-size:10px;line-height:1.3;border-bottom:1px solid rgba(51,65,85,0.7);";
@@ -1181,7 +1226,7 @@ function _pdUpdateStaleBannerUi(staleBulletins) {
   }
 
   banner.style.display = "none";
-  list.innerHTML = "";
+  _clearElement(list);
   list.style.display = "none";
   toggleBtn.textContent = "Show";
 }
@@ -1297,12 +1342,20 @@ function _pdBuildRow(parish, excludes) {
     }
     detailsWrap.style.display = "block";
     detailsBtn.title = "Hide parish details";
-    detailsWrap.innerHTML = `<div class="pd-subfolder-loading">⏳ Loading parish details…</div>`;
+    _clearElement(detailsWrap);
+    const loadingEl = document.createElement("div");
+    loadingEl.className = "pd-subfolder-loading";
+    loadingEl.textContent = "⏳ Loading parish details…";
+    detailsWrap.appendChild(loadingEl);
     try {
       const details = await _pdBuildParishDetails(parish);
       _pdRenderSubfolder(detailsWrap, details);
     } catch (_e) {
-      detailsWrap.innerHTML = `<div class="pd-subfolder-error">Could not load parish details.</div>`;
+      _clearElement(detailsWrap);
+      const errorEl = document.createElement("div");
+      errorEl.className = "pd-subfolder-error";
+      errorEl.textContent = "Could not load parish details.";
+      detailsWrap.appendChild(errorEl);
     }
   });
   return wrap;
@@ -1521,7 +1574,7 @@ async function loadParishDirectory() {
   const container = document.getElementById("parish-dir-content");
   loadingEl.style.display = "block";
   errorEl.style.display   = "none";
-  container.innerHTML     = "";
+  _clearElement(container);
   _pdAllParishes = []; _pdDioceseTexts = {}; _pdExcludes = null; _pdOverrides = null; _pdLastIncluded = null;
   Object.keys(_pdParishDetailsCache).forEach((k) => delete _pdParishDetailsCache[k]);
   _pdConsecutiveFailures = {};
