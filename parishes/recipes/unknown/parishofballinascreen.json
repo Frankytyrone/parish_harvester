@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "parish_key": "parishofballinascreen",
+  "display_name": "Parishofballinascreen",
+  "diocese": "",
+  "start_url": "https://www.parishofballinascreen.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.parishofballinascreen.com/"
+    },
+    {
+      "action": "click",
+      "selector": "div#comp-k7ylqdj0 > a"
+    }
+  ],
+  "recorded_date": "2026-05-23"
+}
