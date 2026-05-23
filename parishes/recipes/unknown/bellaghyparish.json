@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "parish_key": "bellaghyparish",
+  "display_name": "Bellaghyparish",
+  "diocese": "",
+  "start_url": "https://bellaghyparish.com/wp-content/uploads/2026/05/Newsletter-17-May-2026-1.pdf",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/Newsletter-17-May-2026-1.pdf"
+    },
+    {
+      "action": "download",
+      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/Newsletter-17-May-2026-1.pdf"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Current Parish Newsletter (PDF)\")",
+      "href": "https://bellaghyparish.com/current-newsletter/",
+      "text": "Current Parish Newsletter (PDF)"
+    }
+  ],
+  "recorded_date": "2026-05-23"
+}
