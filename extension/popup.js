@@ -230,7 +230,7 @@ async function runDiagnostics() {
   if (Array.isArray(aiLogData) && aiLogData.length > 0) {
     aiLogLines = aiLogData.slice(-5).map((entry) => {
       const status = entry?.succeeded ? "ok" : "failed";
-      const ts = entry?.ts || entry?.timestamp || "n/a";
+      const ts = entry?.ts || "n/a";
       const msg = String(entry?.errorMessage || "").slice(0, 120);
       return `- ${ts} | ${entry?.attempt || "unknown"} | ${status}${msg ? ` | ${msg}` : ""}`;
     });
