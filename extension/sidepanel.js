@@ -4,7 +4,9 @@ function setStatus(text, type) {
   statusEl.textContent = text;
   statusEl.className = type || "ok";
   statusEl.dataset.status =
-    type === "err" ? "error" : (String(text || "").startsWith("⏳") ? "pending" : "success");
+    type === "err"
+      ? "error"
+      : (type === "warn" ? "warning" : (String(text || "").startsWith("⏳") ? "pending" : "success"));
 }
 
 const _spPanels = {
@@ -1150,6 +1152,16 @@ function _problemsRenderRows(rows) {
         setStatus("❌ No valid start URL for this parish.", "err");
         return;
       }
+      const match = _pdAllParishes.find((p) => p.key === row.parish);
+      if (match) {
+        chrome.storage.local.set({
+          ph_training_parish: {
+            key: match.key,
+            name: match.name,
+            diocese: match.diocese,
+          },
+        });
+      }
       chrome.tabs.create({ url: startUrl, active: true }, (tab) => {
         const tabId = tab?.id;
         if (!tabId) return;
@@ -1529,7 +1541,10 @@ function _pdShowEditRow(wrap, parish) {
           if (d?.ok) {
             setStatus(`✅ Saved page URL for ${parish.name} and triggered harvest rebuild.`, "ok");
           } else {
-            setStatus(`✅ Saved. ⚠️ Harvest dispatch failed: ${d?.error || "unknown"}`, "err");
+            setStatus(
+              `⚠️ Recipe saved OK. Harvest trigger failed — check GitHub token has workflow scope. (${d?.error || "unknown"})`,
+              "warn"
+            );
           }
         });
       } else {
