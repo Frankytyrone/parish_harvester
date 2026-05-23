@@ -21,17 +21,27 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
     "extensions gallery cannot be scripted",
     "cannot access a chrome:// url",
   ];
-  const AI_HELP_LOG_LIMIT = 30;
+  const AI_HELP_LOG_LIMIT = 50;
+  const AI_HELP_LOG_KEY = "ph_ai_help_log";
   const _aiHelpLogs = [];
+
+  function _persistLogToStorage() {
+    try {
+      if (chrome?.storage?.local) {
+        chrome.storage.local.set({ [AI_HELP_LOG_KEY]: _aiHelpLogs.slice() });
+      }
+    } catch (_e) {}
+  }
 
   function _logAiHelpEvent(attempt, succeeded, errorMessage = "") {
     _aiHelpLogs.push({
-      timestamp: new Date().toISOString(),
+      ts: new Date().toISOString(),
       attempt: String(attempt || "unknown").slice(0, 120),
       succeeded: Boolean(succeeded),
       errorMessage: String(errorMessage || "").slice(0, 240),
     });
     while (_aiHelpLogs.length > AI_HELP_LOG_LIMIT) _aiHelpLogs.shift();
+    _persistLogToStorage();
   }
 
   function logAiHelpEvent(entry = {}) {

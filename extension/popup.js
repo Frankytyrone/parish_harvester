@@ -225,17 +225,15 @@ async function runDiagnostics() {
   const memoryHeader = "Last 10 ph_ai_memory_* keys:";
   const memoryLines = memoryKeys.length > 0 ? memoryKeys.map((key) => `- ${key}`) : ["- (none)"];
 
-  let aiLogLines = ["- (unavailable on this tab)"];
-  if (activeTabIsHttp) {
-    const aiLogsResult = await dispatchToActiveTab({ type: "get_ai_help_logs", limit: 5 });
-    if (aiLogsResult?.ok && Array.isArray(aiLogsResult.entries)) {
-      aiLogLines = aiLogsResult.entries.slice(-5).map((entry) => {
-        const status = entry?.succeeded ? "ok" : "failed";
-        const msg = String(entry?.errorMessage || "").slice(0, 120);
-        return `- ${entry?.timestamp || "n/a"} | ${entry?.attempt || "unknown"} | ${status}${msg ? ` | ${msg}` : ""}`;
-      });
-      if (aiLogLines.length === 0) aiLogLines = ["- (none)"];
-    }
+  let aiLogLines = ["- (none yet)"];
+  const aiLogData = allLocalStorage["ph_ai_help_log"];
+  if (Array.isArray(aiLogData) && aiLogData.length > 0) {
+    aiLogLines = aiLogData.slice(-5).map((entry) => {
+      const status = entry?.succeeded ? "ok" : "failed";
+      const ts = entry?.ts || entry?.timestamp || "n/a";
+      const msg = String(entry?.errorMessage || "").slice(0, 120);
+      return `- ${ts} | ${entry?.attempt || "unknown"} | ${status}${msg ? ` | ${msg}` : ""}`;
+    });
   }
 
   const dumpLines = _clipLinesTo4000Chars([

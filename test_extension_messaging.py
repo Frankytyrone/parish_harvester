@@ -113,6 +113,31 @@ class ExtensionMessagingTests(unittest.TestCase):
         self.assertIn("Recent AI Help log entries (last 5):", popup_js)
         self.assertIn("Paste this whole block to your AI assistant.", popup_js)
 
+    def test_content_scripts_use_isolated_world_only(self) -> None:
+        import json
+        manifest = json.loads(MANIFEST_JSON.read_text(encoding="utf-8"))
+        content_scripts = manifest.get("content_scripts", [])
+        # No entry must have "world": "MAIN"
+        for entry in content_scripts:
+            self.assertNotEqual(
+                entry.get("world", "ISOLATED"),
+                "MAIN",
+                "A content_scripts entry still has world: MAIN",
+            )
+        # Exactly one entry must cover <all_urls>
+        all_urls_entries = [e for e in content_scripts if "<all_urls>" in e.get("matches", [])]
+        self.assertEqual(
+            len(all_urls_entries),
+            1,
+            f"Expected exactly 1 content_scripts entry for <all_urls>, found {len(all_urls_entries)}",
+        )
+
+    def test_ph_ai_help_log_key_referenced_in_ai_help_and_popup(self) -> None:
+        ai_help_js = AI_HELP_JS.read_text(encoding="utf-8")
+        popup_js = POPUP_JS.read_text(encoding="utf-8")
+        self.assertIn("ph_ai_help_log", ai_help_js)
+        self.assertIn("ph_ai_help_log", popup_js)
+
 
 if __name__ == "__main__":
     unittest.main()
