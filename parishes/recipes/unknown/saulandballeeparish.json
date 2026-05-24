@@ -3,18 +3,16 @@
   "parish_key": "saulandballeeparish",
   "display_name": "Saulandballeeparish",
   "diocese": "",
-  "start_url": "https://www.saulandballeeparish.com/",
+  "start_url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf",
   "steps": [
     {
       "action": "goto",
-      "url": "https://www.saulandballeeparish.com/"
+      "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf"
     },
     {
-      "action": "click",
-      "selector": "a:has-text(\"Bulletin\")",
-      "href": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-24-05-2026.pdf",
-      "text": "Bulletin"
+      "action": "download",
+      "url": "https://www.saulandballeeparish.com/app/uploads/2026/05/Bulletin-10-05-2026.pdf"
     }
   ],
-  "recorded_date": "2026-05-23"
+  "recorded_date": "2026-05-24"
 }
