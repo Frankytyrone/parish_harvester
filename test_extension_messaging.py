@@ -138,6 +138,15 @@ class ExtensionMessagingTests(unittest.TestCase):
         self.assertIn("ph_ai_help_log", ai_help_js)
         self.assertIn("ph_ai_help_log", popup_js)
 
+    def test_ai_help_uses_supported_model_and_logs_endpoint_metadata(self) -> None:
+        ai_help_js = AI_HELP_JS.read_text(encoding="utf-8")
+        self.assertNotIn("models/gemini-1.5-flash:generateContent", ai_help_js)
+        self.assertIn('const GEMINI_MODEL = "gemini-2.5-flash";', ai_help_js)
+        self.assertIn("Gemini model unavailable in this build. Please update the extension.", ai_help_js)
+        self.assertIn("endpointVersion", ai_help_js)
+        self.assertIn("responseStatus", ai_help_js)
+        self.assertIn("googleErrorText120", ai_help_js)
+
 
 if __name__ == "__main__":
     unittest.main()
