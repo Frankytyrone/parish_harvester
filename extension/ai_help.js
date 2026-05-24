@@ -23,6 +23,8 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
   ];
   const AI_HELP_LOG_LIMIT = 50;
   const AI_HELP_LOG_KEY = "ph_ai_help_log";
+  const GEMINI_ENDPOINT_VERSION = "v1beta";
+  const GEMINI_MODEL = "gemini-2.5-flash";
   const _aiHelpLogs = [];
 
   function _persistLogToStorage() {
@@ -33,19 +35,35 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
     } catch (_e) {}
   }
 
-  function _logAiHelpEvent(attempt, succeeded, errorMessage = "") {
+  function _logAiHelpEvent(attempt, succeeded, errorMessage = "", details = {}) {
+    const meta = details && typeof details === "object" ? details : {};
+    const responseStatus = Number(meta.responseStatus);
     _aiHelpLogs.push({
       ts: new Date().toISOString(),
       attempt: String(attempt || "unknown").slice(0, 120),
       succeeded: Boolean(succeeded),
       errorMessage: String(errorMessage || "").slice(0, 240),
+      model: String(meta.model || "").slice(0, 80),
+      endpointVersion: String(meta.endpointVersion || "").slice(0, 20),
+      responseStatus: Number.isFinite(responseStatus) ? responseStatus : null,
+      googleErrorText120: String(meta.googleErrorText120 || "").replace(/\s+/g, " ").trim().slice(0, 120),
     });
     while (_aiHelpLogs.length > AI_HELP_LOG_LIMIT) _aiHelpLogs.shift();
     _persistLogToStorage();
   }
 
   function logAiHelpEvent(entry = {}) {
-    _logAiHelpEvent(entry.attempt, entry.succeeded, entry.errorMessage || entry.error);
+    _logAiHelpEvent(
+      entry.attempt,
+      entry.succeeded,
+      entry.errorMessage || entry.error,
+      {
+        model: entry.model,
+        endpointVersion: entry.endpointVersion,
+        responseStatus: entry.responseStatus,
+        googleErrorText120: entry.googleErrorText120,
+      }
+    );
   }
 
   function _safeUrlForLog(url) {
@@ -334,8 +352,16 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
       `User question: ${userMessage}`,
     ].filter(Boolean).join("\n");
 
-    _logAiHelpEvent("askGemini fetch_start", true, `context:${_safeUrlForLog(pageContext?.url || "")}`);
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(resolvedApiKey)}`, {
+    const endpointVersion = GEMINI_ENDPOINT_VERSION;
+    const model = GEMINI_MODEL;
+    const endpointUrl = `https://generativelanguage.googleapis.com/${endpointVersion}/models/${model}:generateContent?key=${encodeURIComponent(resolvedApiKey)}`;
+    _logAiHelpEvent(
+      "askGemini fetch_start",
+      true,
+      `context:${_safeUrlForLog(pageContext?.url || "")}`,
+      { model, endpointVersion }
+    );
+    const response = await fetch(endpointUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -355,11 +381,29 @@ Keep answers to 3-5 short sentences. Do not use jargon. If unsure, say so honest
       }
     })();
     if (!response.ok) {
-      const bodyPreview = String(rawBody || "").replace(/\s+/g, " ").trim().slice(0, 80);
-      _logAiHelpEvent("askGemini fetch_failed", false, `HTTP ${response.status} ${bodyPreview}`);
+      const googleErrorText120 = String(data?.error?.message || rawBody || "").replace(/\s+/g, " ").trim().slice(0, 120);
+      _logAiHelpEvent(
+        "askGemini fetch_failed",
+        false,
+        `HTTP ${response.status} ${googleErrorText120}`,
+        { model, endpointVersion, responseStatus: response.status, googleErrorText120 }
+      );
+      const lower = googleErrorText120.toLowerCase();
+      if (
+        response.status === 404 ||
+        lower.includes("not found for api version") ||
+        lower.includes("not supported for generatecontent")
+      ) {
+        throw new Error("Gemini model unavailable in this build. Please update the extension.");
+      }
       throw new Error(String(data?.error?.message || `HTTP ${response.status}`));
     }
-    _logAiHelpEvent("askGemini fetch_ok", true, `HTTP ${response.status}`);
+    _logAiHelpEvent(
+      "askGemini fetch_ok",
+      true,
+      `HTTP ${response.status}`,
+      { model, endpointVersion, responseStatus: response.status }
+    );
     const text = ((data?.candidates || [])[0]?.content?.parts || [])
       .map((part) => String(part?.text || ""))
       .join("\n")
