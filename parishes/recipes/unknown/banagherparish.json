@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "parish_key": "banagherparish",
+  "display_name": "Banagherparish",
+  "diocese": "",
+  "start_url": "https://www.banagherparish.com/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://www.banagherparish.com/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"Bulletin - Pentecost Sunday - 24th May 2026\")",
+      "href": "https://banagherparish.com/files/9/Newsletters/390/Bulletin---Pentecost-Sunday---24th-May-2026",
+      "text": "Bulletin - Pentecost Sunday - 24th May 2026"
+    }
+  ],
+  "recorded_date": "2026-05-25"
+}
