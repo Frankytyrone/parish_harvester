@@ -331,28 +331,23 @@ https://www.antrimparish.com
         self.assertIn("continue-on-error: false", workflow)
         self.assertIn("ocr/convert_bulletin.py", workflow)
         self.assertIn("ocr/generate_bulletin_pages.py", workflow)
+        self.assertIn("GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}", workflow)
         self.assertIn("OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}", workflow)
         self.assertIn("git add docs", workflow)
 
     def test_ocr_convert_provider_fallback_order(self) -> None:
         source = (Path(__file__).resolve().parent / "ocr" / "convert_bulletin.py").read_text(encoding="utf-8")
-        self.assertIn("Running image OCR with GitHub Models (gpt-4o-mini) ...", source)
         self.assertIn("Trying Mistral OCR (mistral-ocr-latest) on PDF ...", source)
+        self.assertIn("Running image OCR with Gemini (gemini-1.5-flash) fallback ...", source)
         self.assertIn("Running image OCR with OpenAI gpt-4o-mini fallback ...", source)
-        github_idx = source.find("Running image OCR with GitHub Models (gpt-4o-mini) ...")
         mistral_idx = source.find("Trying Mistral OCR (mistral-ocr-latest) on PDF ...")
+        gemini_idx = source.find("Running image OCR with Gemini (gemini-1.5-flash) fallback ...")
         openai_idx = source.find("Running image OCR with OpenAI gpt-4o-mini fallback ...")
-        self.assertGreaterEqual(github_idx, 0)
         self.assertGreaterEqual(mistral_idx, 0)
+        self.assertGreaterEqual(gemini_idx, 0)
         self.assertGreaterEqual(openai_idx, 0)
-        self.assertLess(
-            github_idx,
-            mistral_idx,
-        )
-        self.assertLess(
-            mistral_idx,
-            openai_idx,
-        )
+        self.assertLess(mistral_idx, gemini_idx)
+        self.assertLess(gemini_idx, openai_idx)
 
     def test_extension_version_bump_workflow_configuration(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "bump-extension-version.yml").read_text(encoding="utf-8")
