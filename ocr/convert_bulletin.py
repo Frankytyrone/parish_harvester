@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # Requires: pip install openai pdf2image Pillow mistralai
-import sys
 import os
 import base64
 import io
 import re
 import html as html_utils
+import sys
+
+import google.generativeai as genai
 from openai import OpenAI
 # mistralai package layouts differ across versions; support both import paths.
 try:
@@ -119,101 +121,68 @@ def ocr_with_mistral(pdf_path):
     return pages
 
 
-def ocr_images(images, mode="github_then_openai"):
-    """Run OCR across images and return (pages_text, provider_summary)."""
-    github_token = os.environ.get("GITHUB_TOKEN")
-    openai_api_key = os.environ.get("OPENAI_API_KEY")
+def _image_to_base64_png(image):
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    buffer.close()
+    return encoded
 
-    if mode == "github_only":
-        if not github_token:
-            print("Error: GITHUB_TOKEN is required for GitHub Models OCR mode.")
-            sys.exit(1)
-        use_github_models = True
-    elif mode == "openai_only":
-        if not openai_api_key:
-            print("Error: OPENAI_API_KEY is required for OpenAI OCR mode.")
-            sys.exit(1)
-        use_github_models = False
-    else:
-        if not github_token and not openai_api_key:
-            print("Error: Neither GITHUB_TOKEN nor OPENAI_API_KEY is set. Please set at least one credential.")
-            sys.exit(1)
-        use_github_models = bool(github_token)
 
-    if use_github_models:
-        print("  Using GitHub Models (gpt-4o-mini) for image OCR...")
-        client = OpenAI(
-            api_key=github_token,
-            base_url="https://models.inference.ai.azure.com",
-        )
-        provider_used = "GitHub Models"
-    else:
-        print("  GITHUB_TOKEN not set, using OpenAI gpt-4o-mini directly...")
-        client = OpenAI(
-            api_key=openai_api_key,
-        )
-        provider_used = "OpenAI fallback"
-    fallback_used = False
+def ocr_images_with_gemini(images):
+    """Run Gemini OCR across images and return (pages_text, provider_summary)."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set.")
 
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
     pages_text = []
     for i, image in enumerate(images, start=1):
-        print(f"  OCR on page {i}/{len(images)} ...", flush=True)
-        buffer = io.BytesIO()
-        image.save(buffer, format="PNG")
-        b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-        buffer.close()
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": OCR_PROMPT},
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": f"data:image/png;base64,{b64}"},
-                            },
-                        ],
-                    }
-                ],
-            )
-        except Exception as e:
-            if use_github_models and mode == "github_then_openai" and openai_api_key:
-                print(
-                    f"  GitHub Models failed on page {i} ({type(e).__name__}: {e}), "
-                    "falling back to OpenAI gpt-4o-mini..."
-                )
-                client = OpenAI(api_key=openai_api_key)
-                use_github_models = False
-                provider_used = "OpenAI fallback"
-                fallback_used = True
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
+        print(f"  OCR on page {i}/{len(images)} via Gemini ...", flush=True)
+        response = model.generate_content([OCR_PROMPT, image])
+        text = getattr(response, "text", "") or ""
+        lines = [
+            line for line in text.splitlines()
+            if line.strip() and not MARKDOWN_FENCE_PATTERN.match(line)
+        ]
+        pages_text.append(lines)
+    return pages_text, "Gemini fallback"
+
+
+def ocr_images_with_openai(images):
+    """Run OpenAI OCR across images and return (pages_text, provider_summary)."""
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set.")
+
+    client = OpenAI(api_key=openai_api_key)
+    pages_text = []
+    for i, image in enumerate(images, start=1):
+        print(f"  OCR on page {i}/{len(images)} via OpenAI ...", flush=True)
+        b64 = _image_to_base64_png(image)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": OCR_PROMPT},
                         {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": OCR_PROMPT},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/png;base64,{b64}"},
-                                },
-                            ],
-                        }
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{b64}"},
+                        },
                     ],
-                )
-            else:
-                raise
+                }
+            ],
+        )
         text = response.choices[0].message.content or ""
         lines = [
             line for line in text.splitlines()
             if line.strip() and not MARKDOWN_FENCE_PATTERN.match(line)
         ]
         pages_text.append(lines)
-    if fallback_used:
-        return pages_text, "GitHub Models + OpenAI fallback"
-    return pages_text, provider_used
+    return pages_text, "OpenAI fallback"
 
 
 def linkify(text):
@@ -371,11 +340,11 @@ def main():
         sys.exit(1)
 
     mistral_api_key = os.environ.get("MISTRAL_API_KEY")
-    github_token = os.environ.get("GITHUB_TOKEN")
+    gemini_api_key = os.environ.get("GEMINI_API_KEY")
     openai_api_key = os.environ.get("OPENAI_API_KEY")
 
-    if not mistral_api_key and not github_token and not openai_api_key:
-        print("Error: None of MISTRAL_API_KEY, GITHUB_TOKEN, or OPENAI_API_KEY is set.")
+    if not mistral_api_key and not gemini_api_key and not openai_api_key:
+        print("Error: None of MISTRAL_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY is set.")
         print("Please set at least one credential.")
         sys.exit(1)
 
@@ -384,19 +353,7 @@ def main():
     provider_used = None
     images = None
 
-    if github_token:
-        print("Preparing PDF pages for GitHub Models OCR ...")
-        images = pdf_to_images(pdf_file)
-        print(f"  {len(images)} page(s) found.")
-        print("Running image OCR with GitHub Models (gpt-4o-mini) ...")
-        try:
-            pages_text, provider_used = ocr_images(images, mode="github_only")
-        except Exception as e:
-            print(f"  GitHub Models OCR failed ({type(e).__name__}: {e}). Falling back to Mistral OCR...")
-    else:
-        print("GITHUB_TOKEN not set, skipping GitHub Models OCR ...")
-
-    if pages_text is None and mistral_api_key:
+    if mistral_api_key:
         print("Trying Mistral OCR (mistral-ocr-latest) on PDF ...")
         try:
             mistral_pages = ocr_with_mistral(pdf_file)
@@ -404,13 +361,27 @@ def main():
             provider_used = "Mistral"
             print(f"  Mistral OCR succeeded on {len(mistral_pages)} page(s).")
         except Exception as e:
-            print(f"  Mistral OCR failed ({type(e).__name__}: {e}). Falling back to OpenAI OCR...")
+            print(f"  Mistral OCR failed ({type(e).__name__}: {e}).")
     elif pages_text is None:
         print("MISTRAL_API_KEY not set, skipping Mistral OCR ...")
 
     if pages_text is None:
+        if not gemini_api_key:
+            print("GEMINI_API_KEY not set, skipping Gemini OCR ...")
+        else:
+            if images is None:
+                print("Preparing PDF pages for Gemini OCR ...")
+                images = pdf_to_images(pdf_file)
+                print(f"  {len(images)} page(s) found.")
+            print("Running image OCR with Gemini (gemini-1.5-flash) fallback ...")
+            try:
+                pages_text, provider_used = ocr_images_with_gemini(images)
+            except Exception as e:
+                print(f"  Gemini OCR failed ({type(e).__name__}: {e}).")
+
+    if pages_text is None:
         if not openai_api_key:
-            print("Error: GitHub Models and Mistral OCR were unavailable or failed, and OPENAI_API_KEY is not set.")
+            print("Error: Mistral and Gemini OCR were unavailable or failed, and OPENAI_API_KEY is not set.")
             print("Set OPENAI_API_KEY for final fallback OCR.")
             sys.exit(1)
         if images is None:
@@ -418,7 +389,7 @@ def main():
             images = pdf_to_images(pdf_file)
             print(f"  {len(images)} page(s) found.")
         print("Running image OCR with OpenAI gpt-4o-mini fallback ...")
-        pages_text, provider_used = ocr_images(images, mode="openai_only")
+        pages_text, provider_used = ocr_images_with_openai(images)
 
     print("Building HTML ...")
     content = build_html_content(pages_text)

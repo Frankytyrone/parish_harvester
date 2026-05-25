@@ -39,6 +39,7 @@ def render_diocese_page(
         "diocese_display_name": html.escape(display),
         "headline": html.escape(f"{display.upper()} DIOCESE BIG BULLETIN"),
         "mega_pdf_url": html.escape(mega_pdf_url, quote=True),
+        "ocr_page_url": "../../bulletins/index.html",
         "ocr_text": html.escape(normalized_ocr),
         "parish_heading": html.escape(f"{display.upper()} PARISHES WITH WORKING BULLETIN LINKS"),
         "parish_links_html": _render_parish_links(parish_links),

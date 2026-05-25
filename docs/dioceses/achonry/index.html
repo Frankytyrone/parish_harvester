@@ -6,18 +6,87 @@
   <title>Achonry — Parish Press</title>
   <link rel="stylesheet" href="../../assets/site.css" />
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: #f7fbfb; color: #16202a; }
-    .wrap { max-width: 920px; margin: 0 auto; padding: 22px 16px; }
-    .headline { margin: 0 0 16px; background: #1a6b6b; color: #fff; padding: 14px 16px; text-transform: uppercase; }
-    .card { background: #fff; border: 1px solid #d6ecea; border-radius: 12px; padding: 18px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f7fbfb; color: #16202a; }
+    .page { max-width: 1320px; margin: 0 auto; padding: 0 16px 28px; }
+    .headline { margin: 0 -16px 18px; padding: 18px 16px; background: #1a6b6b; color: #fff; font-weight: 800; font-size: clamp(1.2rem, 2.4vw, 2rem); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+    .download-link { display: inline-block; margin-bottom: 14px; font-weight: 700; color: #1a6b6b; }
+    .viewer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .panel { background: #fff; border: 1px solid #d6ecea; border-radius: 14px; padding: 14px; }
+    .panel-heading { margin: 0 0 10px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; text-align: center; }
+    .panel h2 { margin: 0; font-size: 1rem; letter-spacing: 0.06em; text-transform: uppercase; color: #1a6b6b; }
+    .open-tab-btn { display: inline-block; padding: 5px 10px; border: 1px solid #1a6b6b; border-radius: 6px; color: #1a6b6b; font-size: 0.82rem; font-weight: 700; text-decoration: none; background: #eef8f7; }
+    .open-tab-btn:hover { background: #dff1ef; }
+    .viewer { height: 68vh; min-height: 360px; overflow: auto; border: 1px solid #d8e4e3; border-radius: 10px; background: #fff; }
+    .viewer iframe { width: 100%; height: 100%; border: 0; }
+    .ocr-pre { margin: 0; padding: 12px; white-space: pre-wrap; line-height: 1.5; font-size: 0.97rem; }
+    .ocr-search-bar { margin-bottom: 8px; }
+    .ocr-search-bar input { width: 100%; padding: 7px 12px; border: 1px solid #1a6b6b; border-radius: 6px; font-size: 0.95rem; outline: none; }
+    .ocr-search-bar input:focus { box-shadow: 0 0 0 2px #d6ecea; }
+    .disclaimer { margin: 14px 0 0; color: #b42318; font-style: italic; }
+    .parish-section { margin-top: 18px; background: #fff; border: 1px solid #d6ecea; border-radius: 14px; padding: 14px; }
+    .parish-section h2 { margin: 0 0 10px; color: #1a6b6b; text-transform: uppercase; letter-spacing: 0.05em; font-size: 1rem; text-align: center; }
+    .parish-list { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 0; }
+    .parish-list a { color: #1a6b6b; text-decoration: none; }
+    .parish-list a:hover { text-decoration: underline; }
+    .empty-state { color: #5e6673; margin: 0; }
+    .footer { margin-top: 22px; border-top: 1px solid #d6ecea; padding-top: 10px; color: #4b5563; font-size: 0.92rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .footer a { color: #1a6b6b; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    @media (max-width: 940px) {
+      .viewer-grid { grid-template-columns: 1fr; }
+      .parish-list { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .parish-list { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <main class="wrap">
-    <h1 class="headline">ACHONRY DIOCESE BIG BULLETIN</h1>
-    <section class="card">
-      <p>We're still collecting bulletins for this diocese. Check back next Sunday.</p>
+  <main class="page">
+    <header class="headline">ACHONRY DIOCESE BIG BULLETIN</header>
+    <a class="download-link" href="../../mega_pdf/achonry_mega_bulletin.pdf" target="_blank" rel="noopener noreferrer">Download PDF</a>
+    <section class="viewer-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>BULLETINS ORIGINAL PDF VERSION</h2>
+          <a href="../../mega_pdf/achonry_mega_bulletin.pdf" target="_blank" rel="noopener noreferrer" class="open-tab-btn">⤢ Open in new tab</a>
+        </div>
+        <div class="viewer">
+          <iframe src="../../mega_pdf/achonry_mega_bulletin.pdf" title="Achonry original PDF bulletin"></iframe>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>BULLETINS OCR EXTRACTED PLAIN TEXT</h2>
+          <a href="../../bulletins/index.html" target="_blank" rel="noopener noreferrer" class="open-tab-btn">⤢ Open in new tab</a>
+        </div>
+        <div class="ocr-search-bar">
+          <input type="text" id="ocr-search" placeholder="🔍 Search OCR text..." oninput="highlightOCR(this.value)" />
+        </div>
+        <div class="viewer"><pre class="ocr-pre" id="ocr-text">We're still collecting OCR text for this diocese. Check back next Sunday.</pre></div>
+      </article>
     </section>
+    <p class="disclaimer">"Note: The plain-text OCR version is auto-generated and may contain errors so it is always best to double check with the original PDF."</p>
+    <p class="disclaimer">"OCR (Optical Character Recognition) is technology that turns images of text into editable, searchable digital text."</p>
+    <section class="parish-section"><h2>PARISH LINKS</h2><p class="empty-state">No parish links available yet.</p></section>
+    <footer class="footer">
+      <span>© 2026 Parish Press</span>
+      <a href="https://github.com/Frankytyrone/parish_harvester/issues/new" target="_blank" rel="noopener noreferrer">🤖 Auto-collected from parish websites — report a problem</a>
+    </footer>
   </main>
+  <script>
+    function highlightOCR(query) {
+      const viewer = document.querySelector('.viewer .ocr-pre') || document.querySelector('#ocr-text');
+      if (!viewer) return;
+      if (!viewer.dataset.original) viewer.dataset.original = viewer.innerHTML;
+      if (!query) { viewer.innerHTML = viewer.dataset.original; return; }
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      viewer.innerHTML = (viewer.dataset.original).replace(
+        new RegExp(escaped, 'gi'),
+        m => `<mark style="background:#fff3cd;">${m}</mark>`
+      );
+    }
+  </script>
 </body>
 </html>
