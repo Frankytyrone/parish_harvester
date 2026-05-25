@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "parish_key": "threepatrons",
+  "display_name": "Three Patrons",
+  "diocese": "Derry Diocese",
+  "start_url": "https://stoliverplunkettparish.ie/bulletins/",
+  "steps": [
+    {
+      "action": "goto",
+      "url": "https://stoliverplunkettparish.ie/bulletins/"
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"24th May 2026\")",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "div > div > div:nth-of-type(12) > div > h3 > a"
+      ]
+    }
+  ],
+  "recorded_date": "2026-05-25"
+}
