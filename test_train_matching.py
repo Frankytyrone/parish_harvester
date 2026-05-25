@@ -346,14 +346,8 @@ https://www.antrimparish.com
         self.assertGreaterEqual(mistral_idx, 0)
         self.assertGreaterEqual(gemini_idx, 0)
         self.assertGreaterEqual(openai_idx, 0)
-        self.assertLess(
-            mistral_idx,
-            gemini_idx,
-        )
-        self.assertLess(
-            gemini_idx,
-            openai_idx,
-        )
+        self.assertLess(mistral_idx, gemini_idx)
+        self.assertLess(gemini_idx, openai_idx)
 
     def test_extension_version_bump_workflow_configuration(self) -> None:
         workflow = (Path(__file__).resolve().parent / ".github" / "workflows" / "bump-extension-version.yml").read_text(encoding="utf-8")
