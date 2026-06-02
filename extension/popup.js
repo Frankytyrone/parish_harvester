@@ -289,3 +289,5 @@ if (diagCopyBtn) {
 }
 
 void sendToActiveTab({ type: "show_toolbar" });
+void dispatchToActiveTab({ type: "ping" });
+void dispatchToActiveTab({ type: "ph_ping" });
