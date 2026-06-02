@@ -148,7 +148,7 @@ https://www.antrimparish.com
         self.assertNotIn("side_panel", manifest)
         self.assertEqual(manifest["action"]["default_title"], "Parish Trainer")
         self.assertEqual(manifest["action"]["default_popup"], "popup.html")
-        self.assertIn('"world": "MAIN"', manifest_path.read_text(encoding="utf-8"))
+        self.assertIn('"world": "ISOLATED"', manifest_path.read_text(encoding="utf-8"))
         self.assertIn("✨ Mark this element", content_js)
         self.assertIn("Crop Bulletin Image", content_js)
         self.assertIn("toggle_toolbar", content_js)
