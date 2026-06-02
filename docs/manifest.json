@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-06-02T16:59:37Z",
+  "target_date": "2026-05-31",
+  "dioceses": {
+    "derry_diocese": {
+      "display_name": "Derry Diocese",
+      "mega_pdf": "https://frankytyrone.github.io/parish_harvester/mega_pdf/derry_mega_bulletin.pdf",
+      "mega_pdf_cdn": "https://cdn.jsdelivr.net/gh/Frankytyrone/parish_harvester@main/mega_pdf/derry_mega_bulletin.pdf",
+      "downloaded": 29,
+      "html_links": 1,
+      "failed": 15,
+      "success_rate": "65.9%"
+    },
+    "down_and_connor": {
+      "display_name": "Down and Connor",
+      "mega_pdf": "https://frankytyrone.github.io/parish_harvester/mega_pdf/down_and_connor_mega_bulletin.pdf",
+      "mega_pdf_cdn": "https://cdn.jsdelivr.net/gh/Frankytyrone/parish_harvester@main/mega_pdf/down_and_connor_mega_bulletin.pdf",
+      "downloaded": 27,
+      "html_links": 0,
+      "failed": 24,
+      "success_rate": "52.9%"
+    }
+  }
+}
