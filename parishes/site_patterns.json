@@ -11,6 +11,16 @@
         "clonmanyparish"
       ],
       "success_count": 1
+    },
+    "pdf_link_list+click_chain": {
+      "page_type": "pdf_link_list",
+      "recipe_flow": "click_chain",
+      "label": "pdf_link_list",
+      "advice": "Click Find bulletin → Pick newest, or Follow a link to the latest PDF.",
+      "example_parishes": [
+        "dmaparish"
+      ],
+      "success_count": 1
     }
   },
   "parishes": {
@@ -20,6 +30,15 @@
       "combined_key": "iframe_viewer+click_chain",
       "display_name": "Clonmany Parish",
       "start_url_host": "clonmanyparish.ie",
+      "updated": "2026-06-13",
+      "step_count": 2
+    },
+    "dmaparish": {
+      "page_type": "pdf_link_list",
+      "recipe_flow": "click_chain",
+      "combined_key": "pdf_link_list+click_chain",
+      "display_name": "DMA Parish (Claudy Area)",
+      "start_url_host": "dmaparish.com",
       "updated": "2026-06-13",
       "step_count": 2
     }
