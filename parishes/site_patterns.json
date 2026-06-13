@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "description": "",
+  "patterns": {
+    "iframe_viewer+click_chain": {
+      "page_type": "iframe_viewer",
+      "recipe_flow": "click_chain",
+      "label": "iframe_viewer",
+      "advice": "Click It's in a frame / viewer and choose the bulletin frame.",
+      "example_parishes": [
+        "clonmanyparish"
+      ],
+      "success_count": 1
+    }
+  },
+  "parishes": {
+    "clonmanyparish": {
+      "page_type": "iframe_viewer",
+      "recipe_flow": "click_chain",
+      "combined_key": "iframe_viewer+click_chain",
+      "display_name": "Clonmany Parish",
+      "start_url_host": "clonmanyparish.ie",
+      "updated": "2026-06-13",
+      "step_count": 2
+    }
+  }
+}
