@@ -3,17 +3,25 @@
   "parish_key": "bellaghyparish",
   "display_name": "Bellaghy",
   "diocese": "Derry Diocese",
-  "start_url": "https://bellaghyparish.com/",
+  "start_url": "https://www.buncranaparish.com/",
   "steps": [
     {
       "action": "goto",
-      "url": "https://bellaghyparish.com/"
+      "url": "https://www.buncranaparish.com/"
     },
     {
       "action": "click",
-      "selector": "a:has-text(\"Current Parish Newsletter (PDF)\")",
-      "href": "https://bellaghyparish.com/current-newsletter/",
-      "text": "Current Parish Newsletter (PDF)"
+      "selector": "a:has-text(\"CLICK HERE to load Current Newsletter\")",
+      "href": "pdf/140626.pdf",
+      "text": "Click to open this document Sunday Masses St Mary's Church, "
+    },
+    {
+      "action": "click",
+      "selector": "a:has-text(\"CLICK HERE to load Current Newsletter\")",
+      "fallback_selectors": [
+        "a[href$='.pdf']",
+        "div#xlaANMzone_c6f563 > a"
+      ]
     }
   ],
   "recorded_date": "2026-06-13"
