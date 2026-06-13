@@ -1,18 +1,20 @@
 {
   "version": 1,
   "parish_key": "bellaghyparish",
-  "display_name": "Bellaghyparish",
-  "diocese": "derry",
-  "start_url": "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf",
+  "display_name": "Bellaghy",
+  "diocese": "Derry Diocese",
+  "start_url": "https://bellaghyparish.com/",
   "steps": [
     {
       "action": "goto",
-      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf"
+      "url": "https://bellaghyparish.com/"
     },
     {
-      "action": "download",
-      "url": "https://bellaghyparish.com/wp-content/uploads/2026/05/10-May-2026.pdf"
+      "action": "click",
+      "selector": "a:has-text(\"Current Parish Newsletter (PDF)\")",
+      "href": "https://bellaghyparish.com/current-newsletter/",
+      "text": "Current Parish Newsletter (PDF)"
     }
   ],
-  "recorded_date": "2026-05-11"
+  "recorded_date": "2026-06-13"
 }
