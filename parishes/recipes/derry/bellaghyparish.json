@@ -3,17 +3,17 @@
   "parish_key": "bellaghyparish",
   "display_name": "Bellaghy",
   "diocese": "Derry Diocese",
-  "start_url": "https://www.greenlough.com/publications/newsletter/Trinity_Sunday_[2026-5-31].pdf",
+  "start_url": "https://www.parishofballinascreen.com/",
   "steps": [
     {
       "action": "goto",
-      "url": "https://www.greenlough.com/publications/newsletter/Trinity_Sunday_[2026-5-31].pdf"
+      "url": "https://www.parishofballinascreen.com/"
     },
     {
       "action": "click",
-      "selector": "a:has-text(\"view newsletter (PDF)\")",
-      "href": "/current-newsletter/",
-      "text": "view newsletter (PDF)"
+      "selector": "div#comp-k7ylqdj0 > a",
+      "href": "https://www.parishofballinascreen.com/ballinascreen-desertmartin-parishes-7_june_2026",
+      "text": ""
     }
   ],
   "recorded_date": "2026-06-13"
